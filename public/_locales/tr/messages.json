@@ -1,0 +1,8 @@
+{
+  "appName": {
+    "message": "Unshackled LLM Bridge"
+  },
+  "appDesc": {
+    "message": "Sohbetlerini ChatGPT ve Claude arasında çatallayıp taşı. Tamamen yerel, gizlilik öncelikli."
+  }
+}

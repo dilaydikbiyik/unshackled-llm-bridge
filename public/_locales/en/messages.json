@@ -1,0 +1,8 @@
+{
+  "appName": {
+    "message": "Unshackled LLM Bridge"
+  },
+  "appDesc": {
+    "message": "Fork and bridge your conversations across ChatGPT and Claude. Local-only, privacy-first."
+  }
+}
