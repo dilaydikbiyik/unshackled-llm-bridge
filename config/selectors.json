@@ -1,19 +1,19 @@
 {
-  "version": 1,
+  "version": 2,
   "minExtensionVersion": "0.0.1",
   "platforms": {
     "chatgpt": {
       "composer": ["#prompt-textarea", "form div[contenteditable='true']"],
       "sendButton": ["button[data-testid='send-button']"],
       "messageContainer": ["article[data-testid^='conversation-turn']"],
-      "messageAuthorRole": ["[data-message-author-role]"],
       "newChatButton": ["a[data-testid='create-new-chat-button']"]
     },
     "claude": {
       "composer": ["div[contenteditable='true'].ProseMirror", "fieldset div[contenteditable='true']"],
       "sendButton": ["button[aria-label='Send message']", "button[aria-label='Mesaj gönder']"],
-      "messageContainer": ["div[data-testid='chat-message']", "div[data-test-render-count]"],
-      "messageAuthorRole": ["[data-message-author]"],
+      "messageContainer": ["div[data-testid='user-message'], div.font-claude-message"],
+      "userMessage": ["div[data-testid='user-message']"],
+      "artifactCell": ["div[data-testid='artifact-block']", "a[aria-label*='artifact' i]"],
       "newChatButton": ["a[href='/new']"]
     }
   }

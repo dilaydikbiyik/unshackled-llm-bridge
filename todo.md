@@ -101,19 +101,24 @@ they cover the platform-specific hardened versions.
       (surfaced in side panel as "ChatGPT support degraded" instead of silent failure)
 
 ### 1.2 ChatGPT adapter
-- [ ] `readConversation()`: parse message list from DOM → normalized format
+- [x] `readConversation()`: parse message list from DOM → normalized format
       (roles, markdown/code blocks preserved, message order stable)
-- [ ] `injectText()`: write into composer (contenteditable/textarea — handle both), do NOT auto-send;
-      leave the send action to the user
-- [ ] `openNewChat()`: navigate/click to a fresh conversation
-- [ ] `observeMessages()`: MutationObserver for live message tracking (needed later for archive)
-- [ ] Fixture tests: saved DOM snapshots → expected normalized output
+- [x] `injectText()`: contenteditable via execCommand insertText, textarea via native
+      value setter (React-safe); never auto-sends
+- [x] `openNewChat()`: click new-chat button, fall back to URL navigation
+- [x] `observeMessages()`: debounced MutationObserver (generic impl in base adapter)
+- [x] Fixture tests: DOM fixtures → expected normalized output (rule: a selector change
+      updates config/selectors.json AND the fixture together)
+- [ ] Verify selectors against live chatgpt.com and fix drift (fixtures are best-effort
+      reconstructions, not captured snapshots)
 
 ### 1.3 Claude adapter
-- [ ] Same surface as 1.2 for claude.ai
-- [ ] Handle Claude-specific rendering (artifacts blocks read as fenced content or skipped
-      with a marker — decide and document)
-- [ ] Fixture tests
+- [x] Same surface as 1.2 for claude.ai
+- [x] Artifacts: DECIDED — inline preview cells are replaced with an explicit
+      `[artifact from Claude — not transferred]` marker (never dropped silently);
+      live DOM is cloned, not mutated
+- [x] Fixture tests
+- [ ] Verify selectors against live claude.ai and fix drift
 
 ### 1.4 Fork engine
 - [ ] Per-message hover UI: floating "fork" button anchored to each assistant/user message
@@ -244,8 +249,8 @@ they cover the platform-specific hardened versions.
 
 ## Open questions (answer before the relevant phase)
 
-- [ ] Phase 1: how to represent Claude artifacts / ChatGPT canvas content in the normalized
-      format? (fenced block vs. skip-with-marker)
+- [x] Phase 1: Claude artifacts → skip-with-marker (decided in 1.3). ChatGPT canvas still
+      open — revisit when its DOM is inspected live.
 - [ ] Phase 1: fork button placement — per-message hover vs. message context menu?
       Prototype both, pick by feel.
 - [ ] Phase 2: OPFS vs. IndexedDB threshold for large files; what's the real quota behavior
