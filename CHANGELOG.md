@@ -14,11 +14,19 @@ All notable changes to this project are documented here. The format follows
 - **Gemini model picker and new-chat button** kept their `data-test-id` values but changed element
   type (`div` → `button`, `expandable-button` → `gem-nav-list-item`). Selectors are now
   tag-agnostic.
+- **ChatGPT read zero messages.** Turns moved from `<article>` to `<section>`, so every fork from
+  ChatGPT would have transferred an empty conversation. The answer node is now resolved from a
+  new `assistantContent` config target instead of a `.markdown` class hard-coded in the adapter —
+  which also brings the adapter back in line with ADR 002.
+- **Image-only turns were blank.** A screenshot sent with no text became an empty message.
+  Images are now marked in the transcript as `[image]` / `[image: alt]` on every platform, the
+  same way Claude artifacts are marked rather than dropped.
 - ChatGPT's logged-out composer (`#mobile-composer-prompt`) added as a fallback candidate.
-- Selector config bumped to version 4, so installed copies pick the fixes up remotely.
+- Selector config bumped to version 5, so installed copies pick the fixes up remotely.
 
 ### Still to do before a store release
-- Verify ChatGPT's selectors in a logged-in session. Claude and Gemini are verified.
+- Verify the send buttons (they render only after typing), Claude artifact markup, and
+  ChatGPT's model label on a paid plan. Everything else is verified against the live sites.
 - Manual test matrix across both fork directions, long chats, code blocks, and edge cases
   (empty chat, mid-generation, logged-out target).
 

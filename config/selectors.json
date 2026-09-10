@@ -1,11 +1,12 @@
 {
-  "version": 4,
+  "version": 5,
   "minExtensionVersion": "0.0.1",
   "platforms": {
     "chatgpt": {
       "composer": ["#prompt-textarea", "form div[contenteditable='true']", "#mobile-composer-prompt"],
       "sendButton": ["button[data-testid='send-button']"],
-      "messageContainer": ["article[data-testid^='conversation-turn']"],
+      "messageContainer": ["section[data-testid^='conversation-turn']", "article[data-testid^='conversation-turn']"],
+      "assistantContent": ["[class*='_DilResponseRoot']", ".not-markdown", ".markdown"],
       "newChatButton": ["a[data-testid='create-new-chat-button']"],
       "modelLabel": ["button[data-testid='model-switcher-dropdown-button']"],
       "dropZone": ["form[data-type='unified-composer']", "main"]

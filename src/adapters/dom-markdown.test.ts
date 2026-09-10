@@ -58,3 +58,17 @@ describe('DOM → markdown', () => {
     expect(md('<custom-el><span>kept</span></custom-el>')).toBe('kept');
   });
 });
+
+describe('DOM → markdown — images', () => {
+  it('marks an image where it stood instead of dropping it', () => {
+    expect(md('<p>see <img src="x" alt="chart.png"> here</p>')).toBe('see [image: chart.png] here');
+  });
+
+  it('marks an image with no alt text generically', () => {
+    expect(md('<img src="x">')).toBe('[image]');
+  });
+
+  it('still drops icon images that sit inside UI controls', () => {
+    expect(md('<p>text<button><img alt="copy icon"></button></p>')).toBe('text');
+  });
+});

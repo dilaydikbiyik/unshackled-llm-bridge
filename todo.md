@@ -111,9 +111,12 @@ they cover the platform-specific hardened versions.
 - [x] `observeMessages()`: debounced MutationObserver (generic impl in base adapter)
 - [x] Fixture tests: DOM fixtures → expected normalized output (rule: a selector change
       updates config/selectors.json AND the fixture together)
-- [ ] Verify selectors against live chatgpt.com and fix drift — **blocked: needs a logged-in
-      session.** Logged out, chatgpt.com serves a different composer (`#mobile-composer-prompt`,
-      now a fallback candidate); the logged-in selectors are still unverified
+- [x] Verified live, logged in (2026-09-10). Found the most serious drift of the three: turns
+      moved from `<article>` to `<section>`, so the extension read **zero messages** and would
+      have forked an empty conversation. Fixed, and the answer node moved from a hard-coded
+      `.markdown` in code into config as `assistantContent`. Composer, new-chat and drop zone
+      matched. Send button unverified (renders only after typing); model label absent on the
+      free-plan layout and deliberately not matched via its translated aria-label
 
 ### 1.3 Claude adapter
 - [x] Same surface as 1.2 for claude.ai
@@ -180,6 +183,8 @@ they cover the platform-specific hardened versions.
 - [x] Wire attachments end-to-end: fork with files = context injection + file replay
 - [x] Size guard rail: 25 MB cap per file, to stay well inside the IndexedDB quota
 - [ ] Per-platform upload limits in selector config; evaluate OPFS if the cap proves too low
+- [ ] Link `[image]` transcript markers to the captured sandbox file, so the image itself replays
+      on the target instead of only its placeholder
 
 ### 2.2 Gemini adapter
 - [x] Full adapter surface (read/inject/newChat/observe/upload)
@@ -277,8 +282,9 @@ they cover the platform-specific hardened versions.
 97 tests at 96% line / 86% branch coverage, and a clean production build. Everything checked above
 is implemented in code and covered by tests where it is testable headlessly.
 
-**Live verification (2026-09-10):** Claude and Gemini were checked against the live sites and
-their drift fixed. ChatGPT is the one platform still unverified — it needs a logged-in session.
+**Live verification (2026-09-10):** all three platforms checked against the live sites, and real
+drift fixed on each. Remaining unverified: send buttons (render only after typing), Claude artifact
+markup, and ChatGPT's model label on paid plans.
 
 ---
 

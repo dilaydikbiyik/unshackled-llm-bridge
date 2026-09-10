@@ -10,8 +10,17 @@ and names the selector targets that stopped resolving. Fixing it does not requir
 rest of the codebase.
 
 1. Open the platform, find the element, and get a selector for it. Prefer stable attributes in this
-   order: `data-testid` → `aria-label` → semantic tag or custom element → structural class. Avoid
+   order: `data-testid` → semantic tag or custom element → structural class → `aria-label`. Avoid
    build-output class names (`css-1x2y3z`) — they change on every deploy.
+   - Keep test-id selectors **tag-agnostic** (`[data-test-id='x']`, not `div[data-test-id='x']`).
+     Platforms swap the element type while keeping the id; Gemini did exactly that.
+   - For CSS-module classes shaped `<hash>_SemanticName`, match the stable half:
+     `[class*='_SemanticName']`. Check the name is not a trap — ChatGPT's `not-markdown` would
+     satisfy a careless `[class*='markdown']`.
+   - `aria-label` is last because it is translated: a Turkish UI says `Model değiştir`, so a
+     label selector silently works in one locale and fails in every other.
+   - Never combine two kinds of node in one rule (`user, assistant`). If one half breaks the rule
+     still matches the other half, reports healthy, and blocks the fallback candidates.
 2. Add it to `config/selectors.json` **as a new first entry**, keeping the existing candidates after
    it. Selector lists are tried in order, so an added entry fixes the new markup without breaking
    users still on the old one.

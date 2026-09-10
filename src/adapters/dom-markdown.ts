@@ -59,6 +59,12 @@ function serializeNode(node: Node): string {
       const text = serializeChildren(el).trim();
       return href.startsWith('http') && text ? `[${text}](${href})` : text;
     }
+    case 'img': {
+      // Images cannot travel as text, so they are marked where they stood —
+      // an image-only turn must not become an empty message.
+      const alt = el.getAttribute('alt')?.trim();
+      return alt ? `[image: ${alt}]` : '[image]';
+    }
     // UI chrome that must never leak into content:
     case 'button':
     case 'svg':

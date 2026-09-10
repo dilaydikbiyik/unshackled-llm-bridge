@@ -60,3 +60,61 @@ describe('ChatGptAdapter.readConversation', () => {
     expect(conversation.messages).toEqual([]);
   });
 });
+
+/**
+ * Live markup, checked 2026-09-10: turns moved from <article> to <section>,
+ * and the answer lives in a CSS-module node (`<hash>_DilResponseRoot`). The
+ * suite above still passes against the old markup, which proves the fallback
+ * candidates are reachable — each rule targets one kind of node, so a partial
+ * match cannot mask a broken one.
+ */
+const LIVE_FIXTURE = `
+<main>
+  <section data-testid="conversation-turn-1">
+    <div data-message-author-role="user"><div>Write an HTML report</div></div>
+  </section>
+  <section data-testid="conversation-turn-2">
+    <div data-message-author-role="assistant">
+      <div class="not-markdown">
+        <div class="fv0XaG_DilRenderer fv0XaG_DilResponseRoot w-full">
+          <p>Here is the <strong>report</strong>.</p>
+          <p class="PSWZZq_Label">Summary</p>
+        </div>
+      </div>
+      <button aria-label="Model değiştir">Model değiştir</button>
+    </div>
+  </section>
+</main>
+`;
+
+describe('ChatGptAdapter.readConversation — live markup', () => {
+  beforeEach(() => {
+    document.body.innerHTML = LIVE_FIXTURE;
+  });
+
+  it('reads <section> turns', async () => {
+    const conversation = await new ChatGptAdapter(selectors).readConversation();
+    expect(conversation.messages.map((m) => m.role)).toEqual(['user', 'assistant']);
+  });
+
+  it('takes the answer from the response root, leaving per-turn controls out', async () => {
+    const conversation = await new ChatGptAdapter(selectors).readConversation();
+    const answer = conversation.messages[1]?.content ?? '';
+    expect(answer).toContain('**report**');
+    expect(answer).toContain('Summary');
+    expect(answer).not.toContain('Model değiştir');
+  });
+});
+
+describe('ChatGptAdapter.readConversation — image-only turns', () => {
+  it('keeps an image-only user turn visible instead of emitting an empty message', async () => {
+    // Live check 2026-09-10: a screenshot sent with no text produced a turn
+    // with zero text, which would have surfaced as a blank "Me:" line.
+    document.body.innerHTML = `
+      <section data-testid="conversation-turn-1">
+        <div data-message-author-role="user"><img src="blob:x" alt=""></div>
+      </section>`;
+    const conversation = await new ChatGptAdapter(selectors).readConversation();
+    expect(conversation.messages[0]?.content).toBe('[image]');
+  });
+});

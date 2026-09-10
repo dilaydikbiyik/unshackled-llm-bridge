@@ -131,10 +131,10 @@ fixture proves nothing about the live site.
 Phases 0–3 of [todo.md](todo.md) are implemented: typecheck, lint and 97 tests pass (96% line / 86% branch
 coverage over the logic unit tests can reach), and the production build is clean.
 
-**Live verification.** Claude and Gemini have been checked against the live sites. That first
-check found real drift — the extension was silently dropping every Claude reply — and it is fixed.
-ChatGPT is still unverified because it needs a logged-in session; everything else in `todo.md` is
-polish or deliberately deferred with a stated reason.
+**Live verification.** All three platforms have been checked against the live sites, and the
+check found real drift on each — including ChatGPT reading zero messages and Claude dropping every
+reply. Both are fixed and covered by fixtures that mirror the live markup. What remains unverified
+is listed in `todo.md`: send buttons, Claude artifacts, and ChatGPT's model label on paid plans.
 
 ## License
 

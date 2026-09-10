@@ -1,7 +1,7 @@
 import { BaseAdapter } from '@adapters/base-adapter';
 import { extractMarkdown } from '@adapters/dom-markdown';
 import type { AdapterCapabilities } from '@adapters/types';
-import { resolveSelectorAll } from '@data/config/selector-config';
+import { resolveSelector, resolveSelectorAll } from '@data/config/selector-config';
 import { createConversation, type BridgeConversation, type ChatMessage } from '@domain/conversation/schema';
 import type { PlatformId } from '@domain/platforms';
 
@@ -26,8 +26,13 @@ export class ChatGptAdapter extends BaseAdapter {
         ? container
         : container.querySelector(`[${ROLE_ATTR}]`);
       const role = roleEl?.getAttribute(ROLE_ATTR) === 'user' ? 'user' : 'assistant';
-      // Assistant turns render markdown in a dedicated node; user turns are plain.
-      const contentEl = roleEl?.querySelector('.markdown') ?? roleEl ?? container;
+      // Assistant turns render their answer in a dedicated node; which node is
+      // selector knowledge, so it comes from config (ADR 002). User turns and
+      // unmatched markup fall back to the whole role element — never to nothing.
+      const contentEl =
+        (roleEl && resolveSelector(roleEl, this.selectors['assistantContent'])?.element) ??
+        roleEl ??
+        container;
       return { role, content: extractMarkdown(contentEl), index, attachmentRefs: [] };
     });
 
