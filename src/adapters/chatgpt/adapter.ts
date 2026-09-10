@@ -10,6 +10,7 @@ const ROLE_ATTR = 'data-message-author-role';
 /** ChatGPT (chatgpt.com) adapter. */
 export class ChatGptAdapter extends BaseAdapter {
   readonly platform: PlatformId = 'chatgpt';
+  protected readonly conversationPath = /\/c\/([\w-]+)/;
   readonly capabilities: AdapterCapabilities = {
     readConversation: true,
     injectText: true,
@@ -38,7 +39,7 @@ export class ChatGptAdapter extends BaseAdapter {
 
     const modelMode = await this.getModelMode();
     return createConversation({
-      id: this.conversationId(/\/c\/([\w-]+)/),
+      id: this.conversationId(),
       sourcePlatform: 'chatgpt',
       createdAt: new Date().toISOString(),
       messages,

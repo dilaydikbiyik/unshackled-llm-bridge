@@ -10,6 +10,7 @@ const ARTIFACT_MARKER = '\n\n[artifact from Claude — not transferred]\n\n';
 /** Claude (claude.ai) adapter. */
 export class ClaudeAdapter extends BaseAdapter {
   readonly platform: PlatformId = 'claude';
+  protected readonly conversationPath = /\/chat\/([\w-]+)/;
   readonly capabilities: AdapterCapabilities = {
     readConversation: true,
     injectText: true,
@@ -38,7 +39,7 @@ export class ClaudeAdapter extends BaseAdapter {
 
     const modelMode = await this.getModelMode();
     return createConversation({
-      id: this.conversationId(/\/chat\/([\w-]+)/),
+      id: this.conversationId(),
       sourcePlatform: 'claude',
       createdAt: new Date().toISOString(),
       messages,

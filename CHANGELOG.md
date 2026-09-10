@@ -29,6 +29,11 @@ All notable changes to this project are documented here. The format follows
 - **Image-only turns were blank.** A screenshot sent with no text became an empty message.
   Images are now marked in the transcript as `[image]` / `[image: alt]` on every platform, the
   same way Claude artifacts are marked rather than dropped.
+- **The side panel cried wolf.** The health check treated every unresolved target as broken, so
+  every new chat and every idle composer (no send button yet) reported the platform as degraded.
+  Targets are now classed: page-level ones are always required, conversation ones only on a
+  conversation URL, and situational ones (send button, model picker, artifacts) never. Found by
+  running the new probe against the live sites.
 - ChatGPT's logged-out composer (`#mobile-composer-prompt`) added as a fallback candidate.
 - Selector config bumped to version 5, so installed copies pick the fixes up remotely.
 
@@ -40,7 +45,8 @@ All notable changes to this project are documented here. The format follows
   message, a conversation was forked.
 - `npm run probe` prints a DevTools snippet, with the selector config embedded, that reports broken
   targets and half-matching message selectors on a live page. Counts only — safe to paste into an
-  issue.
+  issue. Its verdict is also the snippet's return value, which DevTools always echoes: claude.ai
+  replaces `console.log` with its own function, so a logged-only verdict was invisible there.
 - [docs/smoke-test.md](docs/smoke-test.md), [docs/store-listing.md](docs/store-listing.md) and
   [docs/firefox-port.md](docs/firefox-port.md).
 

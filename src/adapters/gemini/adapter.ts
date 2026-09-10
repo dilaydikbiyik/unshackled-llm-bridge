@@ -12,6 +12,7 @@ import type { PlatformId } from '@domain/platforms';
  */
 export class GeminiAdapter extends BaseAdapter {
   readonly platform: PlatformId = 'gemini';
+  protected readonly conversationPath = /\/app\/([\w-]+)/;
   readonly capabilities: AdapterCapabilities = {
     readConversation: true,
     injectText: true,
@@ -31,7 +32,7 @@ export class GeminiAdapter extends BaseAdapter {
 
     const modelMode = await this.getModelMode();
     return createConversation({
-      id: this.conversationId(/\/app\/([\w-]+)/),
+      id: this.conversationId(),
       sourcePlatform: 'gemini',
       createdAt: new Date().toISOString(),
       messages,

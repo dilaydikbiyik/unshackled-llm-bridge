@@ -12,6 +12,28 @@ import {
 } from './types';
 
 /**
+ * Targets that are legitimately absent in normal use — a send button renders
+ * only after typing, a model picker is hidden on some plans, an artifact exists
+ * only in chats that produced one. Their absence is never reported as broken.
+ */
+export const SITUATIONAL_TARGETS: ReadonlySet<string> = new Set([
+  'sendButton',
+  'modelLabel',
+  'artifactCell',
+]);
+
+/**
+ * Targets that only exist once a conversation exists. On a new, empty chat
+ * they match nothing, and that is correct — so they are only checked on a
+ * conversation page.
+ */
+export const CONVERSATION_TARGETS: ReadonlySet<string> = new Set([
+  'messageContainer',
+  'userMessage',
+  'assistantContent',
+]);
+
+/**
  * Shared plumbing for concrete adapters: selector resolution, generic health
  * check, framework-safe composer injection, debounced message observation.
  * Platform-specific DOM parsing lives in each adapter.
@@ -20,6 +42,9 @@ export abstract class BaseAdapter implements PlatformAdapter {
   abstract readonly platform: PlatformId;
   abstract readonly capabilities: AdapterCapabilities;
 
+  /** Matches a conversation URL; group 1 is the platform's conversation id. */
+  protected abstract readonly conversationPath: RegExp;
+
   constructor(protected readonly selectors: PlatformSelectors) {}
 
   protected resolve(target: string) {
@@ -27,8 +52,8 @@ export abstract class BaseAdapter implements PlatformAdapter {
   }
 
   /** Stable id derived from the platform's conversation URL, else a fresh UUID. */
-  protected conversationId(pathPattern: RegExp): string {
-    const match = pathPattern.exec(location.pathname);
+  protected conversationId(): string {
+    const match = this.conversationPath.exec(location.pathname);
     return `${this.platform}-${match?.[1] ?? crypto.randomUUID()}`;
   }
 
@@ -133,8 +158,18 @@ export abstract class BaseAdapter implements PlatformAdapter {
     return [];
   }
 
+  /**
+   * Reports only absences that mean something is actually broken. Checking
+   * every target naively reported "degraded" on every new chat and whenever
+   * the composer was empty — a false alarm users would learn to ignore.
+   */
   async healthCheck(): Promise<AdapterHealth> {
-    const broken = Object.keys(this.selectors).filter((target) => this.resolve(target) === null);
+    const onConversation = this.conversationPath.test(location.pathname);
+    const broken = Object.keys(this.selectors).filter((target) => {
+      if (SITUATIONAL_TARGETS.has(target)) return false;
+      if (CONVERSATION_TARGETS.has(target) && !onConversation) return false;
+      return this.resolve(target) === null;
+    });
     broken.push(...(await this.conversationShapeProblems()));
     return {
       platform: this.platform,

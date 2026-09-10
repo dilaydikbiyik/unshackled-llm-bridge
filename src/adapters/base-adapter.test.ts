@@ -19,6 +19,7 @@ const adapter = () => new ChatGptAdapter(selectors);
 
 afterEach(() => {
   document.body.innerHTML = '';
+  history.pushState({}, '', '/');
   vi.useRealTimers();
   vi.restoreAllMocks();
 });
@@ -103,13 +104,37 @@ describe('file replay target', () => {
 });
 
 describe('health check', () => {
-  it('names exactly the selector targets that failed to resolve', async () => {
-    document.body.innerHTML = '<textarea id="composer"></textarea><button id="model">m</button>';
+  it('names exactly the page-level targets that failed to resolve', async () => {
+    document.body.innerHTML = '<textarea id="composer"></textarea>';
     const health = await adapter().healthCheck();
 
     expect(health.platform).toBe('chatgpt');
     expect(health.ok).toBe(false);
-    expect(health.brokenSelectors.sort()).toEqual(['dropZone', 'messageContainer', 'newChatButton']);
+    expect(health.brokenSelectors.sort()).toEqual(['dropZone', 'newChatButton']);
+  });
+
+  it('never reports situational targets, which are absent in normal use', async () => {
+    // Found by the live probe: an idle composer has no send button and the free
+    // ChatGPT plan has no model picker, so every idle page read as "degraded".
+    document.body.innerHTML = '<textarea id="composer"></textarea><a id="new-chat"></a><div id="drop"></div>';
+    const health = await new ChatGptAdapter({
+      ...selectors,
+      sendButton: ['#send'],
+      artifactCell: ['#artifact'],
+    }).healthCheck();
+    expect(health.ok).toBe(true);
+  });
+
+  it('does not expect messages on a new, empty chat', async () => {
+    document.body.innerHTML = '<textarea id="composer"></textarea><a id="new-chat"></a><div id="drop"></div>';
+    expect((await adapter().healthCheck()).brokenSelectors).not.toContain('messageContainer');
+  });
+
+  it('does expect messages on a conversation page', async () => {
+    // The ChatGPT <article> → <section> drift looked exactly like this.
+    history.pushState({}, '', '/c/abc123');
+    document.body.innerHTML = '<textarea id="composer"></textarea><a id="new-chat"></a><div id="drop"></div>';
+    expect((await adapter().healthCheck()).brokenSelectors).toContain('messageContainer');
   });
 
   it('reports healthy when every target resolves', async () => {

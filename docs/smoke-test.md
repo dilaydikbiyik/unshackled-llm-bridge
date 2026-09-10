@@ -17,7 +17,7 @@ open DevTools → Console → paste → Enter.
 | Result | Meaning | Action |
 |---|---|---|
 | Every row `ok`, shape `ok` | Healthy | Nothing |
-| `sendButton` absent | Expected — it renders only after typing | Nothing |
+| `absent (situational)` | Expected: a send button renders only after typing, a model picker is hidden on some plans, an artifact exists only in chats that made one | Nothing |
 | Any other row `BROKEN` | A target stopped matching | Fix per CONTRIBUTING → *Fixing a broken selector* |
 | `SHAPE BROKEN` | A message selector matches one side of the conversation only | Treat as broken even if every row says `ok` |
 | A count of `INVALID` | A candidate is not a valid CSS selector | Remove or fix it |

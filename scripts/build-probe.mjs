@@ -23,7 +23,7 @@ const probe = (cfg) => {
   const platform = Object.entries(HOSTS).find(
     ([host]) => location.hostname === host || location.hostname.endsWith(`.${host}`),
   )?.[1];
-  if (!platform) return console.warn('Not a supported platform page:', location.hostname);
+  if (!platform) return `Not a supported platform page: ${location.hostname}`;
 
   const count = (selector) => {
     try {
@@ -33,15 +33,15 @@ const probe = (cfg) => {
     }
   };
 
-  // Mid-generation or post-typing controls are legitimately absent on an idle page.
-  const idleAbsent = new Set(['sendButton']);
+  // Absent in normal use (mirrors SITUATIONAL_TARGETS in src/adapters/base-adapter.ts).
+  const situational = new Set(['sendButton', 'modelLabel', 'artifactCell']);
   const rows = [];
   for (const [target, candidates] of Object.entries(cfg.platforms[platform] ?? {})) {
     const counts = candidates.map(count);
     const winner = counts.findIndex((n) => typeof n === 'number' && n > 0);
     rows.push({
       target,
-      status: winner >= 0 ? 'ok' : idleAbsent.has(target) ? 'absent (expected when idle)' : 'BROKEN',
+      status: winner >= 0 ? 'ok' : situational.has(target) ? 'absent (situational)' : 'BROKEN',
       matchedCandidate: winner >= 0 ? winner + 1 : '-',
       counts: counts.join(' / '),
     });
@@ -61,10 +61,14 @@ const probe = (cfg) => {
   const users = containers.filter(isUser).length;
   const assistants = containers.length - users;
   const shapeOk = !((users >= 2 && assistants === 0) || (assistants >= 2 && users === 0));
-  console.log(
+  const summary =
     `[unshackled probe] ${platform} · config v${cfg.version} · turns: ${users} user / ${assistants} assistant · ` +
-      (shapeOk ? 'shape ok' : 'SHAPE BROKEN — a message selector is only half matching'),
-  );
+    (shapeOk ? 'shape ok' : 'SHAPE BROKEN — a message selector is only half matching');
+  console.log(summary);
+  // Also the snippet's value: DevTools always echoes the value of the last
+  // expression, so the verdict shows even on a page that overrides console.*.
+  const broken = rows.filter((r) => r.status === 'BROKEN').map((r) => r.target);
+  return broken.length ? `${summary} · BROKEN: ${broken.join(', ')}` : summary;
 };
 
 process.stdout.write(`(${probe.toString()})(${JSON.stringify(config)});\n`);
