@@ -1,14 +1,22 @@
 import { createAdapter } from '@adapters/registry';
 import type { PlatformAdapter } from '@adapters/types';
-import { loadSelectorConfig } from '@models/config/selector-config';
-import { wrapForTarget } from '@models/wrap/templates';
+import { loadSelectorConfig, type SelectorConfig } from '@models/config/selector-config';
+import { conversationKey, mountAttachmentCapture, replayAttachments } from '@controllers/attachments';
+import { t } from '@shared/i18n';
 import { detectPlatform } from '@shared/platforms';
-import { sendToBackground, type PendingForkResponse } from '@shared/messages';
+import {
+  sendToBackground,
+  type AttachmentListResponse,
+  type PendingInjectionResponse,
+} from '@shared/messages';
+import { getSettings } from '@shared/settings';
 import { mountForkButtons } from '@views/content/fork-button';
+import { openForkDialog } from '@views/content/fork-dialog';
+import { showToast } from '@views/content/toast';
 
 /**
- * Content-script entry: detect the platform, wire adapter ⟷ background,
- * claim any pending fork package targeted at this platform.
+ * Content-script entry: detect the platform, wire adapter ⟷ background, mount
+ * the in-page UI, and claim any package targeted at this platform.
  */
 async function main(): Promise<void> {
   const platform = detectPlatform(location.hostname);
@@ -19,8 +27,10 @@ async function main(): Promise<void> {
   if (!adapter) return;
 
   await reportHealth(adapter);
-  await claimPendingFork(adapter);
-  mountForkButtons(adapter);
+  mountAttachmentCapture(adapter);
+  mountFork(adapter, config);
+  void watchForArchive(adapter);
+  await claimPendingInjection(adapter);
 }
 
 async function reportHealth(adapter: PlatformAdapter): Promise<void> {
@@ -28,25 +38,110 @@ async function reportHealth(adapter: PlatformAdapter): Promise<void> {
   await sendToBackground({ type: 'adapter/health-report', health });
 }
 
-async function claimPendingFork(adapter: PlatformAdapter): Promise<void> {
-  const pending = await sendToBackground<PendingForkResponse>({
-    type: 'fork/pending-check',
+function mountFork(adapter: PlatformAdapter, config: SelectorConfig): void {
+  const selectors = config.platforms[adapter.platform] ?? {};
+  mountForkButtons({
+    adapter,
+    messageSelectors: selectors['messageContainer'],
+    onFork: (messageIndex) => void openDialogFor(adapter, messageIndex),
+  });
+}
+
+async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Promise<void> {
+  const [conversation, settings, attachments] = await Promise.all([
+    adapter.readConversation(),
+    getSettings(),
+    sendToBackground<AttachmentListResponse>({
+      type: 'attachment/list',
+      conversationKey: conversationKey(adapter.platform),
+    }),
+  ]);
+
+  openForkDialog({
+    conversation,
+    cutIndex: messageIndex,
+    settings,
+    attachments,
+    onTransfer: async ({ target, text, attachmentIds }) => {
+      await sendToBackground({
+        type: 'inject/initiate',
+        request: {
+          targetPlatform: target,
+          injection: { text, attachmentIds },
+          lineage: {
+            sourceConversationId: conversation.id,
+            sourcePlatform: conversation.sourcePlatform,
+            cutIndex: messageIndex,
+          },
+        },
+      });
+    },
+  });
+}
+
+async function claimPendingInjection(adapter: PlatformAdapter): Promise<void> {
+  const pending = await sendToBackground<PendingInjectionResponse>({
+    type: 'inject/pending-check',
     platform: adapter.platform,
   });
   if (!pending) return;
 
-  await waitUntilReady(adapter);
-  const packageText = wrapForTarget(pending.conversation, pending.cutIndex, adapter.platform);
+  const settings = await getSettings();
   try {
+    await waitUntilReady(adapter);
     // Injection fills the composer only; sending stays a user action.
-    await adapter.injectText(packageText);
-  } catch (err) {
-    // TODO(phase-1.7): clipboard fallback + user-visible notice instead of console.
-    console.warn('[bridge] fork injection failed, package lost to composer:', err);
+    await adapter.injectText(pending.text);
+    if (pending.attachmentIds.length) await replayAttachments(adapter, pending.attachmentIds);
+  } catch {
+    // The package is never lost: offer it on the clipboard instead.
+    showToast(t(settings.language, 'injectFailed'), {
+      label: t(settings.language, 'copyAction'),
+      text: pending.text,
+    });
   }
+
+  if (pending.comparisonId) void reportComparisonAnswer(adapter, pending.comparisonId);
 }
 
-async function waitUntilReady(adapter: PlatformAdapter, timeoutMs = 15_000): Promise<void> {
+/**
+ * Parallel comparison: once the user sends the injected prompt, capture the
+ * assistant's reply and hand it to the side panel's side-by-side view.
+ */
+function reportComparisonAnswer(adapter: PlatformAdapter, comparisonId: string): void {
+  const startedAt = Date.now();
+  const stop = adapter.observeMessages(() => {
+    void (async () => {
+      if (Date.now() - startedAt > 10 * 60 * 1000) return stop();
+      const conversation = await adapter.readConversation();
+      const last = conversation.messages.at(-1);
+      if (last?.role !== 'assistant' || last.content.length < 40) return;
+      await sendToBackground({
+        type: 'compare/report',
+        comparisonId,
+        platform: adapter.platform,
+        content: last.content,
+      });
+    })();
+  });
+}
+
+/** Opt-in passive archiving of whatever conversation the user is looking at. */
+async function watchForArchive(adapter: PlatformAdapter): Promise<void> {
+  if (!(await getSettings()).archiveEnabled) return;
+  let lastSignature = '';
+  adapter.observeMessages(() => {
+    void (async () => {
+      const conversation = await adapter.readConversation();
+      if (conversation.messages.length === 0) return;
+      const signature = `${conversation.id}:${conversation.messages.length}`;
+      if (signature === lastSignature) return;
+      lastSignature = signature;
+      await sendToBackground({ type: 'archive/save', conversation });
+    })();
+  });
+}
+
+async function waitUntilReady(adapter: PlatformAdapter, timeoutMs = 20_000): Promise<void> {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     if (await adapter.isReady()) return;
