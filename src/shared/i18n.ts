@@ -1,0 +1,154 @@
+export type Lang = 'tr' | 'en';
+
+/**
+ * Turkish-first UI copy. Keys are shared by the side panel and the in-page
+ * views; content scripts read the language from settings.
+ */
+const STRINGS = {
+  tr: {
+    appTitle: 'Unshackled LLM Bridge',
+    privacyNote: 'Verilerin hiçbir sunucuya gitmez — her şey bu tarayıcıda kalır.',
+
+    onboardTitle: 'Nasıl çalışır?',
+    onboardStep1: '1. ChatGPT, Claude veya Gemini’de bir sohbet aç.',
+    onboardStep2: '2. Bir mesajın üzerine gel, beliren “⑂ Fork” butonuna bas.',
+    onboardStep3: '3. Hedef platformu seç — sohbet bağlamıyla birlikte taşınır. Göndere her zaman sen basarsın.',
+    onboardDismiss: 'Anladım',
+
+    statusSection: 'Platform durumu',
+    statusReady: 'hazır',
+    statusDegraded: 'sorunlu',
+    statusNoTab: 'sekme açık değil',
+    diagCopy: 'Tanılama raporunu kopyala',
+    diagCopied: 'Kopyalandı ✓',
+
+    compareSection: 'Paralel karşılaştırma',
+    compareHint: 'Aynı istemi seçili platformlara enjekte eder. Her sekmede göndere sen basarsın; cevaplar burada yan yana toplanır.',
+    comparePlaceholder: 'Karşılaştırılacak istemi yaz…',
+    compareSend: 'Sekmelere enjekte et',
+    compareEmpty: 'Henüz karşılaştırma yok.',
+    compareWaiting: 'cevap bekleniyor…',
+
+    personaSection: 'Taşınabilir hafıza (persona)',
+    personaHint: '“Ben kimim, nasıl cevap isterim” profilin. Fork sırasında pakete eklenebilir.',
+    personaName: 'Profil adı',
+    personaText: 'Kendini ve tercihlerini anlat…',
+    personaSave: 'Kaydet',
+    personaNew: 'Yeni',
+    personaDelete: 'Sil',
+    personaActive: 'Aktif profil',
+
+    archiveSection: 'Arşiv ve arama',
+    archiveToggle: 'Ziyaret ettiğim sohbetleri yerel olarak arşivle',
+    archiveSearchPlaceholder: 'Tüm platformlardaki sohbetlerde ara…',
+    archiveEmpty: 'Sonuç yok.',
+    archiveExportMd: 'Markdown',
+    archiveExportJson: 'JSON',
+
+    settingsSection: 'Ayarlar',
+    settingsLanguage: 'Dil',
+    settingsApiKey: 'Anthropic API anahtarı (opsiyonel)',
+    settingsApiKeyHint: 'Sadece bu tarayıcıda saklanır; özetleyerek aktarma özelliğini açar. Tarayıcıdan doğrudan API’ye gider, aracı sunucu yok.',
+    settingsModel: 'Özetleme modeli',
+    settingsSave: 'Kaydet',
+    settingsSaved: 'Kaydedildi ✓',
+
+    forkTitle: 'Sohbeti çatalla',
+    forkTarget: 'Hedef platform',
+    forkMode: 'Aktarım modu',
+    forkModeFull: 'Tamamını taşı',
+    forkModeTrimmed: 'Kısaltarak taşı (eski mesajlar atlanır)',
+    forkModeSummary: 'Özetleyerek taşı (API anahtarınla)',
+    forkSummaryLoading: 'Özet hazırlanıyor…',
+    forkSummaryError: 'Özetleme başarısız — tam aktarım kullanılıyor.',
+    forkLengthWarning: 'Sohbet uzun; hedef platformu zorlayabilir. Kısaltma veya özetleme önerilir.',
+    forkAttachments: 'Dosyalar (yakalanan)',
+    forkPersonaInclude: 'Aktif personayı pakete ekle',
+    forkPreview: 'Önizleme (düzenlenebilir)',
+    forkTransfer: 'Aktar',
+    forkCopy: 'Panoya kopyala',
+    forkCopied: 'Kopyalandı ✓',
+    forkCancel: 'Vazgeç',
+
+    injectFailed: 'Otomatik ekleme başarısız oldu. Paketi panoya kopyalayıp yapıştırabilirsin.',
+    copyAction: 'Kopyala',
+    copied: 'Panoya kopyalandı ✓',
+    modelNote: 'kaynak model',
+  },
+  en: {
+    appTitle: 'Unshackled LLM Bridge',
+    privacyNote: 'Your data never leaves this browser — no servers involved.',
+
+    onboardTitle: 'How it works',
+    onboardStep1: '1. Open a conversation on ChatGPT, Claude or Gemini.',
+    onboardStep2: '2. Hover a message and hit the “⑂ Fork” button.',
+    onboardStep3: '3. Pick the target platform — the context moves with you. You always press send yourself.',
+    onboardDismiss: 'Got it',
+
+    statusSection: 'Platform status',
+    statusReady: 'ready',
+    statusDegraded: 'degraded',
+    statusNoTab: 'no tab open',
+    diagCopy: 'Copy diagnostics report',
+    diagCopied: 'Copied ✓',
+
+    compareSection: 'Parallel comparison',
+    compareHint: 'Injects the same prompt into the selected platforms. You press send in each tab; answers collect here side by side.',
+    comparePlaceholder: 'Write the prompt to compare…',
+    compareSend: 'Inject into tabs',
+    compareEmpty: 'No comparison yet.',
+    compareWaiting: 'waiting for answer…',
+
+    personaSection: 'Portable memory (persona)',
+    personaHint: 'Your “who I am, how I want answers” profile. Can be attached to fork packages.',
+    personaName: 'Profile name',
+    personaText: 'Describe yourself and your preferences…',
+    personaSave: 'Save',
+    personaNew: 'New',
+    personaDelete: 'Delete',
+    personaActive: 'Active profile',
+
+    archiveSection: 'Archive & search',
+    archiveToggle: 'Archive conversations I visit, locally',
+    archiveSearchPlaceholder: 'Search conversations across platforms…',
+    archiveEmpty: 'No results.',
+    archiveExportMd: 'Markdown',
+    archiveExportJson: 'JSON',
+
+    settingsSection: 'Settings',
+    settingsLanguage: 'Language',
+    settingsApiKey: 'Anthropic API key (optional)',
+    settingsApiKeyHint: 'Stored only in this browser; unlocks summarize-on-fork. Calls go browser→API directly, no middleman.',
+    settingsModel: 'Summary model',
+    settingsSave: 'Save',
+    settingsSaved: 'Saved ✓',
+
+    forkTitle: 'Fork conversation',
+    forkTarget: 'Target platform',
+    forkMode: 'Transfer mode',
+    forkModeFull: 'Transfer everything',
+    forkModeTrimmed: 'Transfer trimmed (older messages elided)',
+    forkModeSummary: 'Transfer summarized (uses your API key)',
+    forkSummaryLoading: 'Preparing summary…',
+    forkSummaryError: 'Summarization failed — falling back to full transfer.',
+    forkLengthWarning: 'Long conversation; it may strain the target platform. Trimming or summarizing is recommended.',
+    forkAttachments: 'Files (captured)',
+    forkPersonaInclude: 'Attach active persona to the package',
+    forkPreview: 'Preview (editable)',
+    forkTransfer: 'Transfer',
+    forkCopy: 'Copy to clipboard',
+    forkCopied: 'Copied ✓',
+    forkCancel: 'Cancel',
+
+    injectFailed: 'Automatic injection failed. You can copy the package and paste it manually.',
+    copyAction: 'Copy',
+    copied: 'Copied to clipboard ✓',
+    modelNote: 'source model',
+  },
+} as const;
+
+export type StringKey = keyof (typeof STRINGS)['en'];
+
+export function t(lang: Lang, key: StringKey): string {
+  return STRINGS[lang][key] ?? STRINGS.en[key];
+}
