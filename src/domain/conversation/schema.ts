@@ -1,4 +1,4 @@
-import type { PlatformId } from '@shared/platforms';
+import type { PlatformId } from '@domain/platforms';
 
 export const SCHEMA_VERSION = 1;
 

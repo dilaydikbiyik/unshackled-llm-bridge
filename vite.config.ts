@@ -7,7 +7,8 @@ export default defineConfig({
   plugins: [crx({ manifest })],
   resolve: {
     alias: {
-      '@models': fileURLToPath(new URL('./src/models', import.meta.url)),
+      '@domain': fileURLToPath(new URL('./src/domain', import.meta.url)),
+      '@data': fileURLToPath(new URL('./src/data', import.meta.url)),
       '@views': fileURLToPath(new URL('./src/views', import.meta.url)),
       '@controllers': fileURLToPath(new URL('./src/controllers', import.meta.url)),
       '@adapters': fileURLToPath(new URL('./src/adapters', import.meta.url)),

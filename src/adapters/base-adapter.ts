@@ -1,6 +1,6 @@
-import type { BridgeConversation } from '@models/conversation/schema';
-import { resolveSelector, type PlatformSelectors } from '@models/config/selector-config';
-import { PLATFORMS, type PlatformId } from '@shared/platforms';
+import type { BridgeConversation } from '@domain/conversation/schema';
+import { resolveSelector, type PlatformSelectors } from '@data/config/selector-config';
+import { PLATFORMS, type PlatformId } from '@domain/platforms';
 import { createFileTransfer, dispatchFileDrop } from './file-drop';
 import {
   AdapterNotImplementedError,

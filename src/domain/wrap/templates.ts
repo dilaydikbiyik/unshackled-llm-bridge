@@ -1,6 +1,6 @@
-import type { ChatMessage } from '@models/conversation/schema';
-import type { PlatformId } from '@shared/platforms';
-import { PLATFORMS } from '@shared/platforms';
+import type { ChatMessage } from '@domain/conversation/schema';
+import type { PlatformId } from '@domain/platforms';
+import { PLATFORMS } from '@domain/platforms';
 
 /**
  * Tier-1 structural wrapping: no LLM, no cost, deterministic. Packages a

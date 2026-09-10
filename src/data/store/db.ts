@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie';
-import type { PlatformId } from '@shared/platforms';
+import type { PlatformId } from '@domain/platforms';
 
 export interface ConversationRecord {
   id: string;
@@ -7,7 +7,7 @@ export interface ConversationRecord {
   title: string;
   createdAt: string;
   updatedAt: string;
-  /** Serialized BridgeConversation JSON (see models/conversation/serializer). */
+  /** Serialized BridgeConversation JSON (see domain/conversation/serializer). */
   data: string;
 }
 

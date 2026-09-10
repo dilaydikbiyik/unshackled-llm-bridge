@@ -1,5 +1,5 @@
-import type { BridgeConversation } from '@models/conversation/schema';
-import { PLATFORMS } from '@shared/platforms';
+import type { BridgeConversation } from '@domain/conversation/schema';
+import { PLATFORMS } from '@domain/platforms';
 
 /** Renders a conversation as a self-contained Markdown document. */
 export function conversationToMarkdown(conversation: BridgeConversation): string {

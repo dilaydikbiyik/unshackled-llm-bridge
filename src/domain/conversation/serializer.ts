@@ -1,4 +1,4 @@
-import { PLATFORM_IDS, type PlatformId } from '@shared/platforms';
+import { PLATFORM_IDS, type PlatformId } from '@domain/platforms';
 import {
   SCHEMA_VERSION,
   type AttachmentMeta,

@@ -1,5 +1,5 @@
-import type { SelectorConfig } from '@models/config/selector-config';
-import type { PlatformId } from '@shared/platforms';
+import type { SelectorConfig } from '@data/config/selector-config';
+import type { PlatformId } from '@domain/platforms';
 import { ChatGptAdapter } from './chatgpt/adapter';
 import { ClaudeAdapter } from './claude/adapter';
 import { GeminiAdapter } from './gemini/adapter';

@@ -16,7 +16,8 @@
     "resolveJsonModule": true,
     "baseUrl": ".",
     "paths": {
-      "@models/*": ["src/models/*"],
+      "@domain/*": ["src/domain/*"],
+      "@data/*": ["src/data/*"],
       "@views/*": ["src/views/*"],
       "@controllers/*": ["src/controllers/*"],
       "@adapters/*": ["src/adapters/*"],

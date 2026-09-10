@@ -1,6 +1,6 @@
-import type { BridgeConversation } from '@models/conversation/schema';
-import { parseConversation, serializeConversation } from '@models/conversation/serializer';
-import type { PlatformId } from '@shared/platforms';
+import type { BridgeConversation } from '@domain/conversation/schema';
+import { parseConversation, serializeConversation } from '@domain/conversation/serializer';
+import type { PlatformId } from '@domain/platforms';
 import type { ArchiveHit, CapturedAttachmentMeta, ForkLineage } from '@shared/messages';
 import { createDatabase, type BridgeDatabase } from './db';
 

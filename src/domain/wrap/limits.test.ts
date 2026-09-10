@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { ChatMessage } from '@models/conversation/schema';
+import type { ChatMessage } from '@domain/conversation/schema';
 import { estimateTokens, sliceTokens, trimToBudget } from './limits';
 
 function messages(count: number, size: number): ChatMessage[] {

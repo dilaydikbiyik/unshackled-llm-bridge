@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 import { beforeEach, describe, expect, it } from 'vitest';
 import selectorConfig from '../../../config/selectors.json';
-import type { PlatformSelectors } from '@models/config/selector-config';
+import type { PlatformSelectors } from '@data/config/selector-config';
 import { ChatGptAdapter } from './adapter';
 
 /**

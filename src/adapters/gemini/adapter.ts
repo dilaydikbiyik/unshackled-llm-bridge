@@ -1,9 +1,9 @@
 import { BaseAdapter } from '@adapters/base-adapter';
 import { extractMarkdown } from '@adapters/dom-markdown';
 import type { AdapterCapabilities } from '@adapters/types';
-import { resolveSelectorAll } from '@models/config/selector-config';
-import { createConversation, type BridgeConversation, type ChatMessage } from '@models/conversation/schema';
-import type { PlatformId } from '@shared/platforms';
+import { resolveSelectorAll } from '@data/config/selector-config';
+import { createConversation, type BridgeConversation, type ChatMessage } from '@domain/conversation/schema';
+import type { PlatformId } from '@domain/platforms';
 
 /**
  * Gemini (gemini.google.com) adapter. Messages render as <user-query> and

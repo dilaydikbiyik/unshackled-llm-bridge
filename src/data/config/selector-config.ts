@@ -1,5 +1,5 @@
 import bundledConfig from '../../../config/selectors.json';
-import type { PlatformId } from '@shared/platforms';
+import type { PlatformId } from '@domain/platforms';
 
 /**
  * DOM selectors are config, not code: a platform UI change is fixed by a

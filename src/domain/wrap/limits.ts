@@ -1,4 +1,4 @@
-import type { BridgeConversation, ChatMessage } from '@models/conversation/schema';
+import type { BridgeConversation, ChatMessage } from '@domain/conversation/schema';
 
 /** Rough heuristic: ~4 characters per token. Good enough for a UI warning. */
 export function estimateTokens(text: string): number {
