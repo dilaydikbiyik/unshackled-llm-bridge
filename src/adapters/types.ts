@@ -1,5 +1,8 @@
-import type { BridgeConversation } from '@models/conversation/schema';
-import type { PlatformId } from '@shared/platforms';
+import type { BridgeConversation } from '@domain/conversation/schema';
+import type { AdapterHealth } from '@shared/health';
+import type { PlatformId } from '@domain/platforms';
+
+export type { AdapterHealth };
 
 /**
  * Capability flags let the UI degrade gracefully per platform
@@ -11,14 +14,6 @@ export interface AdapterCapabilities {
   uploadFile: boolean;
   readModelMode: boolean;
   openNewChat: boolean;
-}
-
-export interface AdapterHealth {
-  platform: PlatformId;
-  ok: boolean;
-  /** Selector targets that resolved to nothing — surfaced as "support degraded". */
-  brokenSelectors: string[];
-  checkedAt: string;
 }
 
 export interface ModelMode {

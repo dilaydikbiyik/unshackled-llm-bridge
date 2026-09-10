@@ -1,5 +1,5 @@
 import { t, type Lang } from '@shared/i18n';
-import { PLATFORMS } from '@shared/platforms';
+import { PLATFORMS } from '@domain/platforms';
 import {
   sendToBackground,
   type ArchiveExportResponse,

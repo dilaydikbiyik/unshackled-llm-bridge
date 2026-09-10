@@ -1,5 +1,5 @@
 import { t, type Lang } from '@shared/i18n';
-import { PLATFORMS, type PlatformId } from '@shared/platforms';
+import { PLATFORMS, type PlatformId } from '@domain/platforms';
 import { sendToBackground, type ComparisonState } from '@shared/messages';
 import { el, escapeHtml } from '../dom';
 

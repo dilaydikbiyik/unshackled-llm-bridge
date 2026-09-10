@@ -1,6 +1,6 @@
-import type { AdapterHealth } from '@adapters/types';
+import type { AdapterHealth } from '@shared/health';
 import { t, type Lang } from '@shared/i18n';
-import { PLATFORMS, type PlatformId } from '@shared/platforms';
+import { PLATFORMS, type PlatformId } from '@domain/platforms';
 import { sendToBackground, type HealthListResponse } from '@shared/messages';
 import { escapeHtml, flash } from '../dom';
 

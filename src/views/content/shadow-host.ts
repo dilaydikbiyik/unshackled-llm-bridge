@@ -25,13 +25,7 @@ export const BASE_STYLES = `
   }
 `;
 
-export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+export { escapeHtml } from '../escape';
 
 /** Clipboard with a fallback for pages that block the async API. */
 export async function copyText(text: string): Promise<boolean> {

@@ -1,6 +1,6 @@
-import type { AdapterHealth } from '@adapters/types';
-import { conversationToMarkdown, exportFilename } from '@models/export';
-import { serializeConversation } from '@models/conversation/serializer';
+import type { AdapterHealth } from '@shared/health';
+import { conversationToMarkdown, exportFilename } from '@domain/export';
+import { serializeConversation } from '@domain/conversation/serializer';
 import {
   getAttachment,
   getConversation,
@@ -9,10 +9,10 @@ import {
   saveAttachment,
   saveConversation,
   searchConversations,
-} from '@models/store/repo';
-import { summarizeTranscript } from '@models/summarize/client';
+} from '@data/store/repo';
+import { summarizeTranscript } from '@data/summarize/client';
 import { getSettings } from '@shared/settings';
-import { PLATFORMS, type PlatformId } from '@shared/platforms';
+import { PLATFORMS, type PlatformId } from '@domain/platforms';
 import {
   onRuntimeMessage,
   type ComparisonState,
@@ -22,7 +22,7 @@ import {
 
 /**
  * MV3 service worker: the messaging hub and the only context that touches the
- * local database and the user's API key. Business logic lives in models/;
+ * local database and the user's API key. Business logic lives in domain/ and data/;
  * this file routes.
  */
 

@@ -1,5 +1,3 @@
-import type { PlatformAdapter } from '@adapters/types';
-import { resolveSelectorAll } from '@models/config/selector-config';
 import { BASE_STYLES, createShadowHost } from './shadow-host';
 
 const HOST_ID = 'ulb-fork-button-host';
@@ -11,8 +9,11 @@ const HOST_ID = 'ulb-fork-button-host';
  * platform's own DOM tree.
  */
 export interface ForkButtonOptions {
-  adapter: PlatformAdapter;
-  messageSelectors: string[] | undefined;
+  /**
+   * Injected by the controller. The view must not know how a message node is
+   * found — that is selector knowledge, and it belongs to the data layer.
+   */
+  locateMessages: () => Element[];
   onFork: (messageIndex: number) => void;
 }
 
@@ -37,10 +38,8 @@ export function mountForkButtons(options: ForkButtonOptions): () => void {
   let currentIndex = -1;
   let hideTimer: ReturnType<typeof setTimeout> | undefined;
 
-  const messageNodes = () => resolveSelectorAll(document, options.messageSelectors);
-
   const onPointerOver = (event: Event) => {
-    const nodes = messageNodes();
+    const nodes = options.locateMessages();
     const target = event.target as Node;
     const index = nodes.findIndex((node) => node === target || node.contains(target));
     if (index < 0) return;

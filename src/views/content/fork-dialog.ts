@@ -1,18 +1,21 @@
-import type { BridgeConversation } from '@models/conversation/schema';
-import { buildTransferPackage, needsLengthWarning, type TransferMode } from '@controllers/fork';
+import type { BridgeConversation } from '@domain/conversation/schema';
+import type { TransferMode, TransferPackageBuilder } from '@domain/transfer';
 import { t, type Lang } from '@shared/i18n';
 import type { CapturedAttachmentMeta } from '@shared/messages';
 import { activePersona, type Settings } from '@shared/settings';
-import { PLATFORMS, type PlatformId } from '@shared/platforms';
+import { PLATFORMS, type PlatformId } from '@domain/platforms';
 import { BASE_STYLES, copyText, createShadowHost, escapeHtml } from './shadow-host';
 
 const HOST_ID = 'ulb-fork-dialog-host';
 
 export interface ForkDialogOptions {
   conversation: BridgeConversation;
-  cutIndex: number;
   settings: Settings;
   attachments: CapturedAttachmentMeta[];
+  /** Injected by the controller — the view never builds packages itself. */
+  buildPackage: TransferPackageBuilder;
+  /** Precomputed by the controller so the view holds no sizing policy. */
+  showLengthWarning: boolean;
   onTransfer: (result: {
     target: PlatformId;
     text: string;
@@ -26,7 +29,7 @@ export interface ForkDialogOptions {
  * always copyable — the clipboard escape hatch is never more than one click away.
  */
 export function openForkDialog(options: ForkDialogOptions): void {
-  const { conversation, cutIndex, settings, attachments } = options;
+  const { conversation, settings, attachments } = options;
   const lang: Lang = settings.language;
   const persona = activePersona(settings);
   const canSummarize = settings.anthropicApiKey.length > 0;
@@ -159,12 +162,9 @@ export function openForkDialog(options: ForkDialogOptions): void {
     notice.innerHTML =
       state.mode === 'summary' ? `<div class="warn">${escapeHtml(t(lang, 'forkSummaryLoading'))}</div>` : '';
 
-    const built = await buildTransferPackage({
-      conversation,
-      cutIndex,
+    const built = await options.buildPackage({
       target: state.target,
       mode: state.mode,
-      language: lang,
       ...(state.includePersona && persona ? { personaText: persona.text } : {}),
     });
 
@@ -176,7 +176,7 @@ export function openForkDialog(options: ForkDialogOptions): void {
     if (built.summaryError) {
       notes.push(`<div class="warn err">${escapeHtml(t(lang, 'forkSummaryError'))}</div>`);
     }
-    if (state.mode === 'full' && needsLengthWarning(conversation, cutIndex)) {
+    if (state.mode === 'full' && options.showLengthWarning) {
       notes.push(`<div class="warn">${escapeHtml(t(lang, 'forkLengthWarning'))}</div>`);
     }
     notice.innerHTML = notes.join('');

@@ -1,10 +1,4 @@
-export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+export { escapeHtml } from '../escape';
 
 export function el<T extends HTMLElement>(root: ParentNode, selector: string): T {
   const found = root.querySelector<T>(selector);

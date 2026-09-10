@@ -1,7 +1,7 @@
-import type { AdapterHealth } from '@adapters/types';
-import type { BridgeConversation } from '@models/conversation/schema';
+import type { AdapterHealth } from '@shared/health';
+import type { BridgeConversation } from '@domain/conversation/schema';
 import type { Lang } from '@shared/i18n';
-import type { PlatformId } from '@shared/platforms';
+import type { PlatformId } from '@domain/platforms';
 
 /**
  * The single typed contract for content script ⟷ service worker ⟷ side panel

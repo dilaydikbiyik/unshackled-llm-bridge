@@ -1,9 +1,14 @@
 import { createAdapter } from '@adapters/registry';
 import type { PlatformAdapter } from '@adapters/types';
-import { loadSelectorConfig, type SelectorConfig } from '@models/config/selector-config';
+import {
+  loadSelectorConfig,
+  resolveSelectorAll,
+  type SelectorConfig,
+} from '@data/config/selector-config';
 import { conversationKey, mountAttachmentCapture, replayAttachments } from '@controllers/attachments';
+import { createTransferPackageBuilder, exceedsTransferBudget } from '@controllers/fork';
 import { t } from '@shared/i18n';
-import { detectPlatform } from '@shared/platforms';
+import { detectPlatform } from '@domain/platforms';
 import {
   sendToBackground,
   type AttachmentListResponse,
@@ -41,8 +46,7 @@ async function reportHealth(adapter: PlatformAdapter): Promise<void> {
 function mountFork(adapter: PlatformAdapter, config: SelectorConfig): void {
   const selectors = config.platforms[adapter.platform] ?? {};
   mountForkButtons({
-    adapter,
-    messageSelectors: selectors['messageContainer'],
+    locateMessages: () => resolveSelectorAll(document, selectors['messageContainer']),
     onFork: (messageIndex) => void openDialogFor(adapter, messageIndex),
   });
 }
@@ -59,9 +63,14 @@ async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Pr
 
   openForkDialog({
     conversation,
-    cutIndex: messageIndex,
     settings,
     attachments,
+    buildPackage: createTransferPackageBuilder({
+      conversation,
+      cutIndex: messageIndex,
+      language: settings.language,
+    }),
+    showLengthWarning: exceedsTransferBudget(conversation, messageIndex),
     onTransfer: async ({ target, text, attachmentIds }) => {
       await sendToBackground({
         type: 'inject/initiate',
