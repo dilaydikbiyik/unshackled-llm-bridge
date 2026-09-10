@@ -1,6 +1,7 @@
 import type { BridgeConversation } from '@models/conversation/schema';
 import { resolveSelector, type PlatformSelectors } from '@models/config/selector-config';
 import { PLATFORMS, type PlatformId } from '@shared/platforms';
+import { createFileTransfer, dispatchFileDrop } from './file-drop';
 import {
   AdapterNotImplementedError,
   type AdapterCapabilities,
@@ -67,12 +68,26 @@ export abstract class BaseAdapter implements PlatformAdapter {
     document.execCommand('insertText', false, text);
   }
 
-  uploadFile(_blob: Blob, _name: string): Promise<void> {
-    throw new AdapterNotImplementedError(this.platform, 'uploadFile');
+  /**
+   * File replay via a synthetic drop: all three platforms accept drag-and-drop
+   * uploads, and dispatching a drop is far less brittle than driving their
+   * hidden file inputs. Synthetic events have isTrusted=false, which the
+   * capture listener uses to avoid re-capturing our own replays.
+   */
+  async uploadFile(blob: Blob, name: string): Promise<void> {
+    const target = this.resolve('dropZone')?.element ?? this.resolve('composer')?.element;
+    if (!target) throw new AdapterNotImplementedError(this.platform, 'uploadFile');
+    dispatchFileDrop(target, createFileTransfer(blob, name));
   }
 
-  getModelMode(): Promise<ModelMode> {
-    throw new AdapterNotImplementedError(this.platform, 'getModelMode');
+  /**
+   * Best-effort read of the model picker label. Honest version of "mode sync":
+   * we record which model produced the conversation and surface it in the
+   * transfer package; we never silently switch models on the target.
+   */
+  async getModelMode(): Promise<ModelMode> {
+    const model = this.resolve('modelLabel')?.element.textContent?.trim();
+    return model ? { model } : {};
   }
 
   async openNewChat(): Promise<void> {

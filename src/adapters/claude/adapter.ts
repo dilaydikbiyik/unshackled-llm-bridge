@@ -13,8 +13,8 @@ export class ClaudeAdapter extends BaseAdapter {
   readonly capabilities: AdapterCapabilities = {
     readConversation: true,
     injectText: true,
-    uploadFile: false,
-    readModelMode: false,
+    uploadFile: true,
+    readModelMode: true,
     openNewChat: true,
   };
 
@@ -36,12 +36,14 @@ export class ClaudeAdapter extends BaseAdapter {
       return { role, content: extractMarkdown(clone), index, attachmentRefs: [] };
     });
 
+    const modelMode = await this.getModelMode();
     return createConversation({
       id: this.conversationId(/\/chat\/([\w-]+)/),
       sourcePlatform: 'claude',
       createdAt: new Date().toISOString(),
       messages,
       attachments: [],
+      ...(modelMode.model ? { model: modelMode.model } : {}),
     });
   }
 }

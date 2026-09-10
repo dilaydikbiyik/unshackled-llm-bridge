@@ -5,11 +5,13 @@ import { resolveSelectorAll } from '@models/config/selector-config';
 import { createConversation, type BridgeConversation, type ChatMessage } from '@models/conversation/schema';
 import type { PlatformId } from '@shared/platforms';
 
-const ROLE_ATTR = 'data-message-author-role';
-
-/** ChatGPT (chatgpt.com) adapter. */
-export class ChatGptAdapter extends BaseAdapter {
-  readonly platform: PlatformId = 'chatgpt';
+/**
+ * Gemini (gemini.google.com) adapter. Messages render as <user-query> and
+ * <model-response> custom elements; the composer is a Quill editor, which the
+ * base adapter's execCommand injection path handles.
+ */
+export class GeminiAdapter extends BaseAdapter {
+  readonly platform: PlatformId = 'gemini';
   readonly capabilities: AdapterCapabilities = {
     readConversation: true,
     injectText: true,
@@ -20,21 +22,17 @@ export class ChatGptAdapter extends BaseAdapter {
 
   override async readConversation(): Promise<BridgeConversation> {
     const containers = resolveSelectorAll(document, this.selectors['messageContainer']);
+    const userSelectors = this.selectors['userMessage'] ?? [];
 
     const messages: ChatMessage[] = containers.map((container, index) => {
-      const roleEl = container.matches(`[${ROLE_ATTR}]`)
-        ? container
-        : container.querySelector(`[${ROLE_ATTR}]`);
-      const role = roleEl?.getAttribute(ROLE_ATTR) === 'user' ? 'user' : 'assistant';
-      // Assistant turns render markdown in a dedicated node; user turns are plain.
-      const contentEl = roleEl?.querySelector('.markdown') ?? roleEl ?? container;
-      return { role, content: extractMarkdown(contentEl), index, attachmentRefs: [] };
+      const role = userSelectors.some((s) => container.matches(s)) ? 'user' : 'assistant';
+      return { role, content: extractMarkdown(container), index, attachmentRefs: [] };
     });
 
     const modelMode = await this.getModelMode();
     return createConversation({
-      id: this.conversationId(/\/c\/([\w-]+)/),
-      sourcePlatform: 'chatgpt',
+      id: this.conversationId(/\/app\/([\w-]+)/),
+      sourcePlatform: 'gemini',
       createdAt: new Date().toISOString(),
       messages,
       attachments: [],
