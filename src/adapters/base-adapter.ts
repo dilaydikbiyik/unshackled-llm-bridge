@@ -111,8 +111,31 @@ export abstract class BaseAdapter implements PlatformAdapter {
     };
   }
 
+  /**
+   * The resolve check above passes a selector that matches *some* nodes. That
+   * is exactly how a broken Claude selector hid: it still matched user turns
+   * while every reply was dropped. A real conversation cannot have two or
+   * more turns on one side and none on the other, so that shape is reported.
+   * A single unanswered turn is not flagged — it is normal mid-generation.
+   */
+  protected async conversationShapeProblems(): Promise<string[]> {
+    if (!this.capabilities.readConversation) return [];
+    let messages;
+    try {
+      ({ messages } = await this.readConversation());
+    } catch {
+      return ['messageContainer (conversation unreadable)'];
+    }
+    const users = messages.filter((m) => m.role === 'user').length;
+    const assistants = messages.length - users;
+    if (users >= 2 && assistants === 0) return ['messageContainer (no assistant turns)'];
+    if (assistants >= 2 && users === 0) return ['messageContainer (no user turns)'];
+    return [];
+  }
+
   async healthCheck(): Promise<AdapterHealth> {
     const broken = Object.keys(this.selectors).filter((target) => this.resolve(target) === null);
+    broken.push(...(await this.conversationShapeProblems()));
     return {
       platform: this.platform,
       ok: broken.length === 0,

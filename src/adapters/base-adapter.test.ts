@@ -150,3 +150,29 @@ describe('message observation', () => {
     expect(onChange).not.toHaveBeenCalled();
   });
 });
+
+describe('health check — partial matches', () => {
+  // Regression for the live Claude bug: a selector matching only user turns
+  // passed the resolve check while every assistant reply was being dropped.
+  const turn = (role: string) =>
+    `<article><div data-message-author-role="${role}"><p>${role}</p></div></article>`;
+
+  it('flags a conversation with several user turns and no assistant turns', async () => {
+    document.body.innerHTML = turn('user') + turn('user');
+    const health = await adapter().healthCheck();
+    expect(health.ok).toBe(false);
+    expect(health.brokenSelectors).toContain('messageContainer (no assistant turns)');
+  });
+
+  it('does not flag a single unanswered turn — that is normal mid-generation', async () => {
+    document.body.innerHTML = turn('user');
+    const health = await adapter().healthCheck();
+    expect(health.brokenSelectors.some((s) => s.startsWith('messageContainer ('))).toBe(false);
+  });
+
+  it('accepts a normal alternating conversation', async () => {
+    document.body.innerHTML = turn('user') + turn('assistant') + turn('user') + turn('assistant');
+    const health = await adapter().healthCheck();
+    expect(health.brokenSelectors.some((s) => s.startsWith('messageContainer ('))).toBe(false);
+  });
+});

@@ -57,7 +57,7 @@ export async function loadSelectorConfig(): Promise<SelectorConfig> {
     }
     if (!response.ok) throw new Error(`remote config HTTP ${response.status}`);
 
-    const remote = validate(await response.json());
+    const remote = validateSelectorConfig(await response.json());
     await chrome.storage.local.set({
       [CACHE_KEY]: {
         config: remote,
@@ -76,17 +76,42 @@ function newest(bundled: SelectorConfig, remote: SelectorConfig): SelectorConfig
   return remote.version >= bundled.version ? remote : bundled;
 }
 
-function validate(raw: unknown): SelectorConfig {
-  const obj = raw as SelectorConfig;
-  if (
-    typeof obj !== 'object' ||
-    obj === null ||
-    typeof obj.version !== 'number' ||
-    typeof obj.platforms !== 'object'
-  ) {
-    throw new Error('remote selector config has an invalid shape');
+/** Every leaf must be a list of strings; anything else rejects the whole file. */
+export function validateSelectorConfig(raw: unknown): SelectorConfig {
+  const fail = (why: string): never => {
+    throw new Error(`remote selector config rejected: ${why}`);
+  };
+  if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) fail('not an object');
+  const obj = raw as Record<string, unknown>;
+  if (typeof obj['version'] !== 'number') fail('version must be a number');
+  const platforms = obj['platforms'];
+  if (typeof platforms !== 'object' || platforms === null || Array.isArray(platforms)) {
+    fail('platforms must be an object');
   }
-  return obj;
+  for (const [platform, targets] of Object.entries(platforms as Record<string, unknown>)) {
+    if (typeof targets !== 'object' || targets === null || Array.isArray(targets)) {
+      fail(`${platform} must map targets to selector lists`);
+    }
+    for (const [target, list] of Object.entries(targets as Record<string, unknown>)) {
+      if (!Array.isArray(list) || list.some((s) => typeof s !== 'string' || s.length > 500)) {
+        fail(`${platform}.${target} must be a list of selector strings`);
+      }
+    }
+  }
+  return raw as SelectorConfig;
+}
+
+/**
+ * The config is remote input. A syntactically invalid candidate makes
+ * querySelector throw, which would take down the whole content script — so a
+ * bad candidate is skipped and the next one is tried, as if it matched nothing.
+ */
+function safeQueryAll(root: ParentNode, selector: string): Element[] {
+  try {
+    return [...root.querySelectorAll(selector)];
+  } catch {
+    return [];
+  }
 }
 
 export function resolveSelector(
@@ -94,7 +119,7 @@ export function resolveSelector(
   candidates: string[] | undefined,
 ): SelectorMatch | null {
   for (const selector of candidates ?? []) {
-    const element = root.querySelector(selector);
+    const [element] = safeQueryAll(root, selector);
     if (element) return { element, matched: selector };
   }
   return null;
@@ -102,8 +127,8 @@ export function resolveSelector(
 
 export function resolveSelectorAll(root: ParentNode, candidates: string[] | undefined): Element[] {
   for (const selector of candidates ?? []) {
-    const elements = root.querySelectorAll(selector);
-    if (elements.length > 0) return [...elements];
+    const elements = safeQueryAll(root, selector);
+    if (elements.length > 0) return elements;
   }
   return [];
 }

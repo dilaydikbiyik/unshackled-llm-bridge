@@ -1,10 +1,12 @@
 import type { AdapterHealth } from '@shared/health';
+import { MAX_ATTACHMENT_BYTES } from '@domain/attachments';
 import { conversationToMarkdown, exportFilename } from '@domain/export';
 import { serializeConversation } from '@domain/conversation/serializer';
 import {
   getAttachment,
   getConversation,
   listAttachments,
+  listForksFrom,
   recordFork,
   saveAttachment,
   saveConversation,
@@ -64,7 +66,9 @@ onRuntimeMessage(async (msg) => {
     }
 
     case 'attachment/capture': {
-      return saveAttachment(msg.meta, base64ToBytes(msg.dataBase64));
+      const bytes = base64ToBytes(msg.dataBase64);
+      if (bytes.length > MAX_ATTACHMENT_BYTES) return { ok: false, error: 'too-large' };
+      return saveAttachment(msg.meta, bytes);
     }
 
     case 'attachment/list': {
@@ -95,7 +99,7 @@ onRuntimeMessage(async (msg) => {
         filename: exportFilename(conversation, msg.format),
         content:
           msg.format === 'markdown'
-            ? conversationToMarkdown(conversation)
+            ? conversationToMarkdown(conversation, await listForksFrom(conversation.id))
             : JSON.stringify(JSON.parse(serializeConversation(conversation)), null, 2),
       };
     }

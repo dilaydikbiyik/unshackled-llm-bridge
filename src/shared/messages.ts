@@ -96,6 +96,10 @@ export type MessageHandler = (
 /** Registers an async handler; keeps the response channel open until it settles. */
 export function onRuntimeMessage(handler: MessageHandler): void {
   chrome.runtime.onMessage.addListener((msg: RuntimeMessage, sender, sendResponse) => {
+    // Only this extension's own contexts may drive the hub, and only with a
+    // well-formed message; anything else gets no response at all.
+    if (sender.id !== chrome.runtime.id) return false;
+    if (typeof msg !== 'object' || msg === null || typeof msg.type !== 'string') return false;
     handler(msg, sender)
       .then(sendResponse)
       .catch((err: unknown) => sendResponse({ error: String(err) }));

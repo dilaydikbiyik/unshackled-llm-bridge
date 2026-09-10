@@ -1,4 +1,5 @@
 import type { PlatformAdapter } from '@adapters/types';
+import { MAX_ATTACHMENT_BYTES } from '@domain/attachments';
 import { sendToBackground, type AttachmentGetResponse } from '@shared/messages';
 
 /**
@@ -34,11 +35,8 @@ export function mountAttachmentCapture(adapter: PlatformAdapter): () => void {
   };
 }
 
-/** Files above this are skipped — IndexedDB quota is not worth a 200MB video. */
-const MAX_CAPTURE_BYTES = 25 * 1024 * 1024;
-
 async function capture(platform: string, file: File): Promise<void> {
-  if (file.size > MAX_CAPTURE_BYTES) return;
+  if (file.size > MAX_ATTACHMENT_BYTES) return;
   const dataBase64 = await blobToBase64(file);
   await sendToBackground({
     type: 'attachment/capture',
