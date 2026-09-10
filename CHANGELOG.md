@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Still to do before a store release
+- Run the end-to-end matrix in [docs/smoke-test.md](docs/smoke-test.md) with the unpacked
+  extension loaded, then submit using [docs/store-listing.md](docs/store-listing.md).
+- Verify the send buttons (they render only after typing), Claude artifact markup, and ChatGPT's
+  model label on a paid plan.
+
+## [0.3.1] — 2026-09-10
+
 ### Fixed — from the first live check against the real sites
 - **Claude replies were being dropped.** Assistant turns moved from `div.font-claude-message` to
   `.font-claude-response`. The old rule combined user and assistant turns in one selector, so it
@@ -24,9 +32,25 @@ All notable changes to this project are documented here. The format follows
 - ChatGPT's logged-out composer (`#mobile-composer-prompt`) added as a fallback candidate.
 - Selector config bumped to version 5, so installed copies pick the fixes up remotely.
 
-### Still to do before a store release
-- Verify the send buttons (they render only after typing), Claude artifact markup, and
-  ChatGPT's model label on a paid plan. Everything else is verified against the live sites.
+### Added
+- **The health check catches half-matching selectors.** Two or more turns on one side of a
+  conversation and none on the other is reported as broken — the exact shape that hid the Claude
+  bug behind a "healthy" status.
+- **Fork lineage in the Markdown export:** a `## Forks` section lists where, and after which
+  message, a conversation was forked.
+- `npm run probe` prints a DevTools snippet, with the selector config embedded, that reports broken
+  targets and half-matching message selectors on a live page. Counts only — safe to paste into an
+  issue.
+- [docs/smoke-test.md](docs/smoke-test.md), [docs/store-listing.md](docs/store-listing.md) and
+  [docs/firefox-port.md](docs/firefox-port.md).
+
+### Security
+- A malformed selector in the remote config used to make `querySelector` throw and take down the
+  content script. Invalid candidates are now skipped, and the config is validated per leaf
+  (every target must be a list of strings, each under 500 characters) before it is used.
+- Runtime messages are accepted only from this extension's own id, and only when well-formed.
+- The attachment size cap is enforced where files are captured and again where they are stored.
+- HTML sinks audited: every interpolated value is escaped or a constant, boolean or UUID.
 - Manual test matrix across both fork directions, long chats, code blocks, and edge cases
   (empty chat, mid-generation, logged-out target).
 
@@ -95,7 +119,8 @@ All notable changes to this project are documented here. The format follows
 - ChatGPT and Claude adapters with DOM-fixture tests. Claude artifacts are marked in the
   transcript rather than silently dropped.
 
-[Unreleased]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.3.0...HEAD
+[Unreleased]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.3.1...HEAD
+[0.3.1]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/releases/tag/v0.1.0

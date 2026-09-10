@@ -9,6 +9,10 @@ When a platform ships a UI change, the extension's side panel starts reporting a
 and names the selector targets that stopped resolving. Fixing it does not require understanding the
 rest of the codebase.
 
+Start with `npm run -s probe | pbcopy`, paste it into the platform's DevTools console on an
+existing conversation, and read the table: it names every broken target and warns when a message
+selector matches only one side of the conversation. See [docs/smoke-test.md](docs/smoke-test.md).
+
 1. Open the platform, find the element, and get a selector for it. Prefer stable attributes in this
    order: `data-testid` → semantic tag or custom element → structural class → `aria-label`. Avoid
    build-output class names (`css-1x2y3z`) — they change on every deploy.

@@ -84,6 +84,10 @@ The decisions that shaped this — and what would reverse them — are recorded 
 | [005](docs/adr/005-file-replay-via-drop.md) | Files replay as synthetic drops, not input assignment |
 | [006](docs/adr/006-user-presses-send.md) | The extension never sends a message |
 
+Operational docs: the weekly [smoke test](docs/smoke-test.md), the
+[store listing](docs/store-listing.md) with its permission justifications, and the
+[Firefox port evaluation](docs/firefox-port.md).
+
 ### Selectors are config, not code
 
 The platforms restyle their UIs constantly and their class names are build output. If selectors
@@ -114,11 +118,12 @@ Nothing else is requested. Any new permission has to earn a row in this table.
 
 ```bash
 npm run dev        # Vite dev server with HMR
-npm test           # 97 unit + DOM fixture tests
+npm test           # unit + DOM fixture tests
 npm run coverage   # tests with coverage thresholds
 npm run typecheck  # tsc --noEmit, strict
 npm run lint       # eslint, including the architecture boundary rules
 npm run verify     # everything CI runs, in one command
+npm run -s probe   # DevTools snippet: checks the selectors on a live platform page
 npm run build      # production build into dist/
 ```
 
@@ -128,8 +133,8 @@ fixture proves nothing about the live site.
 
 ## Status
 
-Phases 0–3 of [todo.md](todo.md) are implemented: typecheck, lint and 97 tests pass (96% line / 86% branch
-coverage over the logic unit tests can reach), and the production build is clean.
+Every phase of [todo.md](todo.md) is implemented: typecheck, lint and the full test suite pass
+above the coverage thresholds, and the production build is clean.
 
 **Live verification.** All three platforms have been checked against the live sites, and the
 check found real drift on each — including ChatGPT reading zero messages and Claude dropping every

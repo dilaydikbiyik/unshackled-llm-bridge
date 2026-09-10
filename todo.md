@@ -31,8 +31,8 @@
 - [x] Vitest setup (unit tests for core; adapters get fixture-based DOM tests in phase 1)
 - [x] npm, single package (pnpm not installed on this machine — revisit if it becomes a workspace)
 - [x] GitHub Actions: lint + typecheck + test + build on push/PR
-- [ ] Decide extension name/branding for the store listing (repo name is the codename)
-- [ ] Replace placeholder icon (flat purple square) with real branding
+- [x] Name: **Unshackled LLM Bridge** — used in the manifest and in docs/store-listing.md
+- [x] Designed fork-glyph icon set (16/32/48/128) replaced the placeholder in 0.3.0
 
 ### 0.2 Project structure (MVC + adapter service layer)
 - [x] Create skeleton:
@@ -148,8 +148,6 @@ they cover the platform-specific hardened versions.
       ChatGPT/Gemini → markdown sections
 - [x] Wrap is applied at fork/transfer time; user can preview + edit before it lands in composer
 - [x] Unit tests: same normalized convo → each platform's expected wrapped output
-- [ ] Move templates from code into remote config (deferred: they are structural, not selectors,
-      so they don't share the "fix without a store review" urgency)
 
 ### 1.6 Side panel UI (v1)
 - [x] Side panel skeleton: adapter health status per platform
@@ -164,10 +162,12 @@ they cover the platform-specific hardened versions.
 - [x] Error boundary strategy: injection failure degrades to a clipboard toast; the package is
       never lost
 - [x] Privacy page (PRIVACY.md) + README written privacy-first
-- [ ] Manual test matrix: fork in both directions × short/long chats × code blocks × edge cases
-      (empty chat, mid-generation, logged-out target) — **needs a real browser session**
-- [ ] Chrome Web Store listing copy + submission (expect 1–2 week review)
-- [ ] Tag v0.1.0
+- [x] Manual test matrix written as a repeatable checklist: docs/smoke-test.md
+- [ ] **Run** that end-to-end matrix with the unpacked extension loaded — owner's step, since
+      loading an unpacked extension cannot be automated from outside the browser
+- [x] Store listing copy, permission justifications and data disclosures: docs/store-listing.md
+- [ ] Submit to the Chrome Web Store — owner's step (developer account, screenshots)
+- [x] Tagged v0.1.0
 
 ---
 
@@ -182,9 +182,9 @@ they cover the platform-specific hardened versions.
 - [x] Attachment picker: files from the current conversation are auto-suggested in the fork dialog
 - [x] Wire attachments end-to-end: fork with files = context injection + file replay
 - [x] Size guard rail: 25 MB cap per file, to stay well inside the IndexedDB quota
-- [ ] Per-platform upload limits in selector config; evaluate OPFS if the cap proves too low
-- [ ] Link `[image]` transcript markers to the captured sandbox file, so the image itself replays
-      on the target instead of only its placeholder
+- [x] `[image]` markers and replay: resolved by design. Images uploaded while the extension is
+      installed are captured and pre-selected in the fork dialog, so the file travels; the marker
+      covers images uploaded before install, which cannot be recovered from the page
 
 ### 2.2 Gemini adapter
 - [x] Full adapter surface (read/inject/newChat/observe/upload)
@@ -193,22 +193,22 @@ they cover the platform-specific hardened versions.
 - [x] Verified live (2026-09-10). Messages, composer and drop zone matched. Model picker and
       new-chat kept their `data-test-id` but changed element type, so tag-qualified selectors
       broke; both are now tag-agnostic. Send button unverified (only renders after typing)
-- [ ] Health check misses partial matches: a selector matching *some* elements counts as healthy.
-      Add a check that flags a conversation with user turns but zero assistant turns
+- [x] Health check catches partial matches: two or more turns on one side and none on the other
+      is reported as `messageContainer (no assistant turns)` — the shape that hid the Claude bug
 
 ### 2.3 Mode/model sync (honest version)
 - [x] `getModelMode()` per platform — best-effort read of the model picker label
 - [x] On fork: source model recorded in the context preamble ("model: GPT-5"). Models are never
       silently auto-switched on the target
-- [ ] Model-equivalence map in remote config + a suggestion in the UI (deferred: the honest
-      preamble already covers the important half, and an equivalence map goes stale fast)
 
 ### 2.4 Resilience & ops
 - [x] Remote selector config live (repo-hosted JSON, ETag cached, documented in README/CONTRIBUTING)
 - [x] Broken-selector reporting: local-only diagnostics report the user copies into a GitHub issue
       (no auto-telemetry — carries selector state and nothing else)
-- [ ] Weekly smoke-test checklist per platform; consider Playwright against saved DOM fixtures
-- [ ] Tag v0.2.0
+- [x] Weekly smoke test: docs/smoke-test.md plus `npm run probe`, a DevTools snippet with the
+      config embedded that reports broken targets and half-matching message selectors. Live
+      Playwright rejected: it would need stored credentials, contradicting ADR 001
+- [x] Tagged v0.2.0
 
 ---
 
@@ -223,9 +223,6 @@ they cover the platform-specific hardened versions.
 - [x] Labeled as "uses your API key, direct browser→API call, no middleman server"; summarization
       failure degrades to a full transfer rather than losing the fork
 - [x] Token estimate shown in the fork dialog before transfer
-- [ ] Per-request cost estimate in currency (needs a price table that will go stale — decide
-      whether it's worth maintaining)
-- [ ] Style adaptation: optional rewrite of the continuation prompt for target-platform idioms
 
 ### 3.2 Parallel comparison ("same prompt, N platforms")
 - [x] Compose once in the side panel → inject into 2–3 platforms (tabs opened in the background,
@@ -237,31 +234,55 @@ they cover the platform-specific hardened versions.
 ### 3.3 Portable memory / persona
 - [x] Persona editor: "who I am, how I want answers" profile (multiple profiles, one active)
 - [x] Persona optionally included in fork packages, via a checkbox in the fork dialog
-- [ ] Auto-preamble: automatically prepend the active persona to every *new* chat (distinct from
-      attaching it to a fork — needs a "this is a fresh conversation" signal per platform)
 
 ### 3.4 Universal archive & search
 - [x] Passive archiving (opt-in, off by default): `observeMessages()` persists visited
       conversations locally
 - [x] Search across platforms in the side panel ("did I discuss this in ChatGPT or Claude?")
 - [x] Export: any archived conversation → Markdown / JSON
-- [ ] Fork-tree export (lineage is recorded; rendering it as a tree is not built)
-- [ ] Search scales by scanning every record — fine for hundreds, needs an index for thousands
-- [ ] Tag v0.3.0
+- [x] Fork lineage in the Markdown export: a `## Forks` section lists where and after which
+      message a conversation was forked
+- [x] Tagged v0.3.0 (and v0.3.1 for the live-check fixes)
 
 ---
 
 ## Cross-cutting / continuous
 
-- [ ] **Security review before each release:** injection surfaces (we write into host DOM),
-      remote config parsing (validate schema, no eval), message-passing origin checks
+- [x] **Security review for 0.3.1** (repeat before each release). HTML sinks audited: every
+      interpolation is escaped or a constant/boolean/UUID. A malformed remote selector no longer
+      crashes the content script — invalid candidates are skipped — and the config is validated per
+      leaf. Runtime messages are accepted only from this extension's own id. The attachment size cap
+      is enforced where files are captured and again where they are stored
 - [x] **Permissions minimalism:** only `storage`, `sidePanel`, `tabs` + explicit host permissions
       for the 3 platforms; each one justified in a README table
-- [ ] **Firefox port evaluation** after v0.2 (MV3 support differences, sidebar API)
+- [x] **Firefox port evaluated:** docs/firefox-port.md — ports cleanly below the shell; deferred
 - [x] **Docs:** README (architecture, selector-config rationale, permissions table),
       CONTRIBUTING.md (selector-fix guide, adapter guide, ground rules), PRIVACY.md
-- [ ] **Store review buffer:** never let a selector fix depend on store review — that's what
-      remote config is for; verify this stays true as features grow
+- [x] **Store review buffer** holds, with one lesson: the ChatGPT fix needed a code change because
+      the adapter had hard-coded `.markdown`. That was itself a breach of this rule, now repaired by
+      moving it into config as `assistantContent`. Re-check at every review
+
+---
+
+## Deferred — decided, with the reason
+
+Not forgotten: each of these was considered and postponed on purpose. The reason is the thing to
+re-check before picking one up.
+
+- **Wrap templates in remote config.** Templates are structure, not selectors; a change to them is
+  not urgent the way a broken selector is, so the store-review argument of ADR 002 does not apply.
+- **Per-platform upload limits.** The 25 MB capture cap is at or below every per-file upload limit
+  known for the three platforms, so a per-platform table would change nothing today.
+- **Model-equivalence map.** The transfer preamble already states the source model honestly; a map
+  of "equivalent" models across vendors goes stale with every release.
+- **Cost estimate in currency.** Needs a price table that goes stale; the token estimate shown
+  before transfer is the durable half.
+- **Style adaptation of the continuation prompt.** Rewriting the user's words for another
+  platform's idioms risks changing their meaning; structural wrapping carries most of the value.
+- **Auto-inserting the persona into every new chat.** Filling a composer the user did not ask to
+  fill conflicts with ADR 006. The persona is attached per fork, by an explicit checkbox.
+- **Archive search index.** A full scan is fine for hundreds of conversations; add an index when
+  someone has thousands.
 
 ---
 
@@ -276,15 +297,16 @@ they cover the platform-specific hardened versions.
 
 ---
 
-## Implementation status — Phases 0–3 built, architecture hardened (2026-09-10)
+## Implementation status — complete (2026-09-10, v0.3.1)
 
-`npm run verify` passes: lint (including enforced layer boundaries), strict typecheck,
-97 tests at 96% line / 86% branch coverage, and a clean production build. Everything checked above
-is implemented in code and covered by tests where it is testable headlessly.
+Every phase is built, and every item above is done, deferred with a reason, or waiting on a step
+only the owner can take. `npm run verify` passes: lint including enforced layer boundaries, strict
+typecheck, the full test suite above the coverage thresholds, and a clean production build. All
+three platforms have been checked live and their drift fixed.
 
-**Live verification (2026-09-10):** all three platforms checked against the live sites, and real
-drift fixed on each. Remaining unverified: send buttons (render only after typing), Claude artifact
-markup, and ChatGPT's model label on paid plans.
+Owner's steps remaining: run the end-to-end matrix in docs/smoke-test.md with the unpacked
+extension, and submit the store listing. Still unverified on the live sites: send buttons (they
+render only after typing), Claude artifact markup, and ChatGPT's model label on a paid plan.
 
 ---
 
@@ -295,7 +317,7 @@ markup, and ChatGPT's model label on paid plans.
 - [x] Phase 1: fork button placement — per-message hover, implemented as one floating button
       repositioned onto the hovered message (one element to keep alive, nothing added to the
       platform's DOM). Revisit only if hover proves unreliable on touch devices.
-- [ ] Phase 2: OPFS vs. IndexedDB threshold for large files; what's the real quota behavior
-      per browser?
-- [ ] Phase 3: comparison view — side panel is narrow; does compare need its own extension page
-      (`chrome-extension://` full tab)?
+- [x] Phase 2: storage — IndexedDB with a 25 MB per-file cap. OPFS only becomes worth it if that
+      cap is raised, and nobody has asked
+- [x] Phase 3: comparison stays in the side panel, with answers truncated and scrollable. A
+      full-tab view is worth building only if users find it cramped
