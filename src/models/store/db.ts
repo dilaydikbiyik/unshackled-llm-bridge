@@ -18,6 +18,8 @@ export interface AttachmentRecord {
   size: number;
   sha256: string;
   sourcePlatform: PlatformId;
+  /** `${platform}:${pathname}` — the conversation the file was captured in. */
+  conversationKey: string;
   createdAt: string;
   blob: Blob;
 }
@@ -42,7 +44,7 @@ export function createDatabase(name = 'unshackled-bridge'): BridgeDatabase {
   const db = new Dexie(name) as BridgeDatabase;
   db.version(1).stores({
     conversations: 'id, sourcePlatform, updatedAt',
-    attachments: 'id, sha256, sourcePlatform',
+    attachments: 'id, sha256, sourcePlatform, conversationKey',
     forks: 'id, sourceConversationId, createdAt',
   });
   return db;
