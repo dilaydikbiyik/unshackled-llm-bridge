@@ -40,25 +40,49 @@ Then in Chrome: `chrome://extensions` → enable Developer mode → **Load unpac
 
 ## Architecture
 
-MVC, plus an adapter layer that is the only code allowed to touch platform DOM.
+Six layers with dependencies pointing strictly inward, **enforced by the linter** rather than
+described and hoped for.
 
 ```
-src/
-  models/        M — domain & data. Conversation schema, local store, selector config,
-                 wrap templates, summarization client. Imports no views, no adapters.
-  views/         V — side panel UI and in-page UI (shadow DOM, so platform styles
-                 can't leak in either direction).
-  controllers/   C — orchestration. Background service worker (messaging hub, DB access,
-                 API key), content-script entry, fork and attachment use-cases.
-  adapters/      Platform service layer. One file per platform behind a single
-                 PlatformAdapter interface; the core only ever speaks the normalized format.
-  shared/        Messaging contract, platform registry, settings, i18n.
-config/
-  selectors.json Every DOM selector, versioned. See below.
+views ─┐
+       ├─→ controllers ─→ adapters ─→ data ─→ shared ─→ domain
+       └──────────────────────────────────────────────────↗
 ```
+
+| Layer | Contains | May import |
+|---|---|---|
+| `domain/` | Entities and rules: conversation schema, platform registry, wrap templates, trimming policy, transfer contracts | **nothing** |
+| `shared/` | Contracts every layer speaks: the messaging union, settings, i18n, adapter health | `domain` |
+| `data/` | Infrastructure: IndexedDB store, remote selector config, Anthropic client | `domain`, `shared` |
+| `adapters/` | The only code that touches platform DOM | `data`, `domain`, `shared` |
+| `controllers/` | Orchestration: service worker, content-script entry, fork and attachment use-cases | anything below |
+| `views/` | Side panel and in-page UI (shadow DOM, so platform styles can't leak either way) | `domain`, `shared` |
+
+`eslint.config.js` encodes these as `no-restricted-imports` rules, so crossing a boundary fails
+`npm run lint` and fails CI. It is not decoration — turning the rules on immediately caught a view
+that was reaching into the data layer to resolve selectors.
+
+Where a view needs behavior from a controller, the dependency is inverted: the fork dialog accepts
+a `TransferPackageBuilder`, an interface defined in `domain`. The view and the controller both
+depend on that contract and neither depends on the other — which is also why the fork logic is
+unit-testable with no browser and no extension runtime.
 
 **Adding a platform** is three edits: an adapter file, one case in `adapters/registry.ts`, and a
-selector block in `config/selectors.json`. Nothing in `models/` or `views/` changes.
+selector block in `config/selectors.json`. Nothing in `domain/`, `data/` or `views/` changes.
+
+### Why these choices
+
+The decisions that shaped this — and what would reverse them — are recorded in
+[docs/adr](docs/adr/):
+
+| # | Decision |
+|---|---|
+| [001](docs/adr/001-local-only.md) | No backend: everything stays in the browser |
+| [002](docs/adr/002-selectors-as-remote-config.md) | DOM selectors are remote config, not code |
+| [003](docs/adr/003-adapter-layer.md) | One adapter interface per platform; the core never sees DOM |
+| [004](docs/adr/004-enforced-layer-boundaries.md) | Layer boundaries enforced by the linter |
+| [005](docs/adr/005-file-replay-via-drop.md) | Files replay as synthetic drops, not input assignment |
+| [006](docs/adr/006-user-presses-send.md) | The extension never sends a message |
 
 ### Selectors are config, not code
 
@@ -90,9 +114,11 @@ Nothing else is requested. Any new permission has to earn a row in this table.
 
 ```bash
 npm run dev        # Vite dev server with HMR
-npm test           # unit + DOM fixture tests
-npm run typecheck  # tsc --noEmit
-npm run lint       # eslint
+npm test           # 97 unit + DOM fixture tests
+npm run coverage   # tests with coverage thresholds
+npm run typecheck  # tsc --noEmit, strict
+npm run lint       # eslint, including the architecture boundary rules
+npm run verify     # everything CI runs, in one command
 npm run build      # production build into dist/
 ```
 
@@ -102,9 +128,14 @@ fixture proves nothing about the live site.
 
 ## Status
 
-Phases 0–3 of [todo.md](todo.md) are implemented. The selectors have not yet been verified against
-the live sites — the fixtures are reconstructions of known DOM shapes, so they validate the parsing
-logic, not that today's markup matches. That verification is the top open item.
+Phases 0–3 of [todo.md](todo.md) are implemented: typecheck, lint and 97 tests pass (96% line / 86% branch
+coverage over the logic unit tests can reach), and the production build is clean.
+
+**One thing is implemented but not verified:** the selectors have never been run against the live
+sites. The adapter fixtures are reconstructions of known DOM shapes, so the tests prove the parsing
+logic is correct — not that today's markup matches. Live verification on all three platforms is the
+top open item, and everything else in `todo.md` is either polish or deliberately deferred with a
+stated reason.
 
 ## License
 

@@ -31,9 +31,9 @@ Adding a platform touches three places and nothing else:
    declare capability flags honestly (the UI degrades gracefully on `false`; it breaks on a
    dishonest `true`).
 2. `src/adapters/registry.ts` — one `case` in the factory.
-3. `config/selectors.json` — a selector block, plus the platform in `src/shared/platforms.ts`.
+3. `config/selectors.json` — a selector block, plus the platform in `src/domain/platforms.ts`.
 
-Everything in `models/` and `views/` speaks only the normalized `BridgeConversation` format and must
+Everything in `domain/`, `data/` and `views/` speaks only the normalized `BridgeConversation` format and must
 not need changes. If you find yourself editing core code to add a platform, the adapter interface is
 wrong — say so in the PR and we'll fix the interface rather than special-case the platform.
 

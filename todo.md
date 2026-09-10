@@ -38,11 +38,12 @@
 - [x] Create skeleton:
   ```
   src/
-    models/                  # M — domain models & data layer (never imports adapters/views)
+    domain/                  # pure entities + rules, imports nothing (split out of models/ in 0.3.0)
       conversation/          # normalized schema + (de)serializers + tests
+      wrap/                  # structural wrapping templates + trimming policy
+    data/                    # infrastructure: never imports adapters/controllers/views
       store/                 # Dexie/IndexedDB layer (conversations, attachments, fork lineage)
       config/                # selector config loader + bundled fallback
-      wrap/                  # structural wrapping templates (tier-1 "translation")
     views/                   # V — everything the user sees
       sidepanel/             # extension UI (Chrome Side Panel API)
       content/               # in-page UI (fork button, shadow DOM)
@@ -262,9 +263,10 @@ they cover the platform-specific hardened versions.
 
 ---
 
-## Implementation status — Phases 0–3 built (2026-09-10)
+## Implementation status — Phases 0–3 built, architecture hardened (2026-09-10)
 
-`npm run build` succeeds, typecheck and lint are clean, 28/28 tests green. Everything checked above
+`npm run verify` passes: lint (including enforced layer boundaries), strict typecheck,
+97 tests at 96% line / 86% branch coverage, and a clean production build. Everything checked above
 is implemented in code and covered by tests where it is testable headlessly.
 
 **The one thing that is NOT verified:** selectors have never been run against the live sites. The
