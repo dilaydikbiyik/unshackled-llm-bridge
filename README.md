@@ -131,11 +131,10 @@ fixture proves nothing about the live site.
 Phases 0–3 of [todo.md](todo.md) are implemented: typecheck, lint and 97 tests pass (96% line / 86% branch
 coverage over the logic unit tests can reach), and the production build is clean.
 
-**One thing is implemented but not verified:** the selectors have never been run against the live
-sites. The adapter fixtures are reconstructions of known DOM shapes, so the tests prove the parsing
-logic is correct — not that today's markup matches. Live verification on all three platforms is the
-top open item, and everything else in `todo.md` is either polish or deliberately deferred with a
-stated reason.
+**Live verification.** Claude and Gemini have been checked against the live sites. That first
+check found real drift — the extension was silently dropping every Claude reply — and it is fixed.
+ChatGPT is still unverified because it needs a logged-in session; everything else in `todo.md` is
+polish or deliberately deferred with a stated reason.
 
 ## License
 

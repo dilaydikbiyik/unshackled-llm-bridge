@@ -111,8 +111,9 @@ they cover the platform-specific hardened versions.
 - [x] `observeMessages()`: debounced MutationObserver (generic impl in base adapter)
 - [x] Fixture tests: DOM fixtures → expected normalized output (rule: a selector change
       updates config/selectors.json AND the fixture together)
-- [ ] Verify selectors against live chatgpt.com and fix drift (fixtures are best-effort
-      reconstructions, not captured snapshots)
+- [ ] Verify selectors against live chatgpt.com and fix drift — **blocked: needs a logged-in
+      session.** Logged out, chatgpt.com serves a different composer (`#mobile-composer-prompt`,
+      now a fallback candidate); the logged-in selectors are still unverified
 
 ### 1.3 Claude adapter
 - [x] Same surface as 1.2 for claude.ai
@@ -120,7 +121,10 @@ they cover the platform-specific hardened versions.
       `[artifact from Claude — not transferred]` marker (never dropped silently);
       live DOM is cloned, not mutated
 - [x] Fixture tests
-- [ ] Verify selectors against live claude.ai and fix drift
+- [x] Verified live (2026-09-10). Found and fixed real drift: assistant turns moved from
+      `div.font-claude-message` to `.font-claude-response`, and the extension was silently
+      dropping every Claude reply. Composer, send, model, new-chat and drop zone all matched.
+      Artifact markup still unverified (no artifact in the checked chat)
 
 ### 1.4 Fork engine
 - [x] Per-message hover UI: a single floating "fork" button repositioned onto the hovered message
@@ -181,7 +185,11 @@ they cover the platform-specific hardened versions.
 - [x] Full adapter surface (read/inject/newChat/observe/upload)
 - [x] Gemini uses the markdown wrap template (structured headers)
 - [x] Fixture tests
-- [ ] Verify selectors against live gemini.google.com and fix drift
+- [x] Verified live (2026-09-10). Messages, composer and drop zone matched. Model picker and
+      new-chat kept their `data-test-id` but changed element type, so tag-qualified selectors
+      broke; both are now tag-agnostic. Send button unverified (only renders after typing)
+- [ ] Health check misses partial matches: a selector matching *some* elements counts as healthy.
+      Add a check that flags a conversation with user turns but zero assistant turns
 
 ### 2.3 Mode/model sync (honest version)
 - [x] `getModelMode()` per platform — best-effort read of the model picker label
@@ -269,10 +277,8 @@ they cover the platform-specific hardened versions.
 97 tests at 96% line / 86% branch coverage, and a clean production build. Everything checked above
 is implemented in code and covered by tests where it is testable headlessly.
 
-**The one thing that is NOT verified:** selectors have never been run against the live sites. The
-adapter fixtures are reconstructions of known DOM shapes, so the tests prove the parsing logic is
-correct, not that today's markup matches. Live verification for all three platforms is the top
-remaining item — everything else is either polish or deliberately deferred above.
+**Live verification (2026-09-10):** Claude and Gemini were checked against the live sites and
+their drift fixed. ChatGPT is the one platform still unverified — it needs a logged-in session.
 
 ---
 

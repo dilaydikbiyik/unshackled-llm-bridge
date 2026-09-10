@@ -13,10 +13,13 @@ const FIXTURE = `
   <div data-testid="user-message">
     <p>Design a landing page for me</p>
   </div>
-  <div class="font-claude-message">
-    <p>Here is a first draft, see the artifact:</p>
-    <div data-testid="artifact-block"><button>Landing page v1</button></div>
-    <p>Key choices are <em>contrast</em> and spacing.</p>
+  <div data-is-streaming="false">
+    <div class="font-claude-response">
+      <p>Here is a first draft, see the artifact:</p>
+      <div data-testid="artifact-block"><button>Landing page v1</button></div>
+      <p>Key choices are <em>contrast</em> and spacing.</p>
+    </div>
+    <button>Copy</button>
   </div>
 </main>
 `;
@@ -28,6 +31,9 @@ describe('ClaudeAdapter.readConversation', () => {
     document.body.innerHTML = FIXTURE;
   });
 
+  // Regression, live check 2026-09-10: the old selector combined user and
+  // assistant turns in one rule. When the assistant half broke, the rule still
+  // matched user messages, so it looked healthy while dropping every reply.
   it('detects user vs assistant messages', async () => {
     const conversation = await new ClaudeAdapter(selectors).readConversation();
     expect(conversation.sourcePlatform).toBe('claude');

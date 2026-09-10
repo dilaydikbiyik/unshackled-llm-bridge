@@ -6,9 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed — from the first live check against the real sites
+- **Claude replies were being dropped.** Assistant turns moved from `div.font-claude-message` to
+  `.font-claude-response`. The old rule combined user and assistant turns in one selector, so it
+  kept matching user messages and looked healthy while losing every reply. A fixture regression
+  test now covers the live markup.
+- **Gemini model picker and new-chat button** kept their `data-test-id` values but changed element
+  type (`div` → `button`, `expandable-button` → `gem-nav-list-item`). Selectors are now
+  tag-agnostic.
+- ChatGPT's logged-out composer (`#mobile-composer-prompt`) added as a fallback candidate.
+- Selector config bumped to version 4, so installed copies pick the fixes up remotely.
+
 ### Still to do before a store release
-- Verify selectors against the live ChatGPT, Claude and Gemini sites. The adapter fixtures are
-  reconstructions of known DOM shapes; the parsing logic is tested, today's markup is not.
+- Verify ChatGPT's selectors in a logged-in session. Claude and Gemini are verified.
 - Manual test matrix across both fork directions, long chats, code blocks, and edge cases
   (empty chat, mid-generation, logged-out target).
 

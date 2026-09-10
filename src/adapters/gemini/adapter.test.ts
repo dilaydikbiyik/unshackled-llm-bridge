@@ -67,3 +67,14 @@ describe('GeminiAdapter.uploadFile', () => {
     expect(droppedOn).toBe('main');
   });
 });
+
+describe('GeminiAdapter.getModelMode', () => {
+  it('reads the mode picker regardless of which element carries the test id', async () => {
+    // Live check 2026-09-10: the picker moved from a <div> to a <button> and a
+    // tag-qualified selector silently stopped matching. Keep these tag-agnostic.
+    document.body.innerHTML = `<bard-mode-switcher>
+      <button data-test-id="bard-mode-menu-button"> Flash-Lite </button>
+    </bard-mode-switcher>`;
+    expect(await new GeminiAdapter(selectors).getModelMode()).toEqual({ model: 'Flash-Lite' });
+  });
+});
