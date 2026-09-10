@@ -68,3 +68,19 @@ describe('export filenames', () => {
     expect(name.length).toBeLessThanOrEqual(63);
   });
 });
+
+describe('markdown export — fork lineage', () => {
+  it('lists where the conversation was forked to, with a human message number', () => {
+    const md = conversationToMarkdown(sample(), [
+      { targetPlatform: 'gemini', cutIndex: 0, createdAt: '2026-09-10T09:00:00.000Z' },
+      { targetPlatform: 'chatgpt', cutIndex: 1, createdAt: '2026-09-11T09:00:00.000Z' },
+    ]);
+    expect(md).toContain('## Forks');
+    expect(md).toContain('- 2026-09-10 → Gemini, continued after message 1');
+    expect(md).toContain('- 2026-09-11 → ChatGPT, continued after message 2');
+  });
+
+  it('adds no section when the conversation was never forked', () => {
+    expect(conversationToMarkdown(sample())).not.toContain('## Forks');
+  });
+});

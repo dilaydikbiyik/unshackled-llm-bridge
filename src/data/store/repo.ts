@@ -2,7 +2,7 @@ import type { BridgeConversation } from '@domain/conversation/schema';
 import { parseConversation, serializeConversation } from '@domain/conversation/serializer';
 import type { PlatformId } from '@domain/platforms';
 import type { ArchiveHit, CapturedAttachmentMeta, ForkLineage } from '@shared/messages';
-import { createDatabase, type BridgeDatabase } from './db';
+import { createDatabase, type BridgeDatabase, type ForkRecord } from './db';
 
 /**
  * Data-access layer over Dexie. IMPORTANT: only extension-context code
@@ -128,6 +128,11 @@ export async function searchConversations(query: string, limit = 20): Promise<Ar
 }
 
 // --- Fork lineage ---
+
+/** Every fork taken from a conversation, oldest first. */
+export async function listForksFrom(sourceConversationId: string): Promise<ForkRecord[]> {
+  return getDb().forks.where('sourceConversationId').equals(sourceConversationId).sortBy('createdAt');
+}
 
 export async function recordFork(lineage: ForkLineage, targetPlatform: PlatformId): Promise<void> {
   await getDb().forks.add({
