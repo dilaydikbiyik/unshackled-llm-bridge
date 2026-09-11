@@ -1,13 +1,7 @@
-import type { AdapterHealth } from '@shared/health';
 import type { BridgeConversation } from '@domain/conversation/schema';
-import type { Lang } from '@shared/i18n';
 import type { PlatformId } from '@domain/platforms';
-
-/**
- * The single typed contract for content script ⟷ service worker ⟷ side panel
- * messaging. Every new message type is added to this union — no stringly-typed
- * ad hoc messages anywhere else.
- */
+import type { AdapterHealth } from '@shared/health';
+import type { Lang } from '@shared/i18n';
 
 /** A package parked for a target platform's content script to claim. */
 export interface PendingInjection {
@@ -40,12 +34,27 @@ export interface CapturedAttachmentMeta {
   capturedAt: string;
 }
 
+/** What a content script knows about a file before the store assigns identity. */
+export type CapturedAttachmentInput = Omit<CapturedAttachmentMeta, 'id' | 'sha256'>;
+
+export interface AttachmentPayload {
+  meta: CapturedAttachmentMeta;
+  dataBase64: string;
+}
+
 export interface ArchiveHit {
   id: string;
   sourcePlatform: PlatformId;
   title: string;
   snippet: string;
   updatedAt: string;
+}
+
+export type ExportFormat = 'markdown' | 'json';
+
+export interface ExportedFile {
+  filename: string;
+  content: string;
 }
 
 export interface ComparisonState {
@@ -56,53 +65,138 @@ export interface ComparisonState {
   responses: Partial<Record<PlatformId, { content: string; updatedAt: string }>>;
 }
 
-export type RuntimeMessage =
-  | { type: 'adapter/health-report'; health: AdapterHealth }
-  | { type: 'health/list-request' }
-  | { type: 'inject/initiate'; request: InjectRequest }
-  | { type: 'inject/pending-check'; platform: PlatformId }
-  | {
-      type: 'attachment/capture';
-      meta: Omit<CapturedAttachmentMeta, 'id' | 'sha256'>;
-      dataBase64: string;
-    }
-  | { type: 'attachment/list'; conversationKey: string }
-  | { type: 'attachment/get'; id: string }
-  | { type: 'archive/save'; conversation: BridgeConversation }
-  | { type: 'archive/search'; query: string }
-  | { type: 'archive/export'; id: string; format: 'markdown' | 'json' }
-  | { type: 'compare/start'; text: string; targets: PlatformId[] }
-  | { type: 'compare/report'; comparisonId: string; platform: PlatformId; content: string }
-  | { type: 'summarize/run'; transcript: string; language: Lang };
-
-export type HealthListResponse = AdapterHealth[];
-export type PendingInjectionResponse = PendingInjection | null;
-export type AttachmentListResponse = CapturedAttachmentMeta[];
-export type AttachmentGetResponse = { meta: CapturedAttachmentMeta; dataBase64: string } | null;
-export type ArchiveSearchResponse = ArchiveHit[];
-export type ArchiveExportResponse = { filename: string; content: string } | null;
-export type CompareStartResponse = { comparisonId: string };
-export type SummarizeResponse = { ok: true; summary: string } | { ok: false; error: string };
-
-export function sendToBackground<TResponse = unknown>(msg: RuntimeMessage): Promise<TResponse> {
-  return chrome.runtime.sendMessage(msg);
+export interface Ack {
+  ok: boolean;
 }
 
-export type MessageHandler = (
-  msg: RuntimeMessage,
-  sender: chrome.runtime.MessageSender,
-) => Promise<unknown>;
+export interface Failure {
+  ok: false;
+  error: string;
+}
 
-/** Registers an async handler; keeps the response channel open until it settles. */
-export function onRuntimeMessage(handler: MessageHandler): void {
-  chrome.runtime.onMessage.addListener((msg: RuntimeMessage, sender, sendResponse) => {
-    // Only this extension's own contexts may drive the hub, and only with a
-    // well-formed message; anything else gets no response at all.
-    if (sender.id !== chrome.runtime.id) return false;
-    if (typeof msg !== 'object' || msg === null || typeof msg.type !== 'string') return false;
-    handler(msg, sender)
+export type SummarizeResponse = { ok: true; summary: string } | Failure;
+
+/**
+ * The messaging contract between content scripts, the service worker and the
+ * side panel. Each entry pairs a request with the response it produces, so a
+ * caller cannot send one message and read the answer to another:
+ *
+ *   sendToBackground({ type: 'attachment/get', id })  // Promise<AttachmentPayload | null>
+ *
+ * and the background's HandlerMap must implement every entry with exactly
+ * that response type — a missing or mistyped handler does not compile.
+ */
+export interface MessageContract {
+  'adapter/health-report': { request: { health: AdapterHealth }; response: Ack };
+  'health/list-request': { request: Record<never, never>; response: AdapterHealth[] };
+  'inject/initiate': { request: { request: InjectRequest }; response: Ack };
+  'inject/pending-check': { request: { platform: PlatformId }; response: PendingInjection | null };
+  'attachment/capture': {
+    request: { meta: CapturedAttachmentInput; dataBase64: string };
+    response: CapturedAttachmentMeta | Failure;
+  };
+  'attachment/list': { request: { conversationKey: string }; response: CapturedAttachmentMeta[] };
+  'attachment/get': { request: { id: string }; response: AttachmentPayload | null };
+  'archive/save': { request: { conversation: BridgeConversation }; response: Ack };
+  'archive/search': { request: { query: string }; response: ArchiveHit[] };
+  'archive/export': { request: { id: string; format: ExportFormat }; response: ExportedFile | null };
+  'compare/start': {
+    request: { text: string; targets: PlatformId[] };
+    response: { comparisonId: string };
+  };
+  'compare/report': {
+    request: { comparisonId: string; platform: PlatformId; content: string };
+    response: Ack;
+  };
+  'summarize/run': { request: { transcript: string; language: Lang }; response: SummarizeResponse };
+}
+
+export type MessageType = keyof MessageContract;
+export type MessageOf<T extends MessageType> = { type: T } & MessageContract[T]['request'];
+export type ResponseOf<T extends MessageType> = MessageContract[T]['response'];
+export type RuntimeMessage = { [T in MessageType]: MessageOf<T> }[MessageType];
+
+/** Where a message came from, reduced to what handlers are allowed to see. */
+export interface SenderInfo {
+  tabId?: number;
+}
+
+export type HandlerMap = {
+  [T in MessageType]: (message: MessageOf<T>, sender: SenderInfo) => Promise<ResponseOf<T>>;
+};
+
+/**
+ * A handler that throws must not look like a successful response of the
+ * expected type, so failures travel in a distinct envelope and are rethrown
+ * on the calling side.
+ */
+const ERROR_KEY = '__bridgeError';
+type ErrorEnvelope = { [ERROR_KEY]: string };
+
+export class BridgeError extends Error {
+  override name = 'BridgeError';
+}
+
+function isErrorEnvelope(value: unknown): value is ErrorEnvelope {
+  return typeof value === 'object' && value !== null && ERROR_KEY in value;
+}
+
+export async function sendToBackground<T extends MessageType>(
+  message: MessageOf<T>,
+): Promise<ResponseOf<T>> {
+  const response: unknown = await chrome.runtime.sendMessage(message);
+  if (isErrorEnvelope(response)) throw new BridgeError(response[ERROR_KEY]);
+  return response as ResponseOf<T>;
+}
+
+/**
+ * Only this extension's own contexts may drive the hub, and only with a
+ * message the hub knows how to handle. Anything else gets no response at all.
+ */
+export function isAcceptableMessage(
+  message: unknown,
+  senderId: string | undefined,
+  ownId: string,
+  handlers: HandlerMap,
+): message is RuntimeMessage {
+  if (senderId === undefined || senderId !== ownId) return false;
+  if (typeof message !== 'object' || message === null) return false;
+  const type = (message as { type?: unknown }).type;
+  return typeof type === 'string' && Object.prototype.hasOwnProperty.call(handlers, type);
+}
+
+export function dispatch(
+  handlers: HandlerMap,
+  message: RuntimeMessage,
+  sender: SenderInfo,
+): Promise<unknown> {
+  // The map is keyed by message type, so this pairing is sound by construction;
+  // TypeScript cannot correlate the union with the mapped type on its own.
+  const handler = handlers[message.type] as (m: RuntimeMessage, s: SenderInfo) => Promise<unknown>;
+  return handler(message, sender);
+}
+
+export function errorEnvelope(error: unknown): ErrorEnvelope {
+  return { [ERROR_KEY]: error instanceof Error ? error.message : String(error) };
+}
+
+/** Registers the handler map; keeps the response channel open until it settles. */
+export function onRuntimeMessage(handlers: HandlerMap): void {
+  chrome.runtime.onMessage.addListener((message: unknown, sender, sendResponse) => {
+    if (!isAcceptableMessage(message, sender.id, chrome.runtime.id, handlers)) return false;
+    const info: SenderInfo = sender.tab?.id !== undefined ? { tabId: sender.tab.id } : {};
+    dispatch(handlers, message, info)
       .then(sendResponse)
-      .catch((err: unknown) => sendResponse({ error: String(err) }));
+      .catch((error: unknown) => sendResponse(errorEnvelope(error)));
     return true;
   });
 }
+
+// Named response aliases, kept for readability at use sites.
+export type HealthListResponse = ResponseOf<'health/list-request'>;
+export type PendingInjectionResponse = ResponseOf<'inject/pending-check'>;
+export type AttachmentListResponse = ResponseOf<'attachment/list'>;
+export type AttachmentGetResponse = ResponseOf<'attachment/get'>;
+export type ArchiveSearchResponse = ResponseOf<'archive/search'>;
+export type ArchiveExportResponse = ResponseOf<'archive/export'>;
+export type CompareStartResponse = ResponseOf<'compare/start'>;

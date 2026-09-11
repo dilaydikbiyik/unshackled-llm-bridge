@@ -1,4 +1,5 @@
 import type { Lang } from './i18n';
+import { chromeStore, type KeyValueStore } from './storage';
 
 export interface Persona {
   id: string;
@@ -18,7 +19,7 @@ export interface Settings {
   onboardingDone: boolean;
 }
 
-// Cheap-by-default per project plan (todo 3.1); user can switch to Opus in settings.
+// Cheap by default; the user can switch to Opus in settings.
 export const SUMMARY_MODELS = ['claude-haiku-4-5', 'claude-opus-4-8'] as const;
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -33,14 +34,24 @@ export const DEFAULT_SETTINGS: Settings = {
 
 const KEY = 'settings';
 
+let store: KeyValueStore | null = null;
+const settingsStore = (): KeyValueStore => (store ??= chromeStore('local'));
+
+/** Routes settings through another store — the seam unit tests use. */
+export function useSettingsStore(next: KeyValueStore): void {
+  store = next;
+}
+
 export async function getSettings(): Promise<Settings> {
-  const stored = await chrome.storage.local.get(KEY);
-  return { ...DEFAULT_SETTINGS, ...((stored[KEY] as Partial<Settings> | undefined) ?? {}) };
+  const stored = await settingsStore().get<Partial<Settings>>(KEY);
+  // Stored settings are merged over defaults, so a field added in a later
+  // version gets its default instead of `undefined` for existing users.
+  return { ...DEFAULT_SETTINGS, ...(stored ?? {}) };
 }
 
 export async function updateSettings(patch: Partial<Settings>): Promise<Settings> {
   const next = { ...(await getSettings()), ...patch };
-  await chrome.storage.local.set({ [KEY]: next });
+  await settingsStore().set(KEY, next);
   return next;
 }
 

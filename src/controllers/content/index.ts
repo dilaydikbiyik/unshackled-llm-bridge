@@ -9,11 +9,7 @@ import { conversationKey, mountAttachmentCapture, replayAttachments } from '@con
 import { createTransferPackageBuilder, exceedsTransferBudget } from '@controllers/fork';
 import { t } from '@shared/i18n';
 import { detectPlatform } from '@domain/platforms';
-import {
-  sendToBackground,
-  type AttachmentListResponse,
-  type PendingInjectionResponse,
-} from '@shared/messages';
+import { sendToBackground } from '@shared/messages';
 import { getSettings } from '@shared/settings';
 import { mountForkButtons } from '@views/content/fork-button';
 import { openForkDialog } from '@views/content/fork-dialog';
@@ -55,7 +51,7 @@ async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Pr
   const [conversation, settings, attachments] = await Promise.all([
     adapter.readConversation(),
     getSettings(),
-    sendToBackground<AttachmentListResponse>({
+    sendToBackground({
       type: 'attachment/list',
       conversationKey: conversationKey(adapter.platform),
     }),
@@ -89,7 +85,7 @@ async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Pr
 }
 
 async function claimPendingInjection(adapter: PlatformAdapter): Promise<void> {
-  const pending = await sendToBackground<PendingInjectionResponse>({
+  const pending = await sendToBackground({
     type: 'inject/pending-check',
     platform: adapter.platform,
   });

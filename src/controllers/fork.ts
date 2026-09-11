@@ -14,7 +14,7 @@ import { sendToBackground, type SummarizeResponse } from '@shared/messages';
 export type Summarizer = (transcript: string, language: Lang) => Promise<SummarizeResponse>;
 
 const defaultSummarizer: Summarizer = (transcript, language) =>
-  sendToBackground<SummarizeResponse>({ type: 'summarize/run', transcript, language });
+  sendToBackground({ type: 'summarize/run', transcript, language });
 
 export interface ForkContext {
   conversation: BridgeConversation;
