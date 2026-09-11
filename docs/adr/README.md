@@ -15,3 +15,6 @@ would change our mind.
 | [004](004-enforced-layer-boundaries.md) | Layer boundaries enforced by the linter | Accepted |
 | [005](005-file-replay-via-drop.md) | Files replay as synthetic drops, not input assignment | Accepted |
 | [006](006-user-presses-send.md) | The extension never sends a message | Accepted |
+| [007](007-typed-contract-and-ports.md) | A typed message contract, and the browser behind ports | Accepted |
+| [008](008-html-safe-by-construction.md) | HTML that is safe by construction | Accepted |
+| [009](009-e2e-against-routed-fixtures.md) | End-to-end tests against routed fixture pages | Accepted |

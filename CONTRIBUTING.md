@@ -80,6 +80,16 @@ Conventions: English for code, comments, and commit messages; Turkish-first UI c
 translation in `src/shared/i18n.ts` (both must be added together). TypeScript is strict — new code
 should not need `any` or non-null assertions on values that could genuinely be missing.
 
+## Adding a message or a view
+
+- **A new message** is one entry in `MessageContract` (`src/shared/messages.ts`), pairing the request
+  with its response. The compiler then points at the handler the service worker must add, and
+  callers get the response type for free.
+- **A new view** builds markup with the `html` tag from `@views/html` and inserts it with `setHtml()`.
+  Assigning `innerHTML` fails lint. Never pass page, conversation or user data to `trusted()`.
+- **New code that touches the browser** takes the capability as a parameter (see `BackgroundDeps` and
+  `KeyValueStore`), so it can be tested without one. Only the entry files wire in `chrome.*`.
+
 ## Reporting a bug
 
 Include the diagnostics report from the side panel (`Copy diagnostics report`). It carries the

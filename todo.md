@@ -264,6 +264,24 @@ they cover the platform-specific hardened versions.
 
 ---
 
+## Phase 4 — Architecture hardening (0.4.0)
+
+Done in response to a critical review of 0.3.1, which scored the architecture 7.5/10.
+
+- [x] The built extension runs as a whole in CI: a Playwright suite loads `dist/` into Chromium and
+      drives full forks against fixture copies of the sites (ADR 009)
+- [x] Typed message contract: responses follow from message types, and handlers are exhaustive
+      (ADR 007)
+- [x] Service worker split into a handler map with injected ports, replacing the `switch`
+- [x] `chrome.*` behind ports; coverage exclusions reduced to type-only files and wiring entry
+      points, so the figure now describes the whole codebase
+- [x] HTML safe by construction: an escaping `html` tag, and a lint rule against `innerHTML`
+      (ADR 008)
+- [x] Fixed on the way: handler failures posing as successful responses, and stacked side-panel
+      listeners
+
+---
+
 ## Deferred — decided, with the reason
 
 Not forgotten: each of these was considered and postponed on purpose. The reason is the thing to
@@ -297,7 +315,7 @@ re-check before picking one up.
 
 ---
 
-## Implementation status — complete (2026-09-10, v0.3.1)
+## Implementation status — complete (2026-09-11, v0.4.0)
 
 Every phase is built, and every item above is done, deferred with a reason, or waiting on a step
 only the owner can take. `npm run verify` passes: lint including enforced layer boundaries, strict

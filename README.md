@@ -67,6 +67,23 @@ a `TransferPackageBuilder`, an interface defined in `domain`. The view and the c
 depend on that contract and neither depends on the other — which is also why the fork logic is
 unit-testable with no browser and no extension runtime.
 
+Three more properties are enforced by the compiler and the linter, not by review:
+
+- **Messages are typed end to end.** `MessageContract` pairs each request with its response.
+  `sendToBackground()` returns the right type for the message it sends, and the service worker's
+  handler map fails to compile if a message is missing a handler or a handler returns the wrong
+  shape.
+- **The browser sits behind ports.** Service-worker logic receives storage, tabs, the repository
+  and the summarizer as dependencies, so it is unit-tested against fakes. Only three entry files
+  call `chrome.*` for wiring, and they are the only code outside coverage apart from type
+  declarations.
+- **HTML is safe by construction.** Views build markup with an `html` tag that escapes every
+  interpolation, and a lint rule forbids `innerHTML` everywhere except the one module that
+  implements the tag.
+
+The built extension is also tested as a whole: Playwright loads `dist/` into Chromium and drives
+full forks against fixture copies of the three sites (`npm run e2e`).
+
 **Adding a platform** is three edits: an adapter file, one case in `adapters/registry.ts`, and a
 selector block in `config/selectors.json`. Nothing in `domain/`, `data/` or `views/` changes.
 
@@ -83,6 +100,9 @@ The decisions that shaped this — and what would reverse them — are recorded 
 | [004](docs/adr/004-enforced-layer-boundaries.md) | Layer boundaries enforced by the linter |
 | [005](docs/adr/005-file-replay-via-drop.md) | Files replay as synthetic drops, not input assignment |
 | [006](docs/adr/006-user-presses-send.md) | The extension never sends a message |
+| [007](docs/adr/007-typed-contract-and-ports.md) | A typed message contract, and the browser behind ports |
+| [008](docs/adr/008-html-safe-by-construction.md) | HTML that is safe by construction |
+| [009](docs/adr/009-e2e-against-routed-fixtures.md) | End-to-end tests against routed fixture pages |
 
 Operational docs: the weekly [smoke test](docs/smoke-test.md), the
 [store listing](docs/store-listing.md) with its permission justifications, and the
@@ -124,6 +144,7 @@ npm run typecheck  # tsc --noEmit, strict
 npm run lint       # eslint, including the architecture boundary rules
 npm run verify     # everything CI runs, in one command
 npm run -s probe   # DevTools snippet: checks the selectors on a live platform page
+npm run e2e        # builds, loads the extension into Chromium, drives full forks
 npm run build      # production build into dist/
 ```
 

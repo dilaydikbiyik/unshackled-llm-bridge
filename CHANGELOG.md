@@ -12,6 +12,47 @@ All notable changes to this project are documented here. The format follows
 - Verify the send buttons (they render only after typing), Claude artifact markup, and ChatGPT's
   model label on a paid plan.
 
+## [0.4.0] — 2026-09-11
+
+Architecture hardening, following a critical review of 0.3.1.
+
+### Changed — architecture
+- **Typed message contract** ([ADR 007](docs/adr/007-typed-contract-and-ports.md)). Every request
+  is paired with its response. `sendToBackground()` infers the response type instead of letting
+  the caller assert it, and the service worker's `HandlerMap` fails to compile if a handler is
+  missing or returns the wrong shape.
+- **Service worker split into handlers and wiring.** `createHandlers(deps)` holds all behaviour
+  and receives storage, tabs, the repository, the summarizer, a clock and a sleep function as
+  ports. `index.ts` only wires in the real browser. The `switch` is gone.
+- **`chrome.storage` behind a `KeyValueStore` port**, with in-memory and Chrome implementations.
+  Settings, comparisons and health all go through it.
+- **HTML safe by construction** ([ADR 008](docs/adr/008-html-safe-by-construction.md)). An `html`
+  tagged template escapes every interpolation, `setHtml()` is the only way to insert markup, and a
+  lint rule forbids `innerHTML` everywhere else. All views were converted.
+- Base64 helpers and the comparison log key are each defined once, in `shared/`, instead of being
+  duplicated across contexts.
+
+### Added
+- **End-to-end suite** ([ADR 009](docs/adr/009-e2e-against-routed-fixtures.md)). Playwright loads
+  the built extension into Chromium and drives ChatGPT → Claude and Claude → Gemini forks, plus
+  side-panel health, against fixture copies of the three sites. It asserts that the target's
+  composer is filled and that its send button was never clicked. It runs as its own CI job.
+- Tests for the data layer (against a fake IndexedDB), the summarizer (against a fake network,
+  including the refusal and empty-answer paths), the remote config loader, and every view.
+- **Coverage now describes the whole codebase.** Only type-only files and three wiring entry points
+  are excluded. The 0.3 figure of 96% covered roughly half the code; the new figure covers all of
+  it.
+
+### Fixed
+- **A failing service-worker handler looked like success.** It replied `{ error }`, and callers
+  received that typed as a normal response. Failures now travel in a separate envelope and are
+  rethrown as `BridgeError`.
+- **The side panel stacked a storage listener on every render**, so each comparison update
+  re-rendered it once for every render that had ever happened. It now subscribes once.
+- **The first end-to-end run reached the real claude.ai** from a tab the extension opened, because
+  Playwright cannot route that tab's first navigation. The browser under test now resolves no real
+  host.
+
 ## [0.3.1] — 2026-09-10
 
 ### Fixed — from the first live check against the real sites
@@ -125,7 +166,8 @@ All notable changes to this project are documented here. The format follows
 - ChatGPT and Claude adapters with DOM-fixture tests. Claude artifacts are marked in the
   transcript rather than silently dropped.
 
-[Unreleased]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.2.0...v0.3.0
 [0.2.0]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.1.0...v0.2.0
