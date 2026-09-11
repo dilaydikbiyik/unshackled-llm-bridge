@@ -1,5 +1,3 @@
-export { escapeHtml } from '../escape';
-
 export function el<T extends HTMLElement>(root: ParentNode, selector: string): T {
   const found = root.querySelector<T>(selector);
   if (!found) throw new Error(`missing element: ${selector}`);
@@ -7,12 +5,12 @@ export function el<T extends HTMLElement>(root: ParentNode, selector: string): T
 }
 
 /** Momentary "Saved ✓" style feedback on a button. */
-export function flash(button: HTMLButtonElement, message: string): void {
+export function flash(button: HTMLButtonElement, message: string, ms = 1600): void {
   const original = button.textContent ?? '';
   button.textContent = message;
   setTimeout(() => {
     button.textContent = original;
-  }, 1600);
+  }, ms);
 }
 
 /**

@@ -1,93 +1,87 @@
+import { PLATFORMS, PLATFORM_IDS, type PlatformId } from '@domain/platforms';
+import { readComparisons } from '@shared/comparisons';
 import { t, type Lang } from '@shared/i18n';
-import { PLATFORMS, type PlatformId } from '@domain/platforms';
 import { sendToBackground, type ComparisonState } from '@shared/messages';
-import { el, escapeHtml } from '../dom';
+import { chromeStore, type KeyValueStore } from '@shared/storage';
+import { html, type SafeHtml } from '@views/html';
+import { el } from '../dom';
 
-const COMPARISONS_KEY = 'comparisons';
+/** The panel shows the newest few; the service worker keeps the bounded log. */
+const SHOWN = 3;
 
 /**
  * Parallel comparison: compose once, inject into several platforms, read the
  * answers side by side. Injection is still per-tab and the user still presses
- * send — nothing is dispatched on our own initiative.
+ * send — nothing is dispatched on the extension's own initiative.
  */
-export function renderCompare(lang: Lang, comparisons: ComparisonState[]): string {
-  const platforms = Object.keys(PLATFORMS) as PlatformId[];
-  return `
+export function renderCompare(lang: Lang, comparisons: ComparisonState[]): SafeHtml {
+  return html`
     <section>
-      <h2>${escapeHtml(t(lang, 'compareSection'))}</h2>
-      <p class="hint">${escapeHtml(t(lang, 'compareHint'))}</p>
+      <h2>${t(lang, 'compareSection')}</h2>
+      <p class="hint">${t(lang, 'compareHint')}</p>
       <div class="field">
-        <textarea id="compare-text" placeholder="${escapeHtml(t(lang, 'comparePlaceholder'))}"></textarea>
+        <textarea id="compare-text" placeholder="${t(lang, 'comparePlaceholder')}"></textarea>
       </div>
       <div class="compare-targets">
-        ${platforms
-          .map(
-            (p) =>
-              `<label><input type="checkbox" class="compare-target" value="${p}" checked />
-               ${escapeHtml(PLATFORMS[p].label)}</label>`,
-          )
-          .join('')}
+        ${PLATFORM_IDS.map(
+          (p) => html`<label>
+            <input type="checkbox" class="compare-target" value="${p}" checked />
+            ${PLATFORMS[p].label}
+          </label>`,
+        )}
       </div>
       <div class="row end">
-        <button class="primary" id="compare-send">${escapeHtml(t(lang, 'compareSend'))}</button>
+        <button class="primary" id="compare-send">${t(lang, 'compareSend')}</button>
       </div>
       <div id="compare-results">
-        ${
-          comparisons.length === 0
-            ? `<p class="muted">${escapeHtml(t(lang, 'compareEmpty'))}</p>`
-            : comparisons.map((c) => card(lang, c)).join('')
-        }
+        ${comparisons.length === 0
+          ? html`<p class="muted">${t(lang, 'compareEmpty')}</p>`
+          : comparisons.map((c) => card(lang, c))}
       </div>
     </section>
   `;
 }
 
-export function bindCompare(root: ParentNode, lang: Lang, onChanged: () => void): void {
+export function bindCompare(root: ParentNode, onStarted: () => void): void {
   el<HTMLButtonElement>(root, '#compare-send').addEventListener('click', () => {
     const text = el<HTMLTextAreaElement>(root, '#compare-text').value.trim();
     const targets = [...root.querySelectorAll<HTMLInputElement>('.compare-target')]
       .filter((box) => box.checked)
       .map((box) => box.value as PlatformId);
     if (!text || targets.length === 0) return;
-    void sendToBackground({ type: 'compare/start', text, targets }).then(onChanged);
-  });
-
-  // Responses arrive asynchronously as the user sends each tab's prompt.
-  chrome.storage.onChanged.addListener((changes, area) => {
-    if (area === 'local' && COMPARISONS_KEY in changes) onChanged();
+    void sendToBackground({ type: 'compare/start', text, targets }).then(onStarted);
   });
 }
 
-export async function loadComparisons(): Promise<ComparisonState[]> {
-  const stored = await chrome.storage.local.get(COMPARISONS_KEY);
-  return ((stored[COMPARISONS_KEY] as ComparisonState[] | undefined) ?? []).slice(0, 3);
+export async function loadComparisons(
+  store: KeyValueStore = chromeStore('local'),
+): Promise<ComparisonState[]> {
+  return (await readComparisons(store)).slice(0, SHOWN);
 }
 
-function card(lang: Lang, comparison: ComparisonState): string {
-  return `
+function card(lang: Lang, comparison: ComparisonState): SafeHtml {
+  return html`
     <div class="compare-card">
-      <div class="compare-prompt">${escapeHtml(truncate(comparison.text, 120))}</div>
+      <div class="compare-prompt">${truncate(comparison.text, 120)}</div>
       <div class="compare-answers">
-        ${comparison.targets
-          .map((platform) => {
-            const answer = comparison.responses[platform];
-            return `
-              <div class="compare-answer">
-                <h3>${escapeHtml(PLATFORMS[platform].label)}</h3>
-                <p>${
-                  answer
-                    ? escapeHtml(truncate(answer.content, 900))
-                    : `<span class="muted">${escapeHtml(t(lang, 'compareWaiting'))}</span>`
-                }</p>
-              </div>
-            `;
-          })
-          .join('')}
+        ${comparison.targets.map((platform) => {
+          const answer = comparison.responses[platform];
+          return html`
+            <div class="compare-answer">
+              <h3>${PLATFORMS[platform].label}</h3>
+              <p>
+                ${answer
+                  ? truncate(answer.content, 900)
+                  : html`<span class="muted">${t(lang, 'compareWaiting')}</span>`}
+              </p>
+            </div>
+          `;
+        })}
       </div>
     </div>
   `;
 }
 
-function truncate(text: string, max: number): string {
+export function truncate(text: string, max: number): string {
   return text.length > max ? `${text.slice(0, max)}…` : text;
 }

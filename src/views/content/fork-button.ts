@@ -1,13 +1,11 @@
+import { html, setHtml } from '@views/html';
 import { BASE_STYLES, createShadowHost } from './shadow-host';
 
-const HOST_ID = 'ulb-fork-button-host';
+export const FORK_BUTTON_HOST_ID = 'ulb-fork-button-host';
 
-/**
- * Per-message fork affordance. A single floating button is repositioned onto
- * whichever message the pointer is over, rather than injecting a button into
- * every message node — one element to keep alive, and nothing added to the
- * platform's own DOM tree.
- */
+/** Grace period so moving the pointer from a message onto the button doesn't hide it. */
+export const HIDE_DELAY_MS = 400;
+
 export interface ForkButtonOptions {
   /**
    * Injected by the controller. The view must not know how a message node is
@@ -17,22 +15,31 @@ export interface ForkButtonOptions {
   onFork: (messageIndex: number) => void;
 }
 
+/**
+ * Per-message fork affordance. A single floating button is repositioned onto
+ * whichever message the pointer is over, rather than injecting a button into
+ * every message — one element to keep alive, and nothing added to the
+ * platform's own DOM tree.
+ */
 export function mountForkButtons(options: ForkButtonOptions): () => void {
-  const shadow = createShadowHost(HOST_ID);
-  shadow.innerHTML = `
-    <style>
-      ${BASE_STYLES}
-      button {
-        position: absolute; z-index: 2147483646; display: none;
-        font: 500 12px/1 ui-sans-serif, system-ui, sans-serif;
-        padding: 5px 9px; border-radius: 999px; cursor: pointer;
-        background: #534ab7; color: #fff; border: none;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.22);
-      }
-      button:hover { background: #3C3489; }
-    </style>
-    <button id="fork" type="button" aria-label="Fork">⑂ Fork</button>
-  `;
+  const shadow = createShadowHost(FORK_BUTTON_HOST_ID);
+  setHtml(
+    shadow,
+    html`
+      <style>
+        ${BASE_STYLES}
+        button {
+          position: absolute; z-index: 2147483646; display: none;
+          font: 500 12px/1 ui-sans-serif, system-ui, sans-serif;
+          padding: 5px 9px; border-radius: 999px; cursor: pointer;
+          background: #534ab7; color: #fff; border: none;
+          box-shadow: 0 2px 10px rgba(0,0,0,0.22);
+        }
+        button:hover { background: #3C3489; }
+      </style>
+      <button id="fork" type="button" aria-label="Fork">⑂ Fork</button>
+    `,
+  );
 
   const button = shadow.getElementById('fork') as HTMLButtonElement;
   let currentIndex = -1;
@@ -53,10 +60,9 @@ export function mountForkButtons(options: ForkButtonOptions): () => void {
   };
 
   const onPointerOut = () => {
-    // Grace period so moving the pointer onto the button itself doesn't hide it.
     hideTimer = setTimeout(() => {
       button.style.display = 'none';
-    }, 400);
+    }, HIDE_DELAY_MS);
   };
 
   button.addEventListener('mouseenter', () => clearTimeout(hideTimer));

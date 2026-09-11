@@ -27,15 +27,11 @@ export default defineConfig({
         // Type-only modules: no executable statements to cover.
         'src/domain/transfer.ts',
         'src/shared/health.ts',
-        // Bound to the chrome.* extension runtime; exercised by loading dist/.
-        'src/controllers/background/**',
-        'src/controllers/content/**',
-        'src/controllers/attachments.ts',
-        'src/shared/messages.ts',
-        'src/shared/settings.ts',
-        'src/data/**',
-        // DOM rendering; verified by driving the built extension, not by unit tests.
-        'src/views/**',
+        // Entry points that only wire the real browser into tested modules.
+        // They are exercised end to end by the Playwright suite in e2e/.
+        'src/controllers/background/index.ts',
+        'src/controllers/content/index.ts',
+        'src/views/sidepanel/main.ts',
       ],
       thresholds: { statements: 80, branches: 80, functions: 80, lines: 80 },
     },

@@ -1,45 +1,43 @@
 import { t, type Lang } from '@shared/i18n';
 import { updateSettings, type Persona, type Settings } from '@shared/settings';
-import { el, escapeHtml, flash } from '../dom';
+import { html, type SafeHtml } from '@views/html';
+import { el, flash } from '../dom';
 
 /**
  * Portable memory: a "who I am, how I want answers" profile the user can
  * attach to any fork package — platform-independent, stored locally.
  */
-export function renderPersona(settings: Settings): string {
+export function renderPersona(settings: Settings): SafeHtml {
   const lang: Lang = settings.language;
   const active = settings.personas.find((p) => p.id === settings.activePersonaId);
-  return `
+  return html`
     <section>
-      <h2>${escapeHtml(t(lang, 'personaSection'))}</h2>
-      <p class="hint">${escapeHtml(t(lang, 'personaHint'))}</p>
+      <h2>${t(lang, 'personaSection')}</h2>
+      <p class="hint">${t(lang, 'personaHint')}</p>
       <div class="field">
-        <label for="persona-select">${escapeHtml(t(lang, 'personaActive'))}</label>
+        <label for="persona-select">${t(lang, 'personaActive')}</label>
         <div class="row">
           <select id="persona-select">
             <option value="">—</option>
-            ${settings.personas
-              .map(
-                (p) =>
-                  `<option value="${p.id}" ${p.id === settings.activePersonaId ? 'selected' : ''}>
-                     ${escapeHtml(p.name)}
-                   </option>`,
-              )
-              .join('')}
+            ${settings.personas.map(
+              (p) => html`<option value="${p.id}" ${p.id === settings.activePersonaId ? 'selected' : ''}>
+                ${p.name}
+              </option>`,
+            )}
           </select>
-          <button id="persona-new">${escapeHtml(t(lang, 'personaNew'))}</button>
+          <button id="persona-new">${t(lang, 'personaNew')}</button>
         </div>
       </div>
       <div class="field">
-        <label for="persona-name">${escapeHtml(t(lang, 'personaName'))}</label>
-        <input type="text" id="persona-name" value="${escapeHtml(active?.name ?? '')}" />
+        <label for="persona-name">${t(lang, 'personaName')}</label>
+        <input type="text" id="persona-name" value="${active?.name ?? ''}" />
       </div>
       <div class="field">
-        <textarea id="persona-text" placeholder="${escapeHtml(t(lang, 'personaText'))}">${escapeHtml(active?.text ?? '')}</textarea>
+        <textarea id="persona-text" placeholder="${t(lang, 'personaText')}">${active?.text ?? ''}</textarea>
       </div>
       <div class="row end">
-        ${active ? `<button id="persona-delete">${escapeHtml(t(lang, 'personaDelete'))}</button>` : ''}
-        <button class="primary" id="persona-save">${escapeHtml(t(lang, 'personaSave'))}</button>
+        ${active && html`<button id="persona-delete">${t(lang, 'personaDelete')}</button>`}
+        <button class="primary" id="persona-save">${t(lang, 'personaSave')}</button>
       </div>
     </section>
   `;
@@ -62,18 +60,8 @@ export function bindPersona(root: ParentNode, settings: Settings, onChanged: () 
     const name = el<HTMLInputElement>(root, '#persona-name').value.trim();
     const text = el<HTMLTextAreaElement>(root, '#persona-text').value.trim();
     if (!name) return;
-
-    const personas = [...settings.personas];
-    const existing = personas.findIndex((p) => p.id === settings.activePersonaId);
-    let activeId = settings.activePersonaId;
-    if (existing >= 0) {
-      personas[existing] = { ...personas[existing]!, name, text };
-    } else {
-      const created: Persona = { id: crypto.randomUUID(), name, text };
-      personas.push(created);
-      activeId = created.id;
-    }
-    void updateSettings({ personas, activePersonaId: activeId }).then(() => {
+    const { personas, activePersonaId } = upsertPersona(settings, name, text);
+    void updateSettings({ personas, activePersonaId }).then(() => {
       flash(saveButton, t(lang, 'settingsSaved'));
       onChanged();
     });
@@ -85,4 +73,20 @@ export function bindPersona(root: ParentNode, settings: Settings, onChanged: () 
       activePersonaId: null,
     }).then(onChanged);
   });
+}
+
+/** Updates the active persona in place, or creates one and makes it active. */
+export function upsertPersona(
+  settings: Pick<Settings, 'personas' | 'activePersonaId'>,
+  name: string,
+  text: string,
+  newId: () => string = () => crypto.randomUUID(),
+): { personas: Persona[]; activePersonaId: string } {
+  const index = settings.personas.findIndex((p) => p.id === settings.activePersonaId);
+  if (index >= 0) {
+    const personas = settings.personas.map((p, i) => (i === index ? { ...p, name, text } : p));
+    return { personas, activePersonaId: settings.activePersonaId as string };
+  }
+  const created: Persona = { id: newId(), name, text };
+  return { personas: [...settings.personas, created], activePersonaId: created.id };
 }

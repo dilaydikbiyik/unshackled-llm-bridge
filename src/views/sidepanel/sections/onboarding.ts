@@ -1,21 +1,21 @@
 import { t, type Lang } from '@shared/i18n';
 import { updateSettings, type Settings } from '@shared/settings';
-import { el, escapeHtml } from '../dom';
+import { html, type SafeHtml } from '@views/html';
+import { el } from '../dom';
 
 /** First-run explainer: what it does, the privacy promise, how to fork. */
-export function renderOnboarding(settings: Settings, onDismiss: () => void): string {
-  if (settings.onboardingDone) return '';
+export function renderOnboarding(settings: Settings): SafeHtml {
+  if (settings.onboardingDone) return html``;
   const lang: Lang = settings.language;
-  void onDismiss;
-  return `
+  return html`
     <div class="onboard" id="onboard">
-      <strong>${escapeHtml(t(lang, 'onboardTitle'))}</strong>
+      <strong>${t(lang, 'onboardTitle')}</strong>
       <ol>
-        <li>${escapeHtml(t(lang, 'onboardStep1'))}</li>
-        <li>${escapeHtml(t(lang, 'onboardStep2'))}</li>
-        <li>${escapeHtml(t(lang, 'onboardStep3'))}</li>
+        <li>${t(lang, 'onboardStep1')}</li>
+        <li>${t(lang, 'onboardStep2')}</li>
+        <li>${t(lang, 'onboardStep3')}</li>
       </ol>
-      <button id="onboard-dismiss">${escapeHtml(t(lang, 'onboardDismiss'))}</button>
+      <button id="onboard-dismiss">${t(lang, 'onboardDismiss')}</button>
     </div>
   `;
 }

@@ -76,5 +76,25 @@ export default tseslint.config(
     'views render and collect input. Take behaviour as an injected callback typed by a @domain contract, and let a controller supply it.',
   ),
 
-  { ignores: ['dist/**', 'node_modules/**'] },
+  // HTML safety is structural: markup reaches the DOM only through setHtml(),
+  // which accepts only SafeHtml built by the escaping `html` tag.
+  {
+    files: ['src/**/*.ts'],
+    ignores: ['src/views/html.ts', 'src/**/*.test.ts'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "AssignmentExpression[left.property.name=/^(innerHTML|outerHTML)$/]",
+          message: 'Insert markup with setHtml(target, html`…`) from @views/html, which escapes by construction.',
+        },
+        {
+          selector: "CallExpression[callee.property.name='insertAdjacentHTML']",
+          message: 'Insert markup with setHtml(target, html`…`) from @views/html, which escapes by construction.',
+        },
+      ],
+    },
+  },
+
+  { ignores: ['dist/**', 'node_modules/**', 'e2e/**', 'playwright-report/**', 'test-results/**'] },
 );

@@ -1,6 +1,8 @@
+import { trusted, type SafeHtml } from '@views/html';
+
 /**
- * All in-page UI lives inside a shadow root so host-page styles cannot leak in
- * and ours cannot leak out — the platforms restyle aggressively and a plain
+ * All in-page UI lives inside a shadow root, so host-page styles cannot leak in
+ * and ours cannot leak out — the platforms restyle aggressively, and a plain
  * div would be unreadable within a release or two.
  */
 export function createShadowHost(id: string): ShadowRoot {
@@ -12,7 +14,8 @@ export function createShadowHost(id: string): ShadowRoot {
   return host.attachShadow({ mode: 'open' });
 }
 
-export const BASE_STYLES = `
+/** Static stylesheet shared by every in-page surface. */
+export const BASE_STYLES: SafeHtml = trusted(`
   :host, * { box-sizing: border-box; }
   .ulb {
     font-family: ui-sans-serif, system-ui, -apple-system, sans-serif;
@@ -23,11 +26,9 @@ export const BASE_STYLES = `
   @media (prefers-color-scheme: dark) {
     .ulb { color: #f1efe8; }
   }
-`;
+`);
 
-export { escapeHtml } from '../escape';
-
-/** Clipboard with a fallback for pages that block the async API. */
+/** Clipboard with a fallback for pages that block the async clipboard API. */
 export async function copyText(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text);
