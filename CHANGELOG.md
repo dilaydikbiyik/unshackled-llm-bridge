@@ -6,11 +6,25 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
-### Still to do before a store release
-- Run the end-to-end matrix in [docs/smoke-test.md](docs/smoke-test.md) with the unpacked
-  extension loaded, then submit using [docs/store-listing.md](docs/store-listing.md).
-- Verify the send buttons (they render only after typing), Claude artifact markup, and ChatGPT's
-  model label on a paid plan.
+### Fixed
+- **Gemini's send button selector had drifted.** The button lost its `send-button` class, and its
+  only label is a translated `aria-label` ("Mesaj gönder"). Its wrapper keeps a stable
+  `data-test-id="send-button"`, so the selector now targets `[data-test-id='send-button'] button`.
+  The English `aria-label` candidate is dropped, because it matched in only one locale. Selector
+  config v6.
+- The send buttons of all three platforms are now verified live. The check typed a character into a
+  new chat's composer, counted matches, and deleted it; nothing was sent.
+- CI actions moved to `checkout`, `setup-node` and `upload-artifact` v7, which run on Node 24,
+  ahead of GitHub removing Node 20.
+- A misplaced bullet in the 0.3.1 notes was removed.
+
+### Still to do before a store release — owner's steps
+- Load the unpacked extension and run the end-to-end matrix in
+  [docs/smoke-test.md](docs/smoke-test.md), then submit using
+  [docs/store-listing.md](docs/store-listing.md).
+- Claude artifact markup is unverified: none of the 60 most recent conversations contains an
+  artifact, and producing one means sending a message. ChatGPT's model label is unverified on a
+  paid plan.
 
 ## [0.4.0] — 2026-09-11
 
@@ -98,8 +112,6 @@ Architecture hardening, following a critical review of 0.3.1.
 - Runtime messages are accepted only from this extension's own id, and only when well-formed.
 - The attachment size cap is enforced where files are captured and again where they are stored.
 - HTML sinks audited: every interpolated value is escaped or a constant, boolean or UUID.
-- Manual test matrix across both fork directions, long chats, code blocks, and edge cases
-  (empty chat, mid-generation, logged-out target).
 
 ## [0.3.0] — 2026-09-10
 

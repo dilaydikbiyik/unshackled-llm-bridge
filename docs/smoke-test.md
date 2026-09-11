@@ -25,6 +25,11 @@ open DevTools → Console → paste → Enter.
 The probe prints match counts only — never message text — so its output is safe to paste into an
 issue.
 
+**Checking the situational targets.** A send button renders only once the composer has text. To
+check it, open a *new* chat, type a single character (do not press Enter), run the probe, then
+delete the character. `sendButton` should read `ok`. Artifacts can only be checked in a
+conversation that already contains one.
+
 ## 2. End-to-end, with the extension loaded
 
 `npm run build`, then `chrome://extensions` → Developer mode → **Load unpacked** → `dist/`.

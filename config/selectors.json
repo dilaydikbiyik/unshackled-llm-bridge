@@ -1,5 +1,5 @@
 {
-  "version": 5,
+  "version": 6,
   "minExtensionVersion": "0.0.1",
   "platforms": {
     "chatgpt": {
@@ -23,7 +23,7 @@
     },
     "gemini": {
       "composer": ["rich-textarea div.ql-editor[contenteditable='true']", "div.ql-editor[contenteditable='true']"],
-      "sendButton": ["button.send-button", "button[aria-label='Send message']"],
+      "sendButton": ["[data-test-id='send-button'] button", "button.send-button"],
       "messageContainer": ["user-query, model-response"],
       "userMessage": ["user-query"],
       "newChatButton": ["[data-test-id='new-chat-button']", "a[href='/app']"],

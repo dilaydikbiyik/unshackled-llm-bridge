@@ -324,7 +324,9 @@ three platforms have been checked live and their drift fixed.
 
 Owner's steps remaining: run the end-to-end matrix in docs/smoke-test.md with the unpacked
 extension, and submit the store listing. Still unverified on the live sites: send buttons (they
-render only after typing), Claude artifact markup, and ChatGPT's model label on a paid plan.
+render only after typing) were verified live on all three platforms, and Gemini's was fixed
+(config v6). Still unverified: Claude artifact markup (none of the 60 most recent conversations
+contains one) and ChatGPT's model label on a paid plan.
 
 ---
 
