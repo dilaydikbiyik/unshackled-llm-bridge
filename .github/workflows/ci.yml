@@ -26,7 +26,7 @@ jobs:
 
       - run: npm ci
 
-      # Includes the architecture boundary rules — a layer violation fails here.
+      # Includes the architecture boundary rules and the setHtml-only rule.
       - name: Lint
         run: npm run lint
 
@@ -45,4 +45,34 @@ jobs:
         with:
           name: unshackled-llm-bridge-dist
           path: dist/
+          retention-days: 14
+
+  e2e:
+    name: End-to-end (extension in Chromium)
+    runs-on: ubuntu-latest
+    needs: verify
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # Builds dist/, loads it into Chromium, and drives full forks against
+      # local fixture pages — no login, no network.
+      - name: Run end-to-end suite
+        run: npm run e2e
+
+      - name: Upload report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
           retention-days: 14

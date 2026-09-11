@@ -1,0 +1,17 @@
+<!doctype html>
+<!-- Mirrors a claude.ai new-chat page (config v5). The send button counts
+     clicks so the suite can prove the extension never sends. -->
+<html lang="en">
+  <head><meta charset="utf-8" /><title>Claude (fixture)</title></head>
+  <body>
+    <a href="/new">New chat</a>
+    <main>
+      <fieldset>
+        <div contenteditable="true" class="ProseMirror"></div>
+        <button aria-label="Send message" onclick="window.__sendClicks = (window.__sendClicks || 0) + 1">
+          Send
+        </button>
+      </fieldset>
+    </main>
+  </body>
+</html>
