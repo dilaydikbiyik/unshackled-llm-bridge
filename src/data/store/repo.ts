@@ -17,6 +17,11 @@ function getDb(): BridgeDatabase {
   return db;
 }
 
+/** Test seam: point the repository at another database, e.g. one per test. */
+export function useDatabase(next: BridgeDatabase): void {
+  db = next;
+}
+
 // --- Attachments (file sandbox) ---
 
 export async function saveAttachment(

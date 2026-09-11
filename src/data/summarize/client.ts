@@ -30,10 +30,16 @@ export interface SummarizeOptions {
   model: string;
   transcript: string;
   language: Lang;
+  /** Test seam: a stand-in for the network. Production uses the global fetch. */
+  fetch?: typeof fetch;
 }
 
 export async function summarizeTranscript(options: SummarizeOptions): Promise<string> {
-  const client = new Anthropic({ apiKey: options.apiKey, dangerouslyAllowBrowser: true });
+  const client = new Anthropic({
+    apiKey: options.apiKey,
+    dangerouslyAllowBrowser: true,
+    ...(options.fetch ? { fetch: options.fetch, maxRetries: 0 } : {}),
+  });
 
   const languageNote =
     options.language === 'tr'
