@@ -40,6 +40,7 @@ export function createTransferPackageBuilder(context: ForkContext): TransferPack
     const slice = messagesInScope(conversation, cutIndex, scope);
     const base = {
       sourcePlatform: conversation.sourcePlatform,
+      attachmentNames: conversation.attachments.map((a) => a.name),
       ...(conversation.model ? { model: conversation.model } : {}),
       ...(personaText ? { personaText } : {}),
     };

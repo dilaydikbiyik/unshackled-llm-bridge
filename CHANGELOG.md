@@ -18,6 +18,15 @@ All notable changes to this project are documented here. The format follows
   ahead of GitHub removing Node 20.
 - A misplaced bullet in the 0.3.1 notes was removed.
 
+### Added
+- **A handoff brief at the head of every package.** Derived structurally from the slice — no model,
+  no API key, no network — it states how many turns travel, what code comes with them and in which
+  languages, which files were replayed, and what the user actually needs next. Without it the
+  target reads a transcript and infers the task; with it, the ask is the first thing it sees. This
+  is the line between forking a conversation and pasting one, and it was fair criticism that the
+  package did not show it. The brief omits the open request when a summary replaces the
+  transcript, so summarizing still keeps the user's wording out of the package.
+
 ### Changed
 - **A fork now carries the whole conversation by default.** Forking used to mean "everything up to
   the message you started from", so forking from an opening message transferred that message alone

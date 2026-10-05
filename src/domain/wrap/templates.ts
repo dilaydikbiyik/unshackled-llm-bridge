@@ -1,4 +1,5 @@
 import type { ChatMessage } from '@domain/conversation/schema';
+import { digestConversation, digestLines } from '@domain/wrap/digest';
 import type { PlatformId } from '@domain/platforms';
 import { PLATFORMS } from '@domain/platforms';
 
@@ -17,6 +18,8 @@ export interface WrapInput {
   personaText?: string;
   /** Replaces the transcript entirely (summarize-on-fork). */
   summary?: string;
+  /** Names of the files travelling with the package, for the brief. */
+  attachmentNames?: string[];
 }
 
 export function wrapForTarget(input: WrapInput, target: PlatformId): string {
@@ -27,6 +30,13 @@ export function wrapForTarget(input: WrapInput, target: PlatformId): string {
       ? `[${input.trimmedCount} earlier messages omitted for length]`
       : null;
 
+  // Derived from the slice, not from the source platform: the brief states
+  // where the work stands, which a transcript leaves the target to infer.
+  const brief = digestLines(
+    digestConversation(input.messages, input.attachmentNames ?? []),
+    input.summary === undefined,
+  );
+
   if (target === 'claude') {
     const parts: string[] = [];
     if (input.personaText) parts.push(`<about_me>\n${input.personaText}\n</about_me>`);
@@ -36,6 +46,7 @@ export function wrapForTarget(input: WrapInput, target: PlatformId): string {
         'I am continuing it here. Read it, then answer my next message in this context.',
       '</context>',
     );
+    if (brief.length) parts.push('<handoff>', ...brief, '</handoff>');
     if (input.summary) {
       parts.push('<conversation_summary>', input.summary, '</conversation_summary>');
     } else {
@@ -56,6 +67,7 @@ export function wrapForTarget(input: WrapInput, target: PlatformId): string {
     `This conversation started with ${source}${model}. I am continuing it here.`,
     '',
   );
+  if (brief.length) parts.push('### Where this stands', ...brief.map((line) => `- ${line}`), '');
   if (input.summary) {
     parts.push('### Summary of the conversation so far', '', input.summary, '');
   } else {
