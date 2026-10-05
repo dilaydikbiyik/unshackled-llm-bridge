@@ -25,6 +25,13 @@ open DevTools → Console → paste → Enter.
 The probe prints match counts only — never message text — so its output is safe to paste into an
 issue.
 
+**Read the matched-candidate column, not just the status.** A target that resolves through its
+second or third candidate is working, but it is also telling you the live markup has moved on. On
+2026-10-05 ChatGPT's `assistantContent` fell through to its third candidate, `.markdown`, because
+the CSS-module response root had disappeared. Nothing was broken, and nothing needed fixing in the
+config — but the fixtures were stale, so they were updated in the same pass. Treat a drifting
+candidate index as a fixture refresh, not a selector fix.
+
 **Checking the situational targets.** A send button renders only once the composer has text. To
 check it, open a *new* chat, type a single character (do not press Enter), run the probe, then
 delete the character. `sendButton` should read `ok`. Artifacts can only be checked in a

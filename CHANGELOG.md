@@ -18,6 +18,17 @@ All notable changes to this project are documented here. The format follows
   ahead of GitHub removing Node 20.
 - A misplaced bullet in the 0.3.1 notes was removed.
 
+### Verified
+- **Full live re-check of all three platforms (2026-10-05), plus the end-to-end suite.** Every
+  required selector target resolves on a real conversation on each platform, and both sides of the
+  conversation match. ChatGPT's markup had drifted again — the CSS-module response root is gone and
+  the answer now sits in `<hash>_content markdown prose …` — but the fallback chain absorbed it:
+  `assistantContent` resolves through its third candidate, `.markdown`. No selector change was
+  needed, which is the first time the candidate-list design has paid for itself unaided.
+- The ChatGPT fixtures were updated to today's markup all the same. Three fixtures now cover the
+  three variants, and each resolves a different candidate — so the list is demonstrably a working
+  fallback chain rather than three guesses.
+
 ### Still to do before a store release — owner's steps
 - Load the unpacked extension and run the end-to-end matrix in
   [docs/smoke-test.md](docs/smoke-test.md), then submit using

@@ -323,10 +323,21 @@ typecheck, the full test suite above the coverage thresholds, and a clean produc
 three platforms have been checked live and their drift fixed.
 
 Owner's steps remaining: run the end-to-end matrix in docs/smoke-test.md with the unpacked
-extension, and submit the store listing. Still unverified on the live sites: send buttons (they
-render only after typing) were verified live on all three platforms, and Gemini's was fixed
-(config v6). Still unverified: Claude artifact markup (none of the 60 most recent conversations
-contains one) and ChatGPT's model label on a paid plan.
+extension, and submit the store listing. Still unverified on the live sites: Claude artifact markup
+(none of the 60 most recent conversations contains one, and producing one means sending a message)
+and ChatGPT's model label on a paid plan.
+
+### Live check log
+
+- **2026-09-10** — first live check. Drift on all three platforms; see the 0.3.1 changelog.
+- **2026-09-11** — send buttons verified on all three platforms by typing one character into a new
+  chat's composer and counting matches. Gemini's had drifted; fixed in config v6.
+- **2026-10-05** — full probe re-run on a real conversation on each platform: every required target
+  resolves, both sides of the conversation match, no broken selector. One drift found and absorbed
+  by the fallback chain: ChatGPT's CSS-module response root is gone and the answer now sits in
+  `<hash>_content markdown prose …`, so `assistantContent` resolves through its third candidate,
+  `.markdown`. No selector change was needed; the fixtures were updated to today's markup, because
+  a test passing against stale markup proves nothing.
 
 ---
 

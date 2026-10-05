@@ -118,3 +118,57 @@ describe('ChatGptAdapter.readConversation — image-only turns', () => {
     expect(conversation.messages[0]?.content).toBe('[image]');
   });
 });
+
+/**
+ * Live markup, checked 2026-10-05: the CSS-module response root is gone. The
+ * answer now sits in `<hash>_content markdown prose …`, so `assistantContent`
+ * resolves through its third candidate, `.markdown`. The module's own class is
+ * `_content` — too generic to target, which is why `.markdown` carries it.
+ *
+ * The three fixtures together prove the candidate list is a working fallback
+ * chain rather than three guesses: each one resolves a different candidate.
+ */
+const LIVE_FIXTURE_OCT = `
+<main>
+  <section data-testid="conversation-turn-1">
+    <div data-message-author-role="user">
+      <div class="whitespace-pre-wrap">Review my CV</div>
+    </div>
+  </section>
+  <section data-testid="conversation-turn-2">
+    <div data-message-author-role="assistant">
+      <div class="flex w-full flex-col gap-1 empty:hidden">
+        <div class="LR5Y_W_content markdown prose dark:prose-invert wrap-break-word w-full">
+          <p>Lead with <strong>impact</strong>, not duties.</p>
+          <h3>Structure</h3>
+          <pre><button>Kopyala</button><code class="language-text">one line</code></pre>
+        </div>
+      </div>
+      <button aria-label="Model değiştir">Model değiştir</button>
+    </div>
+  </section>
+</main>
+`;
+
+describe('ChatGptAdapter.readConversation — live markup, October', () => {
+  beforeEach(() => {
+    document.body.innerHTML = LIVE_FIXTURE_OCT;
+  });
+
+  it('reads both turns when only the .markdown candidate matches', async () => {
+    const conversation = await new ChatGptAdapter(selectors).readConversation();
+    expect(conversation.messages.map((m) => m.role)).toEqual(['user', 'assistant']);
+    expect(conversation.messages[0]?.content).toBe('Review my CV');
+  });
+
+  it('keeps the answer’s structure and fences its code, without the copy control', async () => {
+    const conversation = await new ChatGptAdapter(selectors).readConversation();
+    const answer = conversation.messages[1]?.content ?? '';
+    expect(answer).toContain('**impact**');
+    expect(answer).toContain('### Structure');
+    expect(answer).toContain('```');
+    expect(answer).toContain('one line');
+    expect(answer).not.toContain('Kopyala');
+    expect(answer).not.toContain('Model değiştir');
+  });
+});
