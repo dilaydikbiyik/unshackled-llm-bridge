@@ -19,6 +19,19 @@ All notable changes to this project are documented here. The format follows
 - A misplaced bullet in the 0.3.1 notes was removed.
 
 ### Added
+- **Drag a conversation out of the page.** The fork affordance is draggable: pick a conversation up
+  here and let go of it over there — another tab, another window, another browser, or a desktop
+  app. The drop target needs to know nothing about this extension, because Chrome's `DownloadURL`
+  drag entry makes the dragged conversation arrive as an ordinary file; a `text/plain` copy rides
+  along for targets that take dropped text but not dropped files. The payload is prepared while the
+  pointer rests on the affordance, since `dragstart` cannot await anything.
+
+### Fixed
+- **A file replay left the platform's drop overlay covering the page.** The synthetic sequence
+  raised the overlay with `dragenter` and never lowered it; a drop UI is driven by a counter, so
+  the sequence now ends with `dragleave` and `dragend`.
+
+### Added
 - **Continuing a conversation, instead of pasting one.** The transcript now travels to the target
   as an uploaded Markdown file, and the composer carries a single sentence: what this is, where it
   came from, and what was being asked. The user's own next message goes into an empty composer,

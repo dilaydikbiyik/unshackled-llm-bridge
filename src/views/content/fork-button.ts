@@ -1,4 +1,5 @@
 import { html, setHtml } from '@views/html';
+import { setDragPayload, type DraggedConversation } from './drag-out';
 import { BASE_STYLES, createShadowHost } from './shadow-host';
 
 export const FORK_BUTTON_HOST_ID = 'ulb-fork-button-host';
@@ -13,6 +14,12 @@ export interface ForkButtonOptions {
    */
   locateMessages: () => Element[];
   onFork: (messageIndex: number) => void;
+  /**
+   * Prepares the conversation for dragging out of the page. Called when the
+   * affordance appears, so the payload is ready by the time a drag starts —
+   * `dragstart` cannot wait for a promise.
+   */
+  prepareDrag?: () => Promise<DraggedConversation | null>;
 }
 
 /**
@@ -37,7 +44,7 @@ export function mountForkButtons(options: ForkButtonOptions): () => void {
         }
         button:hover { background: #3C3489; }
       </style>
-      <button id="fork" type="button" aria-label="Fork">⑂ Fork</button>
+      <button id="fork" type="button" draggable="true" aria-label="Fork">⑂ Fork</button>
     `,
   );
 
@@ -52,6 +59,7 @@ export function mountForkButtons(options: ForkButtonOptions): () => void {
     if (index < 0) return;
 
     clearTimeout(hideTimer);
+    if (index !== currentIndex) dragPayload = null;
     currentIndex = index;
     const rect = nodes[index]!.getBoundingClientRect();
     button.style.display = 'block';
@@ -65,7 +73,44 @@ export function mountForkButtons(options: ForkButtonOptions): () => void {
     }, HIDE_DELAY_MS);
   };
 
-  button.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+  // The conversation is prepared while the pointer rests on the affordance, so
+  // that a drag can hand it over synchronously.
+  let dragPayload: DraggedConversation | null = null;
+  let draggedUrl: string | null = null;
+  let preparing: Promise<void> | null = null;
+
+  const prepare = (): void => {
+    if (!options.prepareDrag || preparing) return;
+    preparing = options.prepareDrag()
+      .then((payload) => {
+        dragPayload = payload;
+      })
+      .catch(() => {
+        dragPayload = null;
+      })
+      .finally(() => {
+        preparing = null;
+      });
+  };
+
+  button.addEventListener('mouseenter', () => {
+    clearTimeout(hideTimer);
+    prepare();
+  });
+  button.addEventListener('dragstart', (event) => {
+    // Nothing prepared yet: let the click path handle it rather than dragging
+    // an empty payload across the screen.
+    if (!dragPayload || !event.dataTransfer) {
+      event.preventDefault();
+      return;
+    }
+    draggedUrl = setDragPayload(event.dataTransfer, dragPayload);
+  });
+  button.addEventListener('dragend', () => {
+    button.style.display = 'none';
+    if (draggedUrl) URL.revokeObjectURL(draggedUrl);
+    draggedUrl = null;
+  });
   button.addEventListener('click', () => {
     button.style.display = 'none';
     if (currentIndex >= 0) options.onFork(currentIndex);

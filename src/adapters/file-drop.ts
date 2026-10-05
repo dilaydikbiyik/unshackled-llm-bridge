@@ -4,8 +4,15 @@
  * a drop survives their input markup changing.
  */
 
-/** The event sequence platforms listen for. A bare `drop` is often ignored. */
-export const DROP_SEQUENCE = ['dragenter', 'dragover', 'drop'] as const;
+/**
+ * The event sequence platforms listen for. A bare `drop` is often ignored.
+ *
+ * The sequence ends with `dragleave` and `dragend` because a drop UI is driven
+ * by a counter: every `dragenter` raises the "drop a file here" overlay and
+ * only a matching `dragleave` lowers it. Without them ChatGPT's overlay stayed
+ * up over the whole page after a replay, with no drag in progress to end it.
+ */
+export const DROP_SEQUENCE = ['dragenter', 'dragover', 'drop', 'dragleave', 'dragend'] as const;
 
 export function createFileTransfer(blob: Blob, name: string): DataTransfer {
   const dataTransfer = new DataTransfer();

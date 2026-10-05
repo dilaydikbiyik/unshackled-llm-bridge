@@ -21,6 +21,7 @@ import { detectPlatform } from '@domain/platforms';
 import { sendToBackground } from '@shared/messages';
 import { getSettings } from '@shared/settings';
 import { mountForkButtons } from '@views/content/fork-button';
+import type { DraggedConversation } from '@views/content/drag-out';
 import { openForkDialog } from '@views/content/fork-dialog';
 import { showToast } from '@views/content/toast';
 
@@ -53,7 +54,49 @@ function mountFork(adapter: PlatformAdapter, config: SelectorConfig): void {
   mountForkButtons({
     locateMessages: () => resolveSelectorAll(document, selectors['messageContainer']),
     onFork: (messageIndex) => void openDialogFor(adapter, messageIndex),
+    prepareDrag: () => prepareConversationDrag(adapter),
   });
+}
+
+/**
+ * The conversation, ready to be dragged out of the page and let go anywhere —
+ * another tab, another window, another browser, a desktop app. The drop target
+ * needs to know nothing about this extension; it receives a file.
+ *
+ * Always the whole conversation: a drag has no dialog to choose a scope in,
+ * and moving the chat is what the gesture means.
+ */
+async function prepareConversationDrag(
+  adapter: PlatformAdapter,
+): Promise<DraggedConversation | null> {
+  const [conversation, settings] = await Promise.all([adapter.readConversation(), getSettings()]);
+  if (conversation.messages.length === 0) return null;
+
+  const cutIndex = conversation.messages.length - 1;
+  const build = createTransferPackageBuilder({
+    conversation,
+    cutIndex,
+    language: settings.language,
+  });
+  const asFile = await build({
+    target: adapter.platform,
+    mode: 'full',
+    scope: 'whole',
+    delivery: 'attachment',
+  });
+  const asText = await build({
+    target: adapter.platform,
+    mode: 'full',
+    scope: 'whole',
+    delivery: 'inline',
+  });
+  if (!asFile.contextFile) return null;
+
+  return {
+    fileName: asFile.contextFile.name,
+    fileText: asFile.contextFile.text,
+    plainText: asText.text,
+  };
 }
 
 async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Promise<void> {

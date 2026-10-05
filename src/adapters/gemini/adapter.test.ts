@@ -44,7 +44,7 @@ describe('GeminiAdapter.uploadFile', () => {
     document.body.innerHTML = `<main><rich-textarea></rich-textarea></main>`;
     const zone = document.querySelector('rich-textarea')!;
     const seen: string[] = [];
-    for (const type of ['dragenter', 'dragover', 'drop']) {
+    for (const type of ['dragenter', 'dragover', 'drop', 'dragleave', 'dragend']) {
       zone.addEventListener(type, () => seen.push(type));
     }
 
@@ -52,7 +52,8 @@ describe('GeminiAdapter.uploadFile', () => {
       new Blob(['a,b\n1,2'], { type: 'text/csv' }),
       'x.csv',
     );
-    expect(seen).toEqual(['dragenter', 'dragover', 'drop']);
+    // The trailing pair matters: it is what lowers the platform's drop overlay.
+    expect(seen).toEqual(['dragenter', 'dragover', 'drop', 'dragleave', 'dragend']);
   });
 
   it('falls back to the next configured zone when the composer wrapper is gone', async () => {

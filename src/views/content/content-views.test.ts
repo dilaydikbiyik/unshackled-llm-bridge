@@ -237,3 +237,66 @@ describe('toast', () => {
     expect(document.getElementById(TOAST_HOST_ID)).toBeNull();
   });
 });
+
+/**
+ * Dragging a conversation to the AI next to it, the way a window is dragged to
+ * a second monitor. The payload is prepared while the pointer rests on the
+ * affordance, because `dragstart` cannot await anything.
+ */
+describe('fork affordance — drag out', () => {
+  const dragged = { fileName: 'chatgpt-conversation.md', fileText: '# t', plainText: 'pkg' };
+
+  function mount(prepareDrag?: () => Promise<typeof dragged | null>) {
+    // Earlier tests in this file mount the same host; start from a clean one.
+    document.getElementById(FORK_BUTTON_HOST_ID)?.remove();
+    document.body.innerHTML = '';
+    const message = document.createElement('div');
+    document.body.append(message);
+    const unmount = mountForkButtons({
+      locateMessages: () => [message],
+      onFork: () => undefined,
+      ...(prepareDrag ? { prepareDrag } : {}),
+    });
+    message.dispatchEvent(new Event('pointerover', { bubbles: true }));
+    const root = document.getElementById(FORK_BUTTON_HOST_ID)!.shadowRoot!;
+    return { button: root.getElementById('fork') as HTMLButtonElement, unmount };
+  }
+
+  it('is draggable', () => {
+    const { button, unmount } = mount();
+    // happy-dom does not reflect the property, so assert the attribute.
+    expect(button.getAttribute('draggable')).toBe('true');
+    unmount();
+  });
+
+  it('hands over the conversation once it is prepared', async () => {
+    const prepareDrag = vi.fn(async () => dragged);
+    const { button, unmount } = mount(prepareDrag);
+
+    button.dispatchEvent(new Event('mouseenter'));
+
+    const dataTransfer = new DataTransfer();
+    await vi.waitFor(() => {
+      const event = new DragEvent('dragstart', { cancelable: true });
+      // happy-dom drops dataTransfer from the constructor, the same gap the
+      // file-drop tests work around.
+      Object.defineProperty(event, 'dataTransfer', { value: dataTransfer });
+      button.dispatchEvent(event);
+      expect(event.defaultPrevented).toBe(false);
+    });
+    expect(prepareDrag).toHaveBeenCalled();
+    expect(dataTransfer.getData('DownloadURL')).toContain('chatgpt-conversation.md');
+    unmount();
+  });
+
+  it('cancels the drag rather than dragging nothing when preparation has not finished', () => {
+    const { button, unmount } = mount(() => new Promise(() => undefined));
+    button.dispatchEvent(new Event('mouseenter'));
+
+    const event = new DragEvent('dragstart', { cancelable: true });
+    Object.defineProperty(event, 'dataTransfer', { value: new DataTransfer() });
+    button.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(true);
+    unmount();
+  });
+});

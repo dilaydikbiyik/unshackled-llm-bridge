@@ -33,3 +33,15 @@ describe('file replay dispatch', () => {
     expect(bubbled).toBe(true);
   });
 });
+
+describe('drop overlay', () => {
+  // A replay used to leave ChatGPT's "drop a file here" overlay covering the
+  // page: the overlay is raised by a dragenter counter that nothing lowered.
+  it('balances every dragenter with a dragleave, and ends the drag', () => {
+    const enters = DROP_SEQUENCE.filter((type) => type === 'dragenter').length;
+    const leaves = DROP_SEQUENCE.filter((type) => type === 'dragleave').length;
+    expect(leaves).toBe(enters);
+    expect(DROP_SEQUENCE.at(-1)).toBe('dragend');
+    expect(DROP_SEQUENCE.indexOf('dragleave')).toBeGreaterThan(DROP_SEQUENCE.indexOf('drop'));
+  });
+});
