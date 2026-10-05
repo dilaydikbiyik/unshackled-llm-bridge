@@ -6,7 +6,11 @@ import {
   type SelectorConfig,
 } from '@data/config/selector-config';
 import { conversationKey, mountAttachmentCapture, replayAttachments } from '@controllers/attachments';
-import { createTransferPackageBuilder, exceedsTransferBudget } from '@controllers/fork';
+import {
+  createTransferPackageBuilder,
+  exceedsTransferBudget,
+  messagesInScope,
+} from '@controllers/fork';
 import { t } from '@shared/i18n';
 import { detectPlatform } from '@domain/platforms';
 import { sendToBackground } from '@shared/messages';
@@ -66,8 +70,13 @@ async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Pr
       cutIndex: messageIndex,
       language: settings.language,
     }),
-    showLengthWarning: exceedsTransferBudget(conversation, messageIndex),
-    onTransfer: async ({ target, text, attachmentIds }) => {
+    // The warning is sized for the default scope, the whole conversation.
+    showLengthWarning: exceedsTransferBudget(conversation, messageIndex, 'whole'),
+    scopeCounts: {
+      whole: conversation.messages.length,
+      upToMessage: messagesInScope(conversation, messageIndex, 'upToMessage').length,
+    },
+    onTransfer: async ({ target, text, scope, attachmentIds }) => {
       await sendToBackground({
         type: 'inject/initiate',
         request: {
@@ -76,7 +85,9 @@ async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Pr
           lineage: {
             sourceConversationId: conversation.id,
             sourcePlatform: conversation.sourcePlatform,
-            cutIndex: messageIndex,
+            // A whole-conversation fork branches from the end, not from the
+            // message the dialog happened to be opened from.
+            cutIndex: scope === 'whole' ? conversation.messages.length - 1 : messageIndex,
           },
         },
       });

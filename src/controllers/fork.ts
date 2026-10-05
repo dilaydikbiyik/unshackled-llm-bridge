@@ -1,9 +1,10 @@
-import type { BridgeConversation } from '@domain/conversation/schema';
+import type { BridgeConversation, ChatMessage } from '@domain/conversation/schema';
 import type {
   TransferMode,
   TransferPackage,
   TransferPackageBuilder,
   TransferRequest,
+  TransferScope,
 } from '@domain/transfer';
 import { sliceTokens, sliceUpTo, trimToBudget, TRANSFER_TOKEN_BUDGET } from '@domain/wrap/limits';
 import { wrapForTarget } from '@domain/wrap/templates';
@@ -32,9 +33,11 @@ export interface ForkContext {
 export function createTransferPackageBuilder(context: ForkContext): TransferPackageBuilder {
   const { conversation, cutIndex, language } = context;
   const summarize = context.summarize ?? defaultSummarizer;
-  const slice = sliceUpTo(conversation, cutIndex);
 
-  return async ({ target, mode, personaText }: TransferRequest): Promise<TransferPackage> => {
+  return async ({ target, mode, scope, personaText }: TransferRequest): Promise<TransferPackage> => {
+    // Resolved per request: the dialog lets the user switch scope without the
+    // controller rebuilding the builder.
+    const slice = messagesInScope(conversation, cutIndex, scope);
     const base = {
       sourcePlatform: conversation.sourcePlatform,
       ...(conversation.model ? { model: conversation.model } : {}),
@@ -63,12 +66,22 @@ export function createTransferPackageBuilder(context: ForkContext): TransferPack
   };
 }
 
+/** The messages a scope covers. `whole` ignores the fork point entirely. */
+export function messagesInScope(
+  conversation: BridgeConversation,
+  cutIndex: number,
+  scope: TransferScope,
+): ChatMessage[] {
+  return scope === 'whole' ? conversation.messages : sliceUpTo(conversation, cutIndex);
+}
+
 /** True when the slice is large enough that the dialog should nudge trimming. */
 export function exceedsTransferBudget(
   conversation: BridgeConversation,
   cutIndex: number,
+  scope: TransferScope,
 ): boolean {
-  return sliceTokens(sliceUpTo(conversation, cutIndex)) > TRANSFER_TOKEN_BUDGET;
+  return sliceTokens(messagesInScope(conversation, cutIndex, scope)) > TRANSFER_TOKEN_BUDGET;
 }
 
 export type { TransferMode };

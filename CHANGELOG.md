@@ -18,7 +18,19 @@ All notable changes to this project are documented here. The format follows
   ahead of GitHub removing Node 20.
 - A misplaced bullet in the 0.3.1 notes was removed.
 
+### Changed
+- **A fork now carries the whole conversation by default.** Forking used to mean "everything up to
+  the message you started from", so forking from an opening message transferred that message alone
+  — no better than retyping it. The dialog gains a **Scope** control, defaulting to the whole
+  conversation and labelling each option with how many messages it covers. Forking at a point, the
+  branching case the project was built around, is one select away. Found by the owner on the first
+  real fork; no test could have found it, because every test asserted the behaviour as designed.
+
 ### Fixed
+- **Gemini messages arrived twice, with a label attached.** Every user turn is also rendered as
+  `h5.cdk-visually-hidden` reading "Siz şunu dediniz: …" for screen readers, and the extractor took
+  both. Accessibility-only nodes (`aria-hidden`, `hidden`, `sr-only`, `cdk-visually-hidden`,
+  `screen-reader-*`) are now skipped everywhere: a transcript carries what the user sees.
 - **The onboarding steps were numbered twice** — "1. 1. Open a conversation…" — because each step
   carried its own number inside an `<ol>`. Found on the first real install. The markers now come
   from the list, and a test asserts no step string starts with its own number, in either language.

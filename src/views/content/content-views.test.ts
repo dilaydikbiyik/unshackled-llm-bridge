@@ -37,6 +37,7 @@ describe('fork dialog', () => {
       attachments: [],
       buildPackage,
       showLengthWarning: false,
+    scopeCounts: { whole: 2, upToMessage: 1 },
       onTransfer,
       ...patch,
     });
@@ -62,7 +63,30 @@ describe('fork dialog', () => {
     const mode = $<HTMLSelectElement>('#mode');
     mode.value = 'trimmed';
     mode.dispatchEvent(new Event('change'));
-    await vi.waitFor(() => expect(requests.at(-1)).toEqual({ target: 'gemini', mode: 'trimmed' }));
+    await vi.waitFor(() =>
+      expect(requests.at(-1)).toEqual({ target: 'gemini', mode: 'trimmed', scope: 'whole' }),
+    );
+  });
+
+  // The first real fork transferred a single message, because the dialog only
+  // ever carried the slice up to the message it was opened from. Moving the
+  // whole conversation is what people mean by forking a chat, so it is the
+  // default, and the per-message branch is one select away.
+  it('asks for the whole conversation by default, and labels both scopes with their size', async () => {
+    const { $, requests } = open();
+    await vi.waitFor(() => expect(requests).toHaveLength(1));
+    expect(requests[0]?.scope).toBe('whole');
+    expect($<HTMLSelectElement>('#scope').value).toBe('whole');
+    expect($('#scope').textContent).toContain('(2)');
+    expect($('#scope').textContent).toContain('(1)');
+  });
+
+  it('rebuilds for the narrower scope when the user picks it', async () => {
+    const { $, requests } = open();
+    const scope = $<HTMLSelectElement>('#scope');
+    scope.value = 'upToMessage';
+    scope.dispatchEvent(new Event('change'));
+    await vi.waitFor(() => expect(requests.at(-1)?.scope).toBe('upToMessage'));
   });
 
   it('disables summarizing until an API key is set', () => {
@@ -100,7 +124,12 @@ describe('fork dialog', () => {
     second.dispatchEvent(new Event('change'));
     $<HTMLButtonElement>('#transfer').click();
 
-    expect(onTransfer).toHaveBeenCalledWith({ target: 'claude', text: 'edited by hand', attachmentIds: ['a1'] });
+    expect(onTransfer).toHaveBeenCalledWith({
+      target: 'claude',
+      text: 'edited by hand',
+      scope: 'whole',
+      attachmentIds: ['a1'],
+    });
     expect(document.getElementById(FORK_DIALOG_HOST_ID)).toBeNull();
   });
 

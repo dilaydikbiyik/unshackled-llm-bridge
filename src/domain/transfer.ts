@@ -16,9 +16,19 @@ export interface TransferPackage {
   summaryError?: string;
 }
 
+/**
+ * How much of the conversation the fork covers.
+ * - `whole`        — the entire conversation (the default: what people mean by
+ *                    "move this chat over there")
+ * - `upToMessage`  — everything up to the message the fork started from, which
+ *                    is the branching case: continue from here, differently
+ */
+export type TransferScope = 'whole' | 'upToMessage';
+
 export interface TransferRequest {
   target: PlatformId;
   mode: TransferMode;
+  scope: TransferScope;
   personaText?: string;
 }
 

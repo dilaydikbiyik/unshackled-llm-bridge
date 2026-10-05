@@ -78,3 +78,27 @@ describe('GeminiAdapter.getModelMode', () => {
     expect(await new GeminiAdapter(selectors).getModelMode()).toEqual({ model: 'Flash-Lite' });
   });
 });
+
+/**
+ * Live markup, checked 2026-10-05 on a real conversation. Gemini's own
+ * accessibility label repeated the message inside the turn, so the first real
+ * fork produced "Siz şunu dediniz: slmcnm" followed by "slmcnm".
+ */
+describe('GeminiAdapter.readConversation — live markup', () => {
+  it('reads each turn once, without the screen-reader duplicate', async () => {
+    document.body.innerHTML = `
+      <user-query>
+        <h5 class="cdk-visually-hidden screen-reader-user-query-label">Siz şunu dediniz: slmcnm</h5>
+        <div class="query-text"><p>slmcnm</p></div>
+      </user-query>
+      <model-response>
+        <mat-icon aria-hidden="true">thumb_up</mat-icon>
+        <div class="markdown"><p>Selam! Nasılsın?</p></div>
+      </model-response>`;
+
+    const conversation = await new GeminiAdapter(selectors).readConversation();
+    expect(conversation.messages.map((m) => m.role)).toEqual(['user', 'assistant']);
+    expect(conversation.messages[0]?.content).toBe('slmcnm');
+    expect(conversation.messages[1]?.content).toBe('Selam! Nasılsın?');
+  });
+});

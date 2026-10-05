@@ -18,10 +18,26 @@ function serializeChildren(node: Node): string {
   return out;
 }
 
+/**
+ * Text that exists for assistive technology only. Gemini renders every user
+ * turn twice — once visibly, once as `h5.cdk-visually-hidden` reading
+ * "You said: …" — so a transcript that takes it gets each message twice, with
+ * a label glued to the front. The transcript should carry what the user sees.
+ */
+function isAccessibilityOnly(el: Element): boolean {
+  if (el.getAttribute('aria-hidden') === 'true') return true;
+  if (el.hasAttribute('hidden')) return true;
+  const className = typeof el.className === 'string' ? el.className : '';
+  return /(^|\s)(sr-only|visually-hidden|cdk-visually-hidden|screen-reader[\w-]*)(\s|$)/.test(
+    className,
+  );
+}
+
 function serializeNode(node: Node): string {
   if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? '';
   if (node.nodeType !== Node.ELEMENT_NODE) return '';
   const el = node as Element;
+  if (isAccessibilityOnly(el)) return '';
 
   switch (el.tagName.toLowerCase()) {
     case 'pre': {

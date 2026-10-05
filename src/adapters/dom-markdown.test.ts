@@ -72,3 +72,35 @@ describe('DOM → markdown — images', () => {
     expect(md('<p>text<button><img alt="copy icon"></button></p>')).toBe('text');
   });
 });
+
+/**
+ * Found on the first real fork (2026-10-05): Gemini renders every user turn
+ * twice — once visibly, once as `h5.cdk-visually-hidden` reading "Siz şunu
+ * dediniz: …" for screen readers. The transferred package carried the label
+ * and the message twice over.
+ */
+describe('extractMarkdown — accessibility-only nodes', () => {
+  it('drops a visually hidden screen-reader duplicate of the message', () => {
+    const el = document.createElement('div');
+    el.innerHTML =
+      '<h5 class="cdk-visually-hidden screen-reader-user-query-label">Siz şunu dediniz: slmcnm</h5>' +
+      '<p>slmcnm</p>';
+    expect(extractMarkdown(el)).toBe('slmcnm');
+  });
+
+  it('drops aria-hidden chrome and sr-only text, keeping what is on screen', () => {
+    const el = document.createElement('div');
+    el.innerHTML =
+      '<span class="sr-only">Assistant said:</span>' +
+      '<span aria-hidden="true">★</span>' +
+      '<span hidden>draft</span>' +
+      '<p>Visible answer</p>';
+    expect(extractMarkdown(el)).toBe('Visible answer');
+  });
+
+  it('keeps a class that merely contains the word, like “screenshot”', () => {
+    const el = document.createElement('div');
+    el.innerHTML = '<p class="screenshot-caption">Kept</p>';
+    expect(extractMarkdown(el)).toBe('Kept');
+  });
+});

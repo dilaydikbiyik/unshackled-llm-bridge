@@ -55,6 +55,9 @@ const STRINGS = {
 
     forkTitle: 'Sohbeti çatalla',
     forkTarget: 'Hedef platform',
+    forkScope: 'Kapsam',
+    forkScopeWhole: 'Tüm sohbet',
+    forkScopeUpTo: 'Bu mesaja kadar',
     forkMode: 'Aktarım modu',
     forkModeFull: 'Tamamını taşı',
     forkModeTrimmed: 'Kısaltarak taşı (eski mesajlar atlanır)',
@@ -125,6 +128,9 @@ const STRINGS = {
 
     forkTitle: 'Fork conversation',
     forkTarget: 'Target platform',
+    forkScope: 'Scope',
+    forkScopeWhole: 'Whole conversation',
+    forkScopeUpTo: 'Up to this message',
     forkMode: 'Transfer mode',
     forkModeFull: 'Transfer everything',
     forkModeTrimmed: 'Transfer trimmed (older messages elided)',

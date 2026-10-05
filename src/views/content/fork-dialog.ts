@@ -1,6 +1,6 @@
 import type { BridgeConversation } from '@domain/conversation/schema';
 import { PLATFORMS, PLATFORM_IDS, type PlatformId } from '@domain/platforms';
-import type { TransferMode, TransferPackageBuilder } from '@domain/transfer';
+import type { TransferMode, TransferPackageBuilder, TransferScope } from '@domain/transfer';
 import { t, type Lang } from '@shared/i18n';
 import type { CapturedAttachmentMeta } from '@shared/messages';
 import { activePersona, type Settings } from '@shared/settings';
@@ -17,9 +17,12 @@ export interface ForkDialogOptions {
   buildPackage: TransferPackageBuilder;
   /** Precomputed by the controller so the view holds no sizing policy. */
   showLengthWarning: boolean;
+  /** How many messages each scope covers, so the view does no index math. */
+  scopeCounts: Record<TransferScope, number>;
   onTransfer: (result: {
     target: PlatformId;
     text: string;
+    scope: TransferScope;
     attachmentIds: string[];
   }) => Promise<void>;
 }
@@ -78,6 +81,9 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
 
   const state = {
     target: targets[0] as PlatformId,
+    // Whole conversation by default: moving a chat is the common case, and
+    // forking one message was never worth opening a dialog for.
+    scope: 'whole' as TransferScope,
     mode: 'full' as TransferMode,
     includePersona: false,
     attachmentIds: attachments.map((a) => a.id),
@@ -97,6 +103,18 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
             <label for="target">${t(lang, 'forkTarget')}</label>
             <select id="target">
               ${targets.map((p) => html`<option value="${p}">${PLATFORMS[p].label}</option>`)}
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="scope">${t(lang, 'forkScope')}</label>
+            <select id="scope">
+              <option value="whole">
+                ${t(lang, 'forkScopeWhole')} (${String(options.scopeCounts.whole)})
+              </option>
+              <option value="upToMessage">
+                ${t(lang, 'forkScopeUpTo')} (${String(options.scopeCounts.upToMessage)})
+              </option>
             </select>
           </div>
 
@@ -164,6 +182,7 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
     const built = await options.buildPackage({
       target: state.target,
       mode: state.mode,
+      scope: state.scope,
       ...(state.includePersona && persona ? { personaText: persona.text } : {}),
     });
 
@@ -184,6 +203,10 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
 
   $<HTMLSelectElement>('target').addEventListener('change', (event) => {
     state.target = (event.target as HTMLSelectElement).value as PlatformId;
+    void rebuild();
+  });
+  $<HTMLSelectElement>('scope').addEventListener('change', (event) => {
+    state.scope = (event.target as HTMLSelectElement).value as TransferScope;
     void rebuild();
   });
   $<HTMLSelectElement>('mode').addEventListener('change', (event) => {
@@ -216,6 +239,7 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
     void options.onTransfer({
       target: state.target,
       text: state.text,
+      scope: state.scope,
       attachmentIds: state.attachmentIds,
     });
   });
