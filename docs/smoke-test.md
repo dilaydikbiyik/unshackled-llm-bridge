@@ -50,7 +50,10 @@ includes at least one code block:
       so rather than reporting as broken.
 - [ ] Hovering a message shows `⑂ Fork`; the dialog opens next to it.
 - [ ] The preview contains user **and** assistant turns, in order, with code fenced.
-- [ ] **Transfer** opens the target in a new tab and fills its composer. **Nothing is sent.**
+- [ ] **Transfer** opens the target in a new tab, uploads the context file, and fills its composer
+      with the continuation note alone. **Nothing is sent.**
+- [ ] Switching delivery to **As text in the composer** puts the whole package in the composer and
+      uploads nothing.
 - [ ] **Copy to clipboard** yields the same package.
 
 Edge cases, once per release:

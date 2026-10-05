@@ -8,6 +8,7 @@ import {
   mountAttachmentCapture,
   replayAttachments,
   REPLAY_GAP_MS,
+  storeGeneratedFile,
 } from './attachments';
 
 vi.mock('@domain/attachments', () => ({ MAX_ATTACHMENT_BYTES: 8 }));
@@ -109,5 +110,28 @@ describe('replay', () => {
     expect(count).toBe(2);
     expect(uploaded).toEqual(['first.txt', 'third.txt']);
     expect(sleep).toHaveBeenCalledWith(REPLAY_GAP_MS);
+  });
+});
+
+describe('generated context file', () => {
+  it('stores the transcript as markdown and returns its id for the transfer', async () => {
+    history.pushState({}, '', '/c/abc');
+    const sent: { meta: { mime: string; name: string } }[] = [];
+    const send = vi.fn(async (message: unknown) => {
+      sent.push(message as { meta: { mime: string; name: string } });
+      return { id: 'ctx-1' };
+    });
+    const id = await storeGeneratedFile('chatgpt', 'chatgpt-conversation.md', 'hi', send);
+
+    expect(id).toBe('ctx-1');
+    expect(sent[0]?.meta.mime).toBe('text/markdown');
+    expect(sent[0]?.meta.name).toBe('chatgpt-conversation.md');
+  });
+
+  it('refuses a transcript past the size cap rather than storing a truncated one', async () => {
+    const send = vi.fn(async () => ({ id: 'ctx-1' }));
+    // The mocked cap is 8 bytes.
+    expect(await storeGeneratedFile('chatgpt', 'c.md', 'x'.repeat(50), send)).toBeNull();
+    expect(send).not.toHaveBeenCalled();
   });
 });

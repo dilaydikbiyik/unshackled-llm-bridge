@@ -13,5 +13,15 @@
         </button>
       </fieldset>
     </main>
+    <script>
+      // Records what the extension drops, so the suite can prove the context
+      // file actually arrives rather than only that the composer changed.
+      window.__droppedFiles = [];
+      document.addEventListener('drop', (event) => {
+        for (const file of event.dataTransfer?.files ?? []) {
+          file.text().then((text) => window.__droppedFiles.push({ name: file.name, text }));
+        }
+      }, true);
+    </script>
   </body>
 </html>

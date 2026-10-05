@@ -1,6 +1,11 @@
 import type { BridgeConversation } from '@domain/conversation/schema';
 import { PLATFORMS, PLATFORM_IDS, type PlatformId } from '@domain/platforms';
-import type { TransferMode, TransferPackageBuilder, TransferScope } from '@domain/transfer';
+import type {
+  TransferDelivery,
+  TransferMode,
+  TransferPackageBuilder,
+  TransferScope,
+} from '@domain/transfer';
 import { t, type Lang } from '@shared/i18n';
 import type { CapturedAttachmentMeta } from '@shared/messages';
 import { activePersona, type Settings } from '@shared/settings';
@@ -23,6 +28,8 @@ export interface ForkDialogOptions {
     target: PlatformId;
     text: string;
     scope: TransferScope;
+    /** Present when the context travels as a file the controller must store. */
+    contextFile?: { name: string; text: string };
     attachmentIds: string[];
   }) => Promise<void>;
 }
@@ -84,10 +91,16 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
     // Whole conversation by default: moving a chat is the common case, and
     // forking one message was never worth opening a dialog for.
     scope: 'whole' as TransferScope,
+    // Attached by default where the target accepts files: continuing a
+    // conversation means the history is context, not the user's next message.
+    delivery: (PLATFORMS[targets[0] as PlatformId].acceptsFileUpload
+      ? 'attachment'
+      : 'inline') as TransferDelivery,
     mode: 'full' as TransferMode,
     includePersona: false,
     attachmentIds: attachments.map((a) => a.id),
     text: '',
+    contextFile: undefined as { name: string; text: string } | undefined,
   };
 
   const shadow = createShadowHost(FORK_DIALOG_HOST_ID);
@@ -116,6 +129,15 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
                 ${t(lang, 'forkScopeUpTo')} (${String(options.scopeCounts.upToMessage)})
               </option>
             </select>
+          </div>
+
+          <div class="field">
+            <label for="delivery">${t(lang, 'forkDelivery')}</label>
+            <select id="delivery">
+              <option value="attachment">${t(lang, 'forkDeliveryAttachment')}</option>
+              <option value="inline">${t(lang, 'forkDeliveryInline')}</option>
+            </select>
+            <span class="muted" id="delivery-hint"></span>
           </div>
 
           <div class="field">
@@ -183,12 +205,21 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
       target: state.target,
       mode: state.mode,
       scope: state.scope,
+      delivery: state.delivery,
       ...(state.includePersona && persona ? { personaText: persona.text } : {}),
     });
 
     state.text = built.text;
+    state.contextFile = built.contextFile;
     preview.value = built.text;
     tokens.textContent = `~${built.estimatedTokens.toLocaleString()} tokens`;
+    // The composer shows one sentence, so say where the rest of it went.
+    $('delivery-hint').textContent = built.contextFile
+      ? t(lang, 'forkDeliveryFile').replace(
+          '{file}',
+          `${built.contextFile.name} (${formatSize(built.contextFile.text.length)})`,
+        )
+      : '';
 
     const notes: SafeHtml[] = [];
     if (built.summaryError) {
@@ -201,8 +232,20 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
     transferButton.disabled = false;
   }
 
+  const deliverySelect = $<HTMLSelectElement>('delivery');
   $<HTMLSelectElement>('target').addEventListener('change', (event) => {
     state.target = (event.target as HTMLSelectElement).value as PlatformId;
+    // A target that takes no uploads cannot receive the context as a file.
+    const canAttach = PLATFORMS[state.target].acceptsFileUpload;
+    deliverySelect.disabled = !canAttach;
+    if (!canAttach) {
+      state.delivery = 'inline';
+      deliverySelect.value = 'inline';
+    }
+    void rebuild();
+  });
+  $<HTMLSelectElement>('delivery').addEventListener('change', (event) => {
+    state.delivery = (event.target as HTMLSelectElement).value as TransferDelivery;
     void rebuild();
   });
   $<HTMLSelectElement>('scope').addEventListener('change', (event) => {
@@ -240,6 +283,7 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
       target: state.target,
       text: state.text,
       scope: state.scope,
+      ...(state.contextFile ? { contextFile: state.contextFile } : {}),
       attachmentIds: state.attachmentIds,
     });
   });

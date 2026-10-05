@@ -64,7 +64,7 @@ describe('fork dialog', () => {
     mode.value = 'trimmed';
     mode.dispatchEvent(new Event('change'));
     await vi.waitFor(() =>
-      expect(requests.at(-1)).toEqual({ target: 'gemini', mode: 'trimmed', scope: 'whole' }),
+      expect(requests.at(-1)).toEqual({ target: 'gemini', mode: 'trimmed', scope: 'whole', delivery: 'attachment' }),
     );
   });
 

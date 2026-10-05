@@ -30,11 +30,25 @@ test('forks a ChatGPT conversation into Claude, filling the composer and sending
 
   const dialog = source.locator('#ulb-fork-dialog-host');
   const preview = dialog.locator('#preview');
+  // Default delivery: the composer carries the continuation note, the
+  // conversation travels as a file.
+  await expect(preview).toHaveValue(/chatgpt-conversation\.md/);
+  // The note quotes the open request on purpose — that is what the target has
+  // to answer. What it must not carry is the conversation itself.
+  await expect(preview).toHaveValue(/Where we left off: Plan a trip to Kyoto/);
+  await expect(preview).not.toHaveValue(/cherry blossoms/);
+  await expect(preview).not.toHaveValue(/```/);
+
+  // Inline delivery still produces the whole package, in Claude's structure.
+  await dialog.locator('#delivery').selectOption('inline');
   await expect(preview).toHaveValue(/<conversation>/);
   await expect(preview).toHaveValue(/Plan a trip to Kyoto/);
   await expect(preview).toHaveValue(/\*\*cherry blossoms\*\*/);
   await expect(preview).not.toHaveValue(/Switch model/);
   await expect(preview).toHaveValue(/```js\nconst days = 5;\n```/);
+
+  await dialog.locator('#delivery').selectOption('attachment');
+  await expect(preview).toHaveValue(/chatgpt-conversation\.md/);
 
   const [target] = await Promise.all([
     context.waitForEvent('page'),
@@ -43,8 +57,22 @@ test('forks a ChatGPT conversation into Claude, filling the composer and sending
   await arrive(target, 'https://claude.ai/new');
 
   const composer = target.locator('div.ProseMirror[contenteditable="true"]');
-  await expect(composer).toContainText('Plan a trip to Kyoto');
-  await expect(composer).toContainText('cherry blossoms');
+  await expect(composer).toContainText('chatgpt-conversation.md');
+  await expect(composer).not.toContainText('cherry blossoms');
+
+  // The history arrives as a dropped file — this is the part a paste cannot do.
+  await expect
+    .poll(async () =>
+      target.evaluate(
+        () => (window as { __droppedFiles?: { name: string; text: string }[] }).__droppedFiles ?? [],
+      ),
+    )
+    .toEqual([
+      expect.objectContaining({
+        name: 'chatgpt-conversation.md',
+        text: expect.stringContaining('cherry blossoms') as unknown as string,
+      }),
+    ]);
   expect(await target.evaluate(() => (window as { __sendClicks?: number }).__sendClicks ?? 0)).toBe(0);
 });
 
@@ -57,8 +85,11 @@ test('forks a Claude conversation into Gemini, in the target platform’s format
 
   const dialog = source.locator('#ulb-fork-dialog-host');
   await dialog.locator('#target').selectOption('gemini');
+  await dialog.locator('#delivery').selectOption('inline');
   await expect(dialog.locator('#preview')).toHaveValue(/## Previous conversation context/);
   await expect(dialog.locator('#preview')).toHaveValue(/\*Postgres\*/);
+  // The brief states where the work stands, ahead of the transcript.
+  await expect(dialog.locator('#preview')).toHaveValue(/### Where this stands/);
 
   const [target] = await Promise.all([
     context.waitForEvent('page'),

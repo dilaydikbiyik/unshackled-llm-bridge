@@ -7,7 +7,7 @@ import type {
   TransferScope,
 } from '@domain/transfer';
 import { sliceTokens, sliceUpTo, trimToBudget, TRANSFER_TOKEN_BUDGET } from '@domain/wrap/limits';
-import { wrapForTarget } from '@domain/wrap/templates';
+import { continuationNote, wrapForTarget } from '@domain/wrap/templates';
 import type { Lang } from '@shared/i18n';
 import { sendToBackground, type SummarizeResponse } from '@shared/messages';
 
@@ -34,7 +34,13 @@ export function createTransferPackageBuilder(context: ForkContext): TransferPack
   const { conversation, cutIndex, language } = context;
   const summarize = context.summarize ?? defaultSummarizer;
 
-  return async ({ target, mode, scope, personaText }: TransferRequest): Promise<TransferPackage> => {
+  return async ({
+    target,
+    mode,
+    scope,
+    delivery,
+    personaText,
+  }: TransferRequest): Promise<TransferPackage> => {
     // Resolved per request: the dialog lets the user switch scope without the
     // controller rebuilding the builder.
     const slice = messagesInScope(conversation, cutIndex, scope);
@@ -59,12 +65,25 @@ export function createTransferPackageBuilder(context: ForkContext): TransferPack
 
     const prepared: { messages: typeof slice; trimmedCount: number } =
       mode === 'trimmed' ? trimToBudget(slice) : { messages: slice, trimmedCount: 0 };
-    const text = wrapForTarget(
-      { ...base, messages: prepared.messages, trimmedCount: prepared.trimmedCount },
-      target,
-    );
-    return { text, estimatedTokens: sliceTokens(prepared.messages) };
+    const wrapped = { ...base, messages: prepared.messages, trimmedCount: prepared.trimmedCount };
+    const text = wrapForTarget(wrapped, target);
+    const estimatedTokens = sliceTokens(prepared.messages);
+
+    if (delivery === 'attachment') {
+      const name = contextFileName(conversation.sourcePlatform);
+      return {
+        text: continuationNote(wrapped, name),
+        estimatedTokens,
+        contextFile: { name, text },
+      };
+    }
+    return { text, estimatedTokens };
   };
+}
+
+/** Stable, readable, and safe as a filename on every platform. */
+export function contextFileName(sourcePlatform: string): string {
+  return `${sourcePlatform}-conversation.md`;
 }
 
 /** The messages a scope covers. `whole` ignores the fork point entirely. */

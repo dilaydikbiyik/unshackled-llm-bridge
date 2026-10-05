@@ -80,3 +80,25 @@ export function wrapForTarget(input: WrapInput, target: PlatformId): string {
   parts.push('---', '');
   return parts.join('\n');
 }
+
+/**
+ * The one thing the composer carries when the context travels as a file.
+ *
+ * Continuing a conversation elsewhere is not the same as pasting it there. The
+ * history belongs in the attachment, where the target reads it as a document;
+ * the composer belongs to the user's next message. What stays visible is the
+ * sentence that makes the file make sense.
+ */
+export function continuationNote(input: WrapInput, fileName: string): string {
+  const source = PLATFORMS[input.sourcePlatform].label;
+  const model = input.model ? ` (${input.model})` : '';
+  const digest = digestConversation(input.messages, input.attachmentNames ?? []);
+
+  const lines = [
+    `Continuing a conversation I had with ${source}${model}. ` +
+      `Its full transcript is attached as ${fileName} — read it first, ` +
+      'then pick up where it left off.',
+  ];
+  if (digest.openRequest) lines.push('', `Where we left off: ${digest.openRequest}`);
+  return lines.join('\n');
+}

@@ -10,8 +10,11 @@ export type TransferMode = 'full' | 'trimmed' | 'summary';
 
 /** The finished text handed to the target platform's composer. */
 export interface TransferPackage {
+  /** What lands in the composer: the whole package, or the continuation note. */
   text: string;
   estimatedTokens: number;
+  /** Set for `attachment` delivery: the context that travels as a file. */
+  contextFile?: { name: string; text: string };
   /** Set when summarization was requested but failed; the view shows a notice. */
   summaryError?: string;
 }
@@ -25,10 +28,23 @@ export interface TransferPackage {
  */
 export type TransferScope = 'whole' | 'upToMessage';
 
+/**
+ * How the context reaches the target.
+ * - `attachment` — the transcript travels as an uploaded file and the composer
+ *                  carries one continuation sentence. This is what continuing a
+ *                  conversation looks like: the target has the history, and the
+ *                  user writes their next message into an empty composer.
+ * - `inline`     — everything goes into the composer as text. The fallback for
+ *                  targets that take no uploads, and when the user wants to
+ *                  read and edit the whole package before it lands.
+ */
+export type TransferDelivery = 'attachment' | 'inline';
+
 export interface TransferRequest {
   target: PlatformId;
   mode: TransferMode;
   scope: TransferScope;
+  delivery: TransferDelivery;
   personaText?: string;
 }
 

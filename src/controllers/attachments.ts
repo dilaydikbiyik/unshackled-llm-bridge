@@ -2,7 +2,12 @@ import type { PlatformAdapter } from '@adapters/types';
 import { MAX_ATTACHMENT_BYTES } from '@domain/attachments';
 import type { PlatformId } from '@domain/platforms';
 import { base64ToBlob, blobToBase64 } from '@shared/base64';
-import { sendToBackground, type AttachmentPayload, type MessageOf } from '@shared/messages';
+import {
+  sendToBackground,
+  type AttachmentPayload,
+  type CapturedAttachmentMeta,
+  type MessageOf,
+} from '@shared/messages';
 
 /**
  * File sandbox, capture and replay. The user's own uploads — through the file
@@ -60,6 +65,38 @@ export async function captureFile(
     dataBase64: await blobToBase64(file),
   });
   return true;
+}
+
+/**
+ * Stores a file the extension generated itself — the conversation context that
+ * travels with a fork. Unlike `captureFile` it returns the new id, because the
+ * transfer must reference it.
+ *
+ * It bypasses the `isTrusted` capture path by construction: nothing is
+ * listening to an event here, so a generated file cannot be mistaken for one
+ * the user uploaded.
+ */
+export async function storeGeneratedFile(
+  platform: PlatformId,
+  name: string,
+  text: string,
+  send: SendCapture = sendToBackground,
+): Promise<string | null> {
+  const blob = new Blob([text], { type: 'text/markdown' });
+  if (blob.size > MAX_ATTACHMENT_BYTES) return null;
+  const stored = (await send({
+    type: 'attachment/capture',
+    meta: {
+      name,
+      mime: 'text/markdown',
+      size: blob.size,
+      sourcePlatform: platform,
+      conversationKey: conversationKey(platform),
+      capturedAt: new Date().toISOString(),
+    },
+    dataBase64: await blobToBase64(blob),
+  })) as CapturedAttachmentMeta | undefined;
+  return stored?.id ?? null;
 }
 
 /** Platforms process uploads one at a time; the replay is paced so their UI keeps up. */

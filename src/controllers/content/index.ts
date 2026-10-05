@@ -5,7 +5,12 @@ import {
   resolveSelectorAll,
   type SelectorConfig,
 } from '@data/config/selector-config';
-import { conversationKey, mountAttachmentCapture, replayAttachments } from '@controllers/attachments';
+import {
+  conversationKey,
+  mountAttachmentCapture,
+  replayAttachments,
+  storeGeneratedFile,
+} from '@controllers/attachments';
 import {
   createTransferPackageBuilder,
   exceedsTransferBudget,
@@ -76,12 +81,22 @@ async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Pr
       whole: conversation.messages.length,
       upToMessage: messagesInScope(conversation, messageIndex, 'upToMessage').length,
     },
-    onTransfer: async ({ target, text, scope, attachmentIds }) => {
+    onTransfer: async ({ target, text, scope, contextFile, attachmentIds }) => {
+      // The context travels as a file: store it, then reference it like any
+      // other attachment so the target replays it through the same path.
+      const contextId = contextFile
+        ? await storeGeneratedFile(adapter.platform, contextFile.name, contextFile.text)
+        : null;
       await sendToBackground({
         type: 'inject/initiate',
         request: {
           targetPlatform: target,
-          injection: { text, attachmentIds },
+          injection: {
+            text,
+            attachmentIds: contextId ? [contextId, ...attachmentIds] : attachmentIds,
+            // Nothing is lost if the upload fails on the far side.
+            ...(contextFile ? { fallbackText: contextFile.text } : {}),
+          },
           lineage: {
             sourceConversationId: conversation.id,
             sourcePlatform: conversation.sourcePlatform,
@@ -107,12 +122,20 @@ async function claimPendingInjection(adapter: PlatformAdapter): Promise<void> {
     await waitUntilReady(adapter);
     // Injection fills the composer only; sending stays a user action.
     await adapter.injectText(pending.text);
-    if (pending.attachmentIds.length) await replayAttachments(adapter, pending.attachmentIds);
+    if (pending.attachmentIds.length) {
+      const replayed = await replayAttachments(adapter, pending.attachmentIds);
+      // A continuation note with no conversation attached is worse than a
+      // plain paste, so fall back to the full package in the composer.
+      if (replayed === 0 && pending.fallbackText) {
+        await adapter.injectText(pending.fallbackText);
+        showToast(t(settings.language, 'contextFileFailed'));
+      }
+    }
   } catch {
     // The package is never lost: offer it on the clipboard instead.
     showToast(t(settings.language, 'injectFailed'), {
       label: t(settings.language, 'copyAction'),
-      text: pending.text,
+      text: pending.fallbackText ?? pending.text,
     });
   }
 

@@ -30,7 +30,7 @@ describe('transfer package builder', () => {
       cutIndex: 2,
       language: 'en',
     });
-    const result = await build({ target: 'claude', mode: 'full', scope: 'upToMessage' });
+    const result = await build({ target: 'claude', mode: 'full', scope: 'upToMessage', delivery: 'inline' });
 
     expect(result.text).toContain('msg2');
     expect(result.text).not.toContain('msg3');
@@ -42,7 +42,7 @@ describe('transfer package builder', () => {
       cutIndex: 1,
       language: 'en',
     });
-    expect((await build({ target: 'claude', mode: 'full', scope: 'upToMessage' })).text).toContain('model: GPT-5');
+    expect((await build({ target: 'claude', mode: 'full', scope: 'upToMessage', delivery: 'inline' })).text).toContain('model: GPT-5');
   });
 
   it('includes the persona only when the caller passes one', async () => {
@@ -51,10 +51,10 @@ describe('transfer package builder', () => {
       cutIndex: 1,
       language: 'en',
     });
-    expect((await build({ target: 'claude', mode: 'full', scope: 'upToMessage', personaText: 'Be terse.' })).text).toContain(
+    expect((await build({ target: 'claude', mode: 'full', scope: 'upToMessage', delivery: 'inline', personaText: 'Be terse.' })).text).toContain(
       'Be terse.',
     );
-    expect((await build({ target: 'claude', mode: 'full', scope: 'upToMessage' })).text).not.toContain('Be terse.');
+    expect((await build({ target: 'claude', mode: 'full', scope: 'upToMessage', delivery: 'inline' })).text).not.toContain('Be terse.');
   });
 
   it('replaces the transcript with the brief when summarization succeeds', async () => {
@@ -66,7 +66,7 @@ describe('transfer package builder', () => {
       summarize,
     });
 
-    const result = await build({ target: 'claude', mode: 'summary', scope: 'upToMessage' });
+    const result = await build({ target: 'claude', mode: 'summary', scope: 'upToMessage', delivery: 'inline' });
     expect(summarize).toHaveBeenCalledOnce();
     expect(result.text).toContain('User needs X.');
     expect(result.text).not.toContain('msg0');
@@ -82,7 +82,7 @@ describe('transfer package builder', () => {
       summarize,
     });
 
-    const result = await build({ target: 'claude', mode: 'summary', scope: 'upToMessage' });
+    const result = await build({ target: 'claude', mode: 'summary', scope: 'upToMessage', delivery: 'inline' });
     // The whole transcript is still there — a failed summary must never mean a lost package.
     expect(result.text).toContain('msg0');
     expect(result.text).toContain('msg3');
@@ -98,8 +98,8 @@ describe('transfer package builder', () => {
       summarize,
     });
 
-    await build({ target: 'claude', mode: 'full', scope: 'upToMessage' });
-    await build({ target: 'claude', mode: 'trimmed', scope: 'upToMessage' });
+    await build({ target: 'claude', mode: 'full', scope: 'upToMessage', delivery: 'inline' });
+    await build({ target: 'claude', mode: 'trimmed', scope: 'upToMessage', delivery: 'inline' });
     expect(summarize).not.toHaveBeenCalled();
   });
 
@@ -109,7 +109,7 @@ describe('transfer package builder', () => {
       cutIndex: 29,
       language: 'en',
     });
-    const result = await build({ target: 'claude', mode: 'trimmed', scope: 'upToMessage' });
+    const result = await build({ target: 'claude', mode: 'trimmed', scope: 'upToMessage', delivery: 'inline' });
     expect(result.text).toMatch(/earlier messages omitted/);
   });
 
@@ -119,8 +119,8 @@ describe('transfer package builder', () => {
       cutIndex: 1,
       language: 'en',
     });
-    expect((await build({ target: 'claude', mode: 'full', scope: 'upToMessage' })).text).toContain('<conversation>');
-    expect((await build({ target: 'gemini', mode: 'full', scope: 'upToMessage' })).text).toContain(
+    expect((await build({ target: 'claude', mode: 'full', scope: 'upToMessage', delivery: 'inline' })).text).toContain('<conversation>');
+    expect((await build({ target: 'gemini', mode: 'full', scope: 'upToMessage', delivery: 'inline' })).text).toContain(
       '## Previous conversation context',
     );
   });
@@ -160,8 +160,8 @@ describe('transfer scope', () => {
       cutIndex: 0,
       language: 'en',
     });
-    const whole = await build({ target: 'claude', mode: 'full', scope: 'whole' });
-    const upTo = await build({ target: 'claude', mode: 'full', scope: 'upToMessage' });
+    const whole = await build({ target: 'claude', mode: 'full', scope: 'whole', delivery: 'inline' });
+    const upTo = await build({ target: 'claude', mode: 'full', scope: 'upToMessage', delivery: 'inline' });
 
     expect(messagesInScope(conversation(4), 0, 'whole')).toHaveLength(4);
     expect(messagesInScope(conversation(4), 0, 'upToMessage')).toHaveLength(1);
@@ -176,11 +176,70 @@ describe('transfer scope', () => {
     });
     // Message 1 is the assistant's reply to message 0 — the turn that was
     // missing from the first live fork.
-    expect((await build({ target: 'claude', mode: 'full', scope: 'whole' })).text).toContain(
+    expect((await build({ target: 'claude', mode: 'full', scope: 'whole', delivery: 'inline' })).text).toContain(
       'msg1',
     );
-    expect((await build({ target: 'claude', mode: 'full', scope: 'upToMessage' })).text).not.toContain(
+    expect((await build({ target: 'claude', mode: 'full', scope: 'upToMessage', delivery: 'inline' })).text).not.toContain(
       'msg1',
     );
+  });
+});
+
+/**
+ * Continuing a conversation elsewhere is not the same as pasting it there.
+ * With attachment delivery the transcript travels as a file and the composer
+ * carries one sentence, so the target starts with the history in hand and the
+ * user's own next message is the only thing they have to write.
+ */
+describe('attachment delivery', () => {
+  const build = createTransferPackageBuilder({
+    conversation: conversation(4),
+    cutIndex: 3,
+    language: 'en',
+  });
+
+  it('puts the transcript in a file and a single note in the composer', async () => {
+    const pkg = await build({
+      target: 'claude',
+      mode: 'full',
+      scope: 'whole',
+      delivery: 'attachment',
+    });
+
+    expect(pkg.contextFile?.name).toBe('chatgpt-conversation.md');
+    expect(pkg.contextFile?.text).toContain('msg0');
+    expect(pkg.contextFile?.text).toContain('msg3');
+    // The composer gets the sentence that makes the file make sense, not the
+    // conversation itself.
+    expect(pkg.text).toContain('chatgpt-conversation.md');
+    expect(pkg.text).not.toContain('msg0');
+    expect(pkg.text.length).toBeLessThan((pkg.contextFile?.text.length ?? 0) / 2);
+  });
+
+  it('names the open request in the note, so the target knows what to do', async () => {
+    const pkg = await build({
+      target: 'gemini',
+      mode: 'full',
+      scope: 'whole',
+      delivery: 'attachment',
+    });
+    expect(pkg.text).toContain('Where we left off:');
+  });
+
+  it('carries the whole package inline when delivery is inline', async () => {
+    const pkg = await build({
+      target: 'claude',
+      mode: 'full',
+      scope: 'whole',
+      delivery: 'inline',
+    });
+    expect(pkg.contextFile).toBeUndefined();
+    expect(pkg.text).toContain('msg0');
+  });
+
+  it('estimates the same size either way — the context travels, however it travels', async () => {
+    const asFile = await build({ target: 'claude', mode: 'full', scope: 'whole', delivery: 'attachment' });
+    const asText = await build({ target: 'claude', mode: 'full', scope: 'whole', delivery: 'inline' });
+    expect(asFile.estimatedTokens).toBe(asText.estimatedTokens);
   });
 });

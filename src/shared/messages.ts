@@ -7,6 +7,12 @@ import type { Lang } from '@shared/i18n';
 export interface PendingInjection {
   text: string;
   attachmentIds: string[];
+  /**
+   * The whole package as text. Set when the context travels as a file, so a
+   * failed upload degrades to an inline transfer instead of landing the target
+   * with a continuation note and no conversation to continue.
+   */
+  fallbackText?: string;
   comparisonId?: string;
 }
 

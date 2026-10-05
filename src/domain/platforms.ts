@@ -6,6 +6,8 @@ export interface PlatformInfo {
   label: string;
   hosts: string[];
   newChatUrl: string;
+  /** False disables attachment delivery for this target in the fork dialog. */
+  acceptsFileUpload: boolean;
 }
 
 export const PLATFORMS: Record<PlatformId, PlatformInfo> = {
@@ -14,12 +16,14 @@ export const PLATFORMS: Record<PlatformId, PlatformInfo> = {
     label: 'ChatGPT',
     hosts: ['chatgpt.com'],
     newChatUrl: 'https://chatgpt.com/',
+    acceptsFileUpload: true,
   },
   claude: {
     id: 'claude',
     label: 'Claude',
     hosts: ['claude.ai'],
     newChatUrl: 'https://claude.ai/new',
+    acceptsFileUpload: true,
   },
   // Adapter lands in phase 2.2; listed so the UI can show it as "coming soon".
   gemini: {
@@ -27,6 +31,7 @@ export const PLATFORMS: Record<PlatformId, PlatformInfo> = {
     label: 'Gemini',
     hosts: ['gemini.google.com'],
     newChatUrl: 'https://gemini.google.com/app',
+    acceptsFileUpload: true,
   },
 };
 

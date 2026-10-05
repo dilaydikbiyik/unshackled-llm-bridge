@@ -55,6 +55,11 @@ const STRINGS = {
 
     forkTitle: 'Sohbeti çatalla',
     forkTarget: 'Hedef platform',
+    contextFileFailed: 'Bağlam dosyası yüklenemedi; tamamı mesaj kutusuna yazıldı.',
+    forkDelivery: 'Bağlam nasıl gitsin',
+    forkDeliveryAttachment: 'Dosya olarak eklensin (sohbete devam)',
+    forkDeliveryInline: 'Mesaj kutusuna metin olarak',
+    forkDeliveryFile: 'Ek: {file}',
     forkScope: 'Kapsam',
     forkScopeWhole: 'Tüm sohbet',
     forkScopeUpTo: 'Bu mesaja kadar',
@@ -128,6 +133,11 @@ const STRINGS = {
 
     forkTitle: 'Fork conversation',
     forkTarget: 'Target platform',
+    contextFileFailed: 'The context file could not be uploaded; the full package is in the composer instead.',
+    forkDelivery: 'How the context travels',
+    forkDeliveryAttachment: 'Attached as a file (continue the chat)',
+    forkDeliveryInline: 'As text in the composer',
+    forkDeliveryFile: 'Attached: {file}',
     forkScope: 'Scope',
     forkScopeWhole: 'Whole conversation',
     forkScopeUpTo: 'Up to this message',

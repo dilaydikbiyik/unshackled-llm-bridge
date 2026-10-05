@@ -19,6 +19,15 @@ All notable changes to this project are documented here. The format follows
 - A misplaced bullet in the 0.3.1 notes was removed.
 
 ### Added
+- **Continuing a conversation, instead of pasting one.** The transcript now travels to the target
+  as an uploaded Markdown file, and the composer carries a single sentence: what this is, where it
+  came from, and what was being asked. The user's own next message goes into an empty composer,
+  which is what continuing a conversation elsewhere actually looks like. Delivery as inline text
+  stays available, and is selected automatically for any target that takes no uploads. If the
+  upload fails on the far side, the full package is written into the composer instead — a
+  continuation note with no conversation attached would be worse than a paste.
+
+### Added
 - **A handoff brief at the head of every package.** Derived structurally from the slice — no model,
   no API key, no network — it states how many turns travel, what code comes with them and in which
   languages, which files were replayed, and what the user actually needs next. Without it the
