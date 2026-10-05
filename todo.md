@@ -332,6 +332,10 @@ and ChatGPT's model label on a paid plan.
 - **2026-09-10** — first live check. Drift on all three platforms; see the 0.3.1 changelog.
 - **2026-09-11** — send buttons verified on all three platforms by typing one character into a new
   chat's composer and counting matches. Gemini's had drifted; fixed in config v6.
+- **2026-10-05** — first real install of the unpacked extension, by the owner. The side panel came
+  up, Gemini reported **ready**, and the two platforms without an open tab were reported as such
+  rather than as broken. One cosmetic defect surfaced that no fixture could have caught: the
+  onboarding steps were numbered twice.
 - **2026-10-05** — full probe re-run on a real conversation on each platform: every required target
   resolves, both sides of the conversation match, no broken selector. One drift found and absorbed
   by the fallback chain: ChatGPT's CSS-module response root is gone and the answer now sits in

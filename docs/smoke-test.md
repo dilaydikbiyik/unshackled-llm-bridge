@@ -44,7 +44,10 @@ conversation that already contains one.
 For each **source → target** pair (6 pairs across three platforms), on a conversation that
 includes at least one code block:
 
-- [ ] The side panel shows the source platform as **ready**.
+- [ ] On a first install, the onboarding card reads correctly — steps numbered once, and
+      **Anladım** dismisses it for good.
+- [ ] The side panel shows the source platform as **ready**, and a platform with no open tab says
+      so rather than reporting as broken.
 - [ ] Hovering a message shows `⑂ Fork`; the dialog opens next to it.
 - [ ] The preview contains user **and** assistant turns, in order, with code fenced.
 - [ ] **Transfer** opens the target in a new tab and fills its composer. **Nothing is sent.**

@@ -10,9 +10,9 @@ const STRINGS = {
     privacyNote: 'Verilerin hiçbir sunucuya gitmez — her şey bu tarayıcıda kalır.',
 
     onboardTitle: 'Nasıl çalışır?',
-    onboardStep1: '1. ChatGPT, Claude veya Gemini’de bir sohbet aç.',
-    onboardStep2: '2. Bir mesajın üzerine gel, beliren “⑂ Fork” butonuna bas.',
-    onboardStep3: '3. Hedef platformu seç — sohbet bağlamıyla birlikte taşınır. Göndere her zaman sen basarsın.',
+    onboardStep1: 'ChatGPT, Claude veya Gemini’de bir sohbet aç.',
+    onboardStep2: 'Bir mesajın üzerine gel, beliren “⑂ Fork” butonuna bas.',
+    onboardStep3: 'Hedef platformu seç — sohbet bağlamıyla birlikte taşınır. Göndere her zaman sen basarsın.',
     onboardDismiss: 'Anladım',
 
     statusSection: 'Platform durumu',
@@ -80,9 +80,9 @@ const STRINGS = {
     privacyNote: 'Your data never leaves this browser — no servers involved.',
 
     onboardTitle: 'How it works',
-    onboardStep1: '1. Open a conversation on ChatGPT, Claude or Gemini.',
-    onboardStep2: '2. Hover a message and hit the “⑂ Fork” button.',
-    onboardStep3: '3. Pick the target platform — the context moves with you. You always press send yourself.',
+    onboardStep1: 'Open a conversation on ChatGPT, Claude or Gemini.',
+    onboardStep2: 'Hover a message and hit the “⑂ Fork” button.',
+    onboardStep3: 'Pick the target platform — the context moves with you. You always press send yourself.',
     onboardDismiss: 'Got it',
 
     statusSection: 'Platform status',

@@ -33,6 +33,17 @@ describe('i18n catalogs', () => {
     expect(t('tr', 'settingsSave')).toBe('Kaydet');
   });
 
+  // Caught on the first real install (2026-10-05): the side panel rendered
+  // "1. 1. Open a conversation…", because the steps carried their own numbers
+  // and <ol> numbers them again. Markers belong to the list, not the copy.
+  it('leaves list numbering to the list, in both languages', () => {
+    for (const lang of ['tr', 'en'] as const) {
+      for (const key of ['onboardStep1', 'onboardStep2', 'onboardStep3'] as const) {
+        expect(t(lang, key)).not.toMatch(/^\s*\d+[.)]/);
+      }
+    }
+  });
+
   it('keeps the privacy promise present in both languages', () => {
     // This string is the product's core claim; losing it in a translation
     // would quietly drop the thing the extension is built to promise.

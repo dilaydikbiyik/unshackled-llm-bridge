@@ -18,6 +18,11 @@ All notable changes to this project are documented here. The format follows
   ahead of GitHub removing Node 20.
 - A misplaced bullet in the 0.3.1 notes was removed.
 
+### Fixed
+- **The onboarding steps were numbered twice** — "1. 1. Open a conversation…" — because each step
+  carried its own number inside an `<ol>`. Found on the first real install. The markers now come
+  from the list, and a test asserts no step string starts with its own number, in either language.
+
 ### Verified
 - **Full live re-check of all three platforms (2026-10-05), plus the end-to-end suite.** Every
   required selector target resolves on a real conversation on each platform, and both sides of the
