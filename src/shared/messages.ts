@@ -38,6 +38,13 @@ export interface CapturedAttachmentMeta {
   /** `${platform}:${pathname}` — groups files by the conversation they were seen in. */
   conversationKey: string;
   capturedAt: string;
+  /**
+   * True for a file the extension produced — the transcript that travels with
+   * a fork. It is stored like any other attachment so the replay path can
+   * carry it, but it is not one of the user's files, and offering it back as
+   * one makes every fork carry the previous fork's transcript as well.
+   */
+  generated?: boolean;
 }
 
 /** What a content script knows about a file before the store assigns identity. */

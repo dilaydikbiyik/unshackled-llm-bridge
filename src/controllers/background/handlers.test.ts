@@ -252,3 +252,39 @@ describe('summarize', () => {
     });
   });
 });
+
+/**
+ * Seen on the first real use: a fork arrived at the target carrying two
+ * transcripts, the current one and the one from the fork before it. The
+ * generated transcript is stored like any attachment so the replay path can
+ * carry it, and the dialog was then offering it back as one of the user's own
+ * files, with every fork adding another.
+ */
+describe('generated transcripts are not the user’s files', () => {
+  const userFile = {
+    id: 'a1',
+    name: 'spec.pdf',
+    mime: 'application/pdf',
+    size: 10,
+    sha256: 'x',
+    sourcePlatform: 'chatgpt' as const,
+    conversationKey: 'k',
+    capturedAt: 't',
+  };
+  const previousTranscript = {
+    ...userFile,
+    id: 'a2',
+    name: 'gemini-conversation.md',
+    mime: 'text/markdown',
+    generated: true,
+  };
+
+  it('lists only what the user uploaded', async () => {
+    const { call } = setup({
+      repo: { listAttachments: vi.fn(async () => [userFile, previousTranscript]) },
+    });
+    const listed = await call({ type: 'attachment/list', conversationKey: 'k' });
+
+    expect(listed.map((meta) => meta.id)).toEqual(['a1']);
+  });
+});

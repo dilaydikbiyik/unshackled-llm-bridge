@@ -16,7 +16,7 @@ import {
   exceedsTransferBudget,
   messagesInScope,
 } from '@controllers/fork';
-import { t } from '@shared/i18n';
+import { t, type Lang } from '@shared/i18n';
 import { detectPlatform } from '@domain/platforms';
 import { sendToBackground } from '@shared/messages';
 import { guardContext } from '@shared/lifecycle';
@@ -63,7 +63,7 @@ async function main(): Promise<void> {
   await guardContext(async () => {
     await reportHealth(adapter);
     teardowns.push(mountAttachmentCapture(adapter));
-    teardowns.push(mountFork(adapter, config));
+    teardowns.push(mountFork(adapter, config, (await getSettings()).language));
     void watchForArchive(adapter);
     await claimPendingInjection(adapter);
   }, abandonPage);
@@ -74,9 +74,14 @@ async function reportHealth(adapter: PlatformAdapter): Promise<void> {
   await sendToBackground({ type: 'adapter/health-report', health });
 }
 
-function mountFork(adapter: PlatformAdapter, config: SelectorConfig): () => void {
+function mountFork(
+  adapter: PlatformAdapter,
+  config: SelectorConfig,
+  lang: Lang,
+): () => void {
   const selectors = config.platforms[adapter.platform] ?? {};
   return mountForkButtons({
+    hint: t(lang, 'forkHint'),
     locateMessages: () => resolveSelectorAll(document, selectors['messageContainer']),
     onFork: (messageIndex) => void openDialogFor(adapter, messageIndex),
     prepareDrag: () => prepareConversationDrag(adapter),

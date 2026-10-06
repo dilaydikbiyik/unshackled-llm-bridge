@@ -38,6 +38,12 @@ All notable changes to this project are documented here. The format follows
   picker or new-chat route, so it reports both as unavailable rather than failing at them later.
 
 ### Fixed
+- **Every fork carried the previous fork's transcript as well.** The generated transcript is stored
+  like any attachment so the replay path can carry it, and the fork dialog was then offering it
+  back as one of the user's own files, pre-ticked. A second fork arrived with two transcripts, a
+  third with three. Generated files are now marked as such and kept out of the list.
+- **The drag affordance looked like a button and nothing else.** It now shows a grip, says so in
+  its tooltip, and uses a grab cursor — a gesture nobody can see is a gesture nobody uses.
 - **An orphaned content script no longer throws on every listener.** Reloading the extension leaves
   the old script running in every open tab, attached to a runtime that is gone; its next `chrome.*`
   call raised "Extension context invalidated". The script now recognises that it has been orphaned,

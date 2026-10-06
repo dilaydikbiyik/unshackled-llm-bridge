@@ -93,6 +93,7 @@ export async function storeGeneratedFile(
       sourcePlatform: platform,
       conversationKey: conversationKey(platform),
       capturedAt: new Date().toISOString(),
+      generated: true,
     },
     dataBase64: await blobToBase64(blob),
   })) as CapturedAttachmentMeta | undefined;

@@ -20,6 +20,8 @@ export interface ForkButtonOptions {
    * `dragstart` cannot wait for a promise.
    */
   prepareDrag?: () => Promise<DraggedConversation | null>;
+  /** Tooltip telling the user the affordance can be dragged, not only clicked. */
+  hint?: string;
 }
 
 /**
@@ -38,13 +40,16 @@ export function mountForkButtons(options: ForkButtonOptions): () => void {
         button {
           position: absolute; z-index: 2147483646; display: none;
           font: 500 12px/1 ui-sans-serif, system-ui, sans-serif;
-          padding: 5px 9px; border-radius: 999px; cursor: pointer;
+          padding: 5px 9px; border-radius: 999px; cursor: grab;
           background: #534ab7; color: #fff; border: none;
           box-shadow: 0 2px 10px rgba(0,0,0,0.22);
         }
         button:hover { background: #3C3489; }
+        button:active { cursor: grabbing; }
       </style>
-      <button id="fork" type="button" draggable="true" aria-label="Fork">⑂ Fork</button>
+      <button id="fork" type="button" draggable="true" aria-label="Fork" title="${options.hint ?? ''}">
+        ⠿ ⑂ Fork
+      </button>
     `,
   );
 

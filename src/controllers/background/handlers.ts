@@ -89,7 +89,11 @@ export function createHandlers(deps: BackgroundDeps): HandlerMap {
       return deps.repo.saveAttachment(meta, bytes);
     },
 
-    'attachment/list': ({ conversationKey }) => deps.repo.listAttachments(conversationKey),
+    // Only the user's own files. A transcript this extension generated for an
+    // earlier fork lives in the same store, and offering it back would make
+    // each fork carry every previous fork's transcript with it.
+    'attachment/list': async ({ conversationKey }) =>
+      (await deps.repo.listAttachments(conversationKey)).filter((meta) => !meta.generated),
 
     'attachment/get': async ({ id }) => {
       const stored = await deps.repo.getAttachment(id);
