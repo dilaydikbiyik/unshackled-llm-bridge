@@ -1,5 +1,5 @@
 import type { BridgeConversation } from '@domain/conversation/schema';
-import { PLATFORMS, PLATFORM_IDS, type PlatformId } from '@domain/platforms';
+import { knownPlatforms, platformInfo, platformLabel, type PlatformId } from '@domain/platforms';
 import type {
   TransferDelivery,
   TransferMode,
@@ -84,7 +84,9 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
   const lang: Lang = settings.language;
   const persona = activePersona(settings);
   const canSummarize = settings.anthropicApiKey.length > 0;
-  const targets = PLATFORM_IDS.filter((p) => p !== conversation.sourcePlatform);
+  const targets = knownPlatforms()
+    .map((site) => site.id)
+    .filter((p) => p !== conversation.sourcePlatform);
 
   const state = {
     target: targets[0] as PlatformId,
@@ -93,7 +95,7 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
     scope: 'whole' as TransferScope,
     // Attached by default where the target accepts files: continuing a
     // conversation means the history is context, not the user's next message.
-    delivery: (PLATFORMS[targets[0] as PlatformId].acceptsFileUpload
+    delivery: (platformInfo(targets[0] as PlatformId).acceptsFileUpload
       ? 'attachment'
       : 'inline') as TransferDelivery,
     mode: 'full' as TransferMode,
@@ -115,7 +117,7 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
           <div class="field">
             <label for="target">${t(lang, 'forkTarget')}</label>
             <select id="target">
-              ${targets.map((p) => html`<option value="${p}">${PLATFORMS[p].label}</option>`)}
+              ${targets.map((p) => html`<option value="${p}">${platformLabel(p)}</option>`)}
             </select>
           </div>
 
@@ -236,7 +238,7 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
   $<HTMLSelectElement>('target').addEventListener('change', (event) => {
     state.target = (event.target as HTMLSelectElement).value as PlatformId;
     // A target that takes no uploads cannot receive the context as a file.
-    const canAttach = PLATFORMS[state.target].acceptsFileUpload;
+    const canAttach = platformInfo(state.target).acceptsFileUpload;
     deliverySelect.disabled = !canAttach;
     if (!canAttach) {
       state.delivery = 'inline';

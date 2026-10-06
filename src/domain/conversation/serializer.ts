@@ -1,4 +1,4 @@
-import { PLATFORM_IDS, type PlatformId } from '@domain/platforms';
+import { isPlatformId, type PlatformId } from '@domain/platforms';
 import {
   SCHEMA_VERSION,
   type AttachmentMeta,
@@ -110,8 +110,8 @@ function asString(value: unknown, path: string): string {
 }
 
 function asPlatform(value: unknown): PlatformId {
-  if (typeof value !== 'string' || !PLATFORM_IDS.includes(value as PlatformId)) {
+  if (!isPlatformId(value)) {
     throw new ConversationParseError(`sourcePlatform is invalid: ${String(value)}`);
   }
-  return value as PlatformId;
+  return value;
 }

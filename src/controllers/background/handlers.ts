@@ -3,7 +3,7 @@ import type { summarizeTranscript } from '@data/summarize/client';
 import { MAX_ATTACHMENT_BYTES } from '@domain/attachments';
 import { serializeConversation } from '@domain/conversation/serializer';
 import { conversationToMarkdown, exportFilename } from '@domain/export';
-import { PLATFORM_IDS, PLATFORMS, type PlatformId } from '@domain/platforms';
+import { platformIds, platformInfo, type PlatformId } from '@domain/platforms';
 import { base64ToBytes, bytesToBase64 } from '@shared/base64';
 import { readComparisons, writeComparisons } from '@shared/comparisons';
 import type { AdapterHealth } from '@shared/health';
@@ -60,7 +60,7 @@ export function createHandlers(deps: BackgroundDeps): HandlerMap {
 
     'health/list-request': async () => {
       const all = await Promise.all(
-        PLATFORM_IDS.map((platform) => deps.session.get<AdapterHealth>(healthKey(platform))),
+        platformIds().map((platform: PlatformId) => deps.session.get<AdapterHealth>(healthKey(platform))),
       );
       return all.filter((health): health is AdapterHealth => health !== undefined);
     },
@@ -70,7 +70,7 @@ export function createHandlers(deps: BackgroundDeps): HandlerMap {
       // target's content script claim it once its composer is ready.
       await deps.session.set(pendingKey(request.targetPlatform), request.injection);
       if (request.lineage) await deps.repo.recordFork(request.lineage, request.targetPlatform);
-      await deps.openTab(PLATFORMS[request.targetPlatform].newChatUrl, { active: true });
+      await deps.openTab(platformInfo(request.targetPlatform).newChatUrl, { active: true });
       return { ok: true };
     },
 
@@ -133,7 +133,7 @@ export function createHandlers(deps: BackgroundDeps): HandlerMap {
           attachmentIds: [],
           comparisonId: comparison.id,
         } satisfies PendingInjection);
-        await deps.openTab(PLATFORMS[target].newChatUrl, { active: false });
+        await deps.openTab(platformInfo(target).newChatUrl, { active: false });
       }
       return { comparisonId: comparison.id };
     },

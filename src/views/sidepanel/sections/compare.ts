@@ -1,4 +1,4 @@
-import { PLATFORMS, PLATFORM_IDS, type PlatformId } from '@domain/platforms';
+import { knownPlatforms, platformLabel, type PlatformId } from '@domain/platforms';
 import { readComparisons } from '@shared/comparisons';
 import { t, type Lang } from '@shared/i18n';
 import { sendToBackground, type ComparisonState } from '@shared/messages';
@@ -23,10 +23,10 @@ export function renderCompare(lang: Lang, comparisons: ComparisonState[]): SafeH
         <textarea id="compare-text" placeholder="${t(lang, 'comparePlaceholder')}"></textarea>
       </div>
       <div class="compare-targets">
-        ${PLATFORM_IDS.map(
-          (p) => html`<label>
-            <input type="checkbox" class="compare-target" value="${p}" checked />
-            ${PLATFORMS[p].label}
+        ${knownPlatforms().map(
+          (site) => html`<label>
+            <input type="checkbox" class="compare-target" value="${site.id}" checked />
+            ${platformLabel(site.id)}
           </label>`,
         )}
       </div>
@@ -68,7 +68,7 @@ function card(lang: Lang, comparison: ComparisonState): SafeHtml {
           const answer = comparison.responses[platform];
           return html`
             <div class="compare-answer">
-              <h3>${PLATFORMS[platform].label}</h3>
+              <h3>${platformLabel(platform)}</h3>
               <p>
                 ${answer
                   ? truncate(answer.content, 900)

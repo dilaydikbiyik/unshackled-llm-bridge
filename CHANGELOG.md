@@ -18,6 +18,31 @@ All notable changes to this project are documented here. The format follows
   ahead of GitHub removing Node 20.
 - A misplaced bullet in the 0.3.1 notes was removed.
 
+### Changed — architecture
+- **The core no longer knows three platforms.** `PLATFORMS` was a fixed record of exactly three
+  entries, which made "works with ChatGPT, Claude and Gemini" a property of the type system rather
+  than of the configuration. It is now a registry: built-ins are registered at startup, user-added
+  sites are registered beside them, and `PlatformId` admits a `site:<host>` form. Nothing
+  downstream asks which kind it is holding.
+
+### Added
+- **A generic adapter that reads a chat UI with no selectors written for it.** Every chat interface
+  converges on the same shape — one editable box, and a column of repeated blocks above it that
+  alternates between two speakers — and that shape is findable without knowing the site. The
+  composer is the lowest visible editable element; the conversation is the group of siblings whose
+  children most resemble each other while carrying text of varying length (page furniture is a nav,
+  a main and a footer: three different things, so it scores badly where turns score well). The
+  three maintained adapters remain, because selectors read their sites more precisely, but they are
+  no longer the only way a site can be read.
+- The generic adapter declares its capabilities honestly: it cannot know an unknown site's model
+  picker or new-chat route, so it reports both as unavailable rather than failing at them later.
+
+### Fixed
+- **An orphaned content script no longer throws on every listener.** Reloading the extension leaves
+  the old script running in every open tab, attached to a runtime that is gone; its next `chrome.*`
+  call raised "Extension context invalidated". The script now recognises that it has been orphaned,
+  removes its own UI and stops. Reloading the tab brings back a live one.
+
 ### Added
 - **Drag a conversation out of the page.** The fork affordance is draggable: pick a conversation up
   here and let go of it over there — another tab, another window, another browser, or a desktop

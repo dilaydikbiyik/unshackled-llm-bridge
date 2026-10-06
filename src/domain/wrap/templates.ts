@@ -1,7 +1,7 @@
 import type { ChatMessage } from '@domain/conversation/schema';
 import { digestConversation, digestLines } from '@domain/wrap/digest';
 import type { PlatformId } from '@domain/platforms';
-import { PLATFORMS } from '@domain/platforms';
+import { platformLabel } from '@domain/platforms';
 
 /**
  * Tier-1 structural wrapping: no LLM, no cost, deterministic. Packages a
@@ -23,7 +23,7 @@ export interface WrapInput {
 }
 
 export function wrapForTarget(input: WrapInput, target: PlatformId): string {
-  const source = PLATFORMS[input.sourcePlatform].label;
+  const source = platformLabel(input.sourcePlatform);
   const model = input.model ? ` (model: ${input.model})` : '';
   const elision =
     input.trimmedCount && input.trimmedCount > 0
@@ -90,7 +90,7 @@ export function wrapForTarget(input: WrapInput, target: PlatformId): string {
  * sentence that makes the file make sense.
  */
 export function continuationNote(input: WrapInput, fileName: string): string {
-  const source = PLATFORMS[input.sourcePlatform].label;
+  const source = platformLabel(input.sourcePlatform);
   const model = input.model ? ` (${input.model})` : '';
   const digest = digestConversation(input.messages, input.attachmentNames ?? []);
 

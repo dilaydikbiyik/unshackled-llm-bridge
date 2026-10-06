@@ -59,7 +59,9 @@ describe('composer injection', () => {
   });
 
   it('throws when no composer resolves, so the caller can fall back to the clipboard', async () => {
-    await expect(adapter().injectText('x')).rejects.toThrow(/composer selector did not resolve/);
+    // The wording is selector-agnostic now: a generic adapter finds its
+    // composer heuristically, and can fail the same way.
+    await expect(adapter().injectText('x')).rejects.toThrow(/no composer found/);
   });
 
   it('never clicks send — injection stops at the composer', async () => {

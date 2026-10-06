@@ -1,6 +1,6 @@
 import type { BridgeConversation } from '@domain/conversation/schema';
 import { resolveSelector, type PlatformSelectors } from '@data/config/selector-config';
-import { PLATFORMS, type PlatformId } from '@domain/platforms';
+import { platformInfo, type PlatformId } from '@domain/platforms';
 import { createFileTransfer, dispatchFileDrop } from './file-drop';
 import {
   AdapterNotImplementedError,
@@ -58,7 +58,22 @@ export abstract class BaseAdapter implements PlatformAdapter {
   }
 
   async isReady(): Promise<boolean> {
-    return document.readyState !== 'loading' && this.resolve('composer') !== null;
+    return document.readyState !== 'loading' && this.composerElement() !== null;
+  }
+
+  /**
+   * Where text is typed. Selector-driven by default; the generic adapter finds
+   * it heuristically instead, which is the only difference between reading a
+   * site we maintain and one the user added.
+   */
+  protected composerElement(): HTMLElement | null {
+    return (this.resolve('composer')?.element as HTMLElement | undefined) ?? null;
+  }
+
+  /** Where files are dropped. Defaults to the composer when no zone is known. */
+  protected dropElement(): HTMLElement | null {
+    const zone = this.resolve('dropZone')?.element as HTMLElement | undefined;
+    return zone ?? this.composerElement();
   }
 
   readConversation(): Promise<BridgeConversation> {
@@ -73,9 +88,8 @@ export abstract class BaseAdapter implements PlatformAdapter {
    *   path into ProseMirror/Lexical editors, which ignore textContent writes
    */
   async injectText(text: string): Promise<void> {
-    const match = this.resolve('composer');
-    if (!match) throw new Error(`${this.platform}: composer selector did not resolve`);
-    const el = match.element as HTMLElement;
+    const el = this.composerElement();
+    if (!el) throw new Error(`${this.platform}: no composer found on the page`);
     el.focus();
 
     if (el instanceof HTMLTextAreaElement || el instanceof HTMLInputElement) {
@@ -100,7 +114,7 @@ export abstract class BaseAdapter implements PlatformAdapter {
    * capture listener uses to avoid re-capturing our own replays.
    */
   async uploadFile(blob: Blob, name: string): Promise<void> {
-    const target = this.resolve('dropZone')?.element ?? this.resolve('composer')?.element;
+    const target = this.dropElement();
     if (!target) throw new AdapterNotImplementedError(this.platform, 'uploadFile');
     dispatchFileDrop(target, createFileTransfer(blob, name));
   }
@@ -118,7 +132,7 @@ export abstract class BaseAdapter implements PlatformAdapter {
   async openNewChat(): Promise<void> {
     const button = this.resolve('newChatButton');
     if (button) (button.element as HTMLElement).click();
-    else location.assign(PLATFORMS[this.platform].newChatUrl);
+    else location.assign(platformInfo(this.platform).newChatUrl);
   }
 
   /** Debounced MutationObserver over the chat area; returns unsubscribe. */

@@ -19,6 +19,7 @@ import {
 import { t } from '@shared/i18n';
 import { detectPlatform } from '@domain/platforms';
 import { sendToBackground } from '@shared/messages';
+import { guardContext } from '@shared/lifecycle';
 import { getSettings } from '@shared/settings';
 import { mountForkButtons } from '@views/content/fork-button';
 import type { DraggedConversation } from '@views/content/drag-out';
@@ -29,6 +30,28 @@ import { showToast } from '@views/content/toast';
  * Content-script entry: detect the platform, wire adapter ⟷ background, mount
  * the in-page UI, and claim any package targeted at this platform.
  */
+/** Everything this script added to the page, undone when it is orphaned. */
+const teardowns: (() => void)[] = [];
+let orphaned = false;
+
+/**
+ * Reloading the extension leaves this script running in every open tab, bound
+ * to a runtime that no longer exists. Rather than throwing on every listener
+ * that fires afterwards, it removes its own UI and stops; reloading the tab
+ * brings back a live script.
+ */
+function abandonPage(): void {
+  if (orphaned) return;
+  orphaned = true;
+  for (const teardown of teardowns.splice(0)) {
+    try {
+      teardown();
+    } catch {
+      // Nothing left to report to: the runtime is gone.
+    }
+  }
+}
+
 async function main(): Promise<void> {
   const platform = detectPlatform(location.hostname);
   if (!platform) return;
@@ -37,11 +60,13 @@ async function main(): Promise<void> {
   const adapter = createAdapter(platform, config);
   if (!adapter) return;
 
-  await reportHealth(adapter);
-  mountAttachmentCapture(adapter);
-  mountFork(adapter, config);
-  void watchForArchive(adapter);
-  await claimPendingInjection(adapter);
+  await guardContext(async () => {
+    await reportHealth(adapter);
+    teardowns.push(mountAttachmentCapture(adapter));
+    teardowns.push(mountFork(adapter, config));
+    void watchForArchive(adapter);
+    await claimPendingInjection(adapter);
+  }, abandonPage);
 }
 
 async function reportHealth(adapter: PlatformAdapter): Promise<void> {
@@ -49,9 +74,9 @@ async function reportHealth(adapter: PlatformAdapter): Promise<void> {
   await sendToBackground({ type: 'adapter/health-report', health });
 }
 
-function mountFork(adapter: PlatformAdapter, config: SelectorConfig): void {
+function mountFork(adapter: PlatformAdapter, config: SelectorConfig): () => void {
   const selectors = config.platforms[adapter.platform] ?? {};
-  mountForkButtons({
+  return mountForkButtons({
     locateMessages: () => resolveSelectorAll(document, selectors['messageContainer']),
     onFork: (messageIndex) => void openDialogFor(adapter, messageIndex),
     prepareDrag: () => prepareConversationDrag(adapter),
@@ -211,16 +236,20 @@ function reportComparisonAnswer(adapter: PlatformAdapter, comparisonId: string):
 async function watchForArchive(adapter: PlatformAdapter): Promise<void> {
   if (!(await getSettings()).archiveEnabled) return;
   let lastSignature = '';
-  adapter.observeMessages(() => {
-    void (async () => {
+  // The longest-lived listener in the page, and so the one most likely to fire
+  // after the extension has been reloaded out from under it.
+  const stop = adapter.observeMessages(() => {
+    if (orphaned) return;
+    void guardContext(async () => {
       const conversation = await adapter.readConversation();
       if (conversation.messages.length === 0) return;
       const signature = `${conversation.id}:${conversation.messages.length}`;
       if (signature === lastSignature) return;
       lastSignature = signature;
       await sendToBackground({ type: 'archive/save', conversation });
-    })();
+    }, abandonPage);
   });
+  teardowns.push(stop);
 }
 
 async function waitUntilReady(adapter: PlatformAdapter, timeoutMs = 20_000): Promise<void> {

@@ -1,4 +1,4 @@
-import { PLATFORMS } from '@domain/platforms';
+import { platformLabel } from '@domain/platforms';
 import { t, type Lang } from '@shared/i18n';
 import { sendToBackground, type ArchiveHit, type ExportFormat } from '@shared/messages';
 import { updateSettings, type Settings } from '@shared/settings';
@@ -88,7 +88,7 @@ export function renderHits(lang: Lang, hits: ArchiveHit[]): SafeHtml {
       <li class="archive-item">
         <div class="archive-title">${hit.title}</div>
         <div class="archive-snippet">
-          ${PLATFORMS[hit.sourcePlatform].label} · ${hit.updatedAt.slice(0, 10)}
+          ${platformLabel(hit.sourcePlatform)} · ${hit.updatedAt.slice(0, 10)}
           ${hit.snippet && `— ${hit.snippet}`}
         </div>
         <div class="row">

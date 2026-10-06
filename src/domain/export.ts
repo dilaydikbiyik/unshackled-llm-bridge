@@ -1,5 +1,5 @@
 import type { BridgeConversation } from '@domain/conversation/schema';
-import { PLATFORMS, type PlatformId } from '@domain/platforms';
+import { platformLabel, type PlatformId } from '@domain/platforms';
 
 /** Renders a conversation as a self-contained Markdown document. */
 /** Where a conversation was forked to — recorded at transfer time. */
@@ -13,7 +13,7 @@ export function conversationToMarkdown(
   conversation: BridgeConversation,
   forks: ForkNote[] = [],
 ): string {
-  const source = PLATFORMS[conversation.sourcePlatform].label;
+  const source = platformLabel(conversation.sourcePlatform);
   const lines = [
     `# ${conversation.title ?? 'Conversation'}`,
     '',
@@ -29,7 +29,7 @@ export function conversationToMarkdown(
     lines.push('## Forks', '');
     for (const fork of forks) {
       lines.push(
-        `- ${fork.createdAt.slice(0, 10)} → ${PLATFORMS[fork.targetPlatform].label}, ` +
+        `- ${fork.createdAt.slice(0, 10)} → ${platformLabel(fork.targetPlatform)}, ` +
           `continued after message ${fork.cutIndex + 1}`,
       );
     }

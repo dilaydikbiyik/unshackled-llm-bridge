@@ -1,4 +1,4 @@
-import { PLATFORMS, PLATFORM_IDS, type PlatformId } from '@domain/platforms';
+import { knownPlatforms, platformLabel, type PlatformId } from '@domain/platforms';
 import type { AdapterHealth } from '@shared/health';
 import { t, type Lang } from '@shared/i18n';
 import { sendToBackground } from '@shared/messages';
@@ -16,7 +16,7 @@ export function renderStatus(lang: Lang, healths: AdapterHealth[]): SafeHtml {
     <section>
       <h2>${t(lang, 'statusSection')}</h2>
       <ul class="platform-list">
-        ${PLATFORM_IDS.map((p) => row(lang, p, byPlatform.get(p)))}
+        ${knownPlatforms().map((site) => row(lang, site.id, byPlatform.get(site.id)))}
       </ul>
       <button id="diag-copy" class="link">${t(lang, 'diagCopy')}</button>
     </section>
@@ -45,7 +45,7 @@ export async function fetchHealths(): Promise<AdapterHealth[]> {
 }
 
 function row(lang: Lang, platform: PlatformId, health: AdapterHealth | undefined): SafeHtml {
-  const label = PLATFORMS[platform].label;
+  const label = platformLabel(platform);
   if (!health) return item('unknown', label, t(lang, 'statusNoTab'));
   return health.ok
     ? item('ok', label, t(lang, 'statusReady'))
