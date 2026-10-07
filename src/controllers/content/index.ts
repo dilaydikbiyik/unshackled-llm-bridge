@@ -20,6 +20,7 @@ import { t, type Lang } from '@shared/i18n';
 import { detectPlatform } from '@domain/platforms';
 import { sendToBackground } from '@shared/messages';
 import { guardContext } from '@shared/lifecycle';
+import { loadRegisteredSites } from '@shared/sites';
 import { getSettings } from '@shared/settings';
 import { mountForkButtons } from '@views/content/fork-button';
 import type { DraggedConversation } from '@views/content/drag-out';
@@ -53,6 +54,8 @@ function abandonPage(): void {
 }
 
 async function main(): Promise<void> {
+  // A site the user added is only detectable once it is in the registry.
+  await loadRegisteredSites();
   const platform = detectPlatform(location.hostname);
   if (!platform) return;
 

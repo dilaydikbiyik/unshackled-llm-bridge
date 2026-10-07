@@ -8,6 +8,7 @@ import { bindCompare, loadComparisons, renderCompare } from './sections/compare'
 import { bindOnboarding, renderOnboarding } from './sections/onboarding';
 import { bindPersona, renderPersona } from './sections/persona';
 import { bindSettings, renderSettings } from './sections/settings';
+import { bindSites, renderSites, type SitesPorts } from './sections/sites';
 import { bindStatus, fetchHealths, renderStatus } from './sections/status';
 
 type Watch = (onChange: () => void) => () => void;
@@ -19,7 +20,25 @@ let stopWatching: (() => void) | null = null;
  * Side panel shell. Each section owns a render/bind pair; this file gathers
  * state and re-renders when something changes.
  */
-export async function renderPanel(root: HTMLElement, watch: Watch = watchComparisons): Promise<void> {
+/** Chrome's permission and tab APIs, injected so the panel is testable. */
+const chromePorts: SitesPorts = {
+  currentHost: async () => {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    try {
+      return tab?.url ? new URL(tab.url).hostname : null;
+    } catch {
+      return null;
+    }
+  },
+  requestOrigin: (pattern) => chrome.permissions.request({ origins: [pattern] }),
+  removeOrigin: (pattern) => chrome.permissions.remove({ origins: [pattern] }),
+};
+
+export async function renderPanel(
+  root: HTMLElement,
+  watch: Watch = watchComparisons,
+  ports: SitesPorts = chromePorts,
+): Promise<void> {
   const settings = await getSettings();
   const lang = settings.language;
 
@@ -29,7 +48,7 @@ export async function renderPanel(root: HTMLElement, watch: Watch = watchCompari
     settings.archiveEnabled ? searchArchive('') : Promise.resolve([]),
   ]);
 
-  const rerender = () => void renderPanel(root, watch);
+  const rerender = () => void renderPanel(root, watch, ports);
 
   // Comparison answers arrive while the user sends each tab. Subscribed once:
   // subscribing on every render stacked listeners, and each change then
@@ -45,6 +64,7 @@ export async function renderPanel(root: HTMLElement, watch: Watch = watchCompari
       ${renderStatus(lang, healths)}
       ${renderCompare(lang, comparisons)}
       ${renderPersona(settings)}
+      ${renderSites(settings)}
       ${renderArchive(settings, archiveHits)}
       ${renderSettings(settings)}
     `,
@@ -54,6 +74,7 @@ export async function renderPanel(root: HTMLElement, watch: Watch = watchCompari
   bindStatus(root, lang, healths);
   bindCompare(root, rerender);
   bindPersona(root, settings, rerender);
+  bindSites(root, settings, ports, rerender);
   bindArchive(root, settings, rerender);
   bindSettings(root, settings, rerender);
 }

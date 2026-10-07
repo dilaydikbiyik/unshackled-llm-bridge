@@ -7,8 +7,22 @@ export interface Persona {
   text: string;
 }
 
+/**
+ * A site the user taught the extension about. Only the host is required: the
+ * generic adapter needs no selectors, and the label is for the user's benefit.
+ */
+export interface CustomSiteSetting {
+  host: string;
+  label: string;
+}
+
 export interface Settings {
   language: Lang;
+  /**
+   * Sites beyond the three built-in ones. Each needs host permission, granted
+   * per site by the user — this extension never asks for access to the web.
+   */
+  customSites: CustomSiteSetting[];
   /** Opt-in passive archiving of visited conversations (local only). */
   archiveEnabled: boolean;
   /** BYO key for summarize-on-fork; stored only in chrome.storage.local, never synced. */
@@ -24,6 +38,7 @@ export const SUMMARY_MODELS = ['claude-haiku-4-5', 'claude-opus-4-8'] as const;
 
 export const DEFAULT_SETTINGS: Settings = {
   language: 'tr',
+  customSites: [],
   archiveEnabled: false,
   anthropicApiKey: '',
   summaryModel: SUMMARY_MODELS[0],

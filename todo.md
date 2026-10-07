@@ -327,6 +327,18 @@ extension, and submit the store listing. Still unverified on the live sites: Cla
 (none of the 60 most recent conversations contains one, and producing one means sending a message)
 and ChatGPT's model label on a paid plan.
 
+### Universal platform support — done (2026-10-07)
+
+- [x] The core no longer knows three platforms: `PLATFORMS` became a registry, and `PlatformId`
+      admits a `site:<host>` form
+- [x] Generic adapter reading any chat UI with no selectors, by shape rather than by markup
+- [x] Side-panel *Sites* section: add, remove, and see every site in one list
+- [x] Per-site host permission, requested in the click and returned on removal
+- [x] Content scripts registered at runtime for added sites, unregistered with them
+- [ ] Teach-by-pointing fallback: when the heuristics misread a site, let the user click the
+      composer and a message to derive selectors. Worth doing once real misreads are seen — the
+      heuristics should be measured against sites in the wild first.
+
 ### Live check log
 
 - **2026-09-10** — first live check. Drift on all three platforms; see the 0.3.1 changelog.

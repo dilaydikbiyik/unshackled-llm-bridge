@@ -10,6 +10,7 @@ import { bindCompare, renderCompare, truncate } from './compare';
 import { bindOnboarding, renderOnboarding } from './onboarding';
 import { bindPersona, renderPersona, upsertPersona } from './persona';
 import { bindSettings, renderSettings } from './settings';
+import { bindSites, normalizeHost, renderSites, type SitesPorts } from './sites';
 import { bindStatus, diagnosticsReport, renderStatus } from './status';
 
 const HOSTILE = '<img src=x onerror="alert(1)">';
@@ -210,5 +211,101 @@ describe('compare', () => {
       text: 'Which is faster?',
       targets: ['chatgpt', 'claude'],
     });
+  });
+});
+
+/**
+ * The section that makes the extension universal: anything the user adds is
+ * read by the generic adapter, so the list here is the whole of what the
+ * extension can reach.
+ */
+describe('sites', () => {
+  const ports = (overrides: Partial<SitesPorts> = {}): SitesPorts => ({
+    currentHost: async () => null,
+    requestOrigin: async () => true,
+    removeOrigin: async () => true,
+    ...overrides,
+  });
+
+  function mount(settings: Settings, sitePorts = ports()) {
+    const root = document.createElement('div');
+    setHtml(root, renderSites(settings));
+    document.body.append(root);
+    const onChanged = vi.fn();
+    bindSites(root, settings, sitePorts, onChanged);
+    return { root, onChanged };
+  }
+
+  it('lists the built-in platforms and the user’s own sites together', () => {
+    const { root } = mount(settings({ customSites: [{ host: 'perplexity.ai', label: 'Perplexity' }] }));
+    const text = root.textContent ?? '';
+
+    expect(text).toContain('ChatGPT');
+    expect(text).toContain('Perplexity');
+    expect(root.querySelector('.site-remove')?.getAttribute('data-host')).toBe('perplexity.ai');
+  });
+
+  it('asks Chrome for that one host, and saves the site once granted', async () => {
+    const requestOrigin = vi.fn(async () => true);
+    const { root, onChanged } = mount(settings(), ports({ requestOrigin }));
+
+    root.querySelector<HTMLInputElement>('#site-host')!.value = 'perplexity.ai';
+    root.querySelector<HTMLButtonElement>('#site-add')!.click();
+
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalled());
+    expect(requestOrigin).toHaveBeenCalledWith('https://perplexity.ai/*');
+    expect((await getSettings()).customSites).toEqual([
+      { host: 'perplexity.ai', label: 'perplexity.ai' },
+    ]);
+  });
+
+  it('adds nothing when the user declines the permission prompt', async () => {
+    const { root, onChanged } = mount(settings(), ports({ requestOrigin: async () => false }));
+
+    root.querySelector<HTMLInputElement>('#site-host')!.value = 'perplexity.ai';
+    root.querySelector<HTMLButtonElement>('#site-add')!.click();
+
+    await vi.waitFor(() =>
+      expect(root.querySelector('#site-status')?.textContent).not.toBe(''),
+    );
+    expect(onChanged).not.toHaveBeenCalled();
+    expect((await getSettings()).customSites).toEqual([]);
+  });
+
+  it('refuses a host that would widen the permission, before asking for anything', async () => {
+    const requestOrigin = vi.fn(async () => true);
+    const { root } = mount(settings(), ports({ requestOrigin }));
+
+    root.querySelector<HTMLInputElement>('#site-host')!.value = '*';
+    root.querySelector<HTMLButtonElement>('#site-add')!.click();
+
+    expect(requestOrigin).not.toHaveBeenCalled();
+    expect(root.querySelector('#site-status')?.textContent).toBeTruthy();
+  });
+
+  it('gives the permission back when the site is removed', async () => {
+    const removeOrigin = vi.fn(async () => true);
+    const { root, onChanged } = mount(
+      settings({ customSites: [{ host: 'perplexity.ai', label: 'Perplexity' }] }),
+      ports({ removeOrigin }),
+    );
+
+    root.querySelector<HTMLButtonElement>('.site-remove')!.click();
+
+    await vi.waitFor(() => expect(onChanged).toHaveBeenCalled());
+    expect(removeOrigin).toHaveBeenCalledWith('https://perplexity.ai/*');
+    expect((await getSettings()).customSites).toEqual([]);
+  });
+
+  it('offers the site the user is already looking at', async () => {
+    const { root } = mount(settings(), ports({ currentHost: async () => 'mistral.ai' }));
+    await vi.waitFor(() =>
+      expect(root.querySelector<HTMLInputElement>('#site-host')?.value).toBe('mistral.ai'),
+    );
+  });
+
+  it('accepts a pasted URL, since that is what people copy', () => {
+    expect(normalizeHost('https://perplexity.ai/search?q=hi')).toBe('perplexity.ai');
+    expect(normalizeHost('  Perplexity.AI  ')).toBe('perplexity.ai');
   });
 });

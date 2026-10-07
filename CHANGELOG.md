@@ -26,6 +26,16 @@ All notable changes to this project are documented here. The format follows
   downstream asks which kind it is holding.
 
 ### Added
+- **Add any AI site, from the side panel.** A new *Sites* section lists the three built-in
+  platforms and the user's own together, because they are the same kind of thing. Adding one asks
+  Chrome for that single host — `optional_host_permissions`, requested inside the click, since
+  Chrome refuses a prompt that is not a direct user gesture — and registers a content script for it
+  at runtime. Removing a site unregisters the script and hands the permission back, so the
+  extension's reach is always exactly the list the user can see. `<all_urls>` is never requested.
+- The host field accepts what people actually paste — a full URL, with or without scheme — and
+  refuses anything that would widen the permission being requested, before asking for it.
+
+### Added
 - **A generic adapter that reads a chat UI with no selectors written for it.** Every chat interface
   converges on the same shape — one editable box, and a column of repeated blocks above it that
   alternates between two speakers — and that shape is findable without knowing the site. The

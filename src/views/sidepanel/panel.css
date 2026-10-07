@@ -233,3 +233,30 @@ label {
   color: var(--muted);
   margin: 3px 0 6px;
 }
+
+/* The site list: built-ins and the user's own, in one list on purpose. */
+.site-list {
+  list-style: none;
+  margin: 0 0 10px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.site-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: var(--surface-raised, rgba(127, 127, 127, 0.08));
+}
+
+.site-list li > span:first-child {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
