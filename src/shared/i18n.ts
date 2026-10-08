@@ -56,6 +56,8 @@ const STRINGS = {
     forkTitle: 'Sohbeti çatalla',
     forkTarget: 'Hedef platform',
     contextFileFailed: 'Bağlam dosyası yüklenemedi; tamamı mesaj kutusuna yazıldı.',
+    compareAgreement: 'Ortak zemin: %{percent} — ayrıştıkları yer, birinin yanıldığı yerdir.',
+    compareOnlyHere: 'Yalnızca burada',
     personaDistil: 'Arşivimden çıkar',
     personaDistilHint:
       'Kendi sohbetlerinden sayılarak bir taslak çıkarır — tüm platformlardan, tarayıcından çıkmadan. Sonra istediğin gibi düzenlersin.',
@@ -153,6 +155,8 @@ const STRINGS = {
     forkTitle: 'Fork conversation',
     forkTarget: 'Target platform',
     contextFileFailed: 'The context file could not be uploaded; the full package is in the composer instead.',
+    compareAgreement: 'Common ground: {percent}% — where they part is where one of them is wrong.',
+    compareOnlyHere: 'Only here',
     personaDistil: 'Draw from my archive',
     personaDistilHint:
       'Counts a draft from your own conversations, across every platform, without leaving your browser. Edit it however you like.',

@@ -260,3 +260,23 @@ label {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
+/* Where the answers agree, and where only one of them stands. */
+.compare-contrast {
+  margin: 6px 0 10px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--surface-raised, rgba(127, 127, 127, 0.08));
+  font-size: 12px;
+}
+
+.compare-contrast ul,
+.compare-unique ul {
+  margin: 6px 0 0;
+  padding-left: 18px;
+}
+
+.compare-unique {
+  margin-top: 6px;
+  font-size: 12px;
+}

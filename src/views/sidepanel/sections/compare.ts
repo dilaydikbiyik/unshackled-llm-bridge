@@ -1,3 +1,4 @@
+import { contrastAnswers, type ComparisonContrast } from '@domain/compare/contrast';
 import { knownPlatforms, platformLabel, type PlatformId } from '@domain/platforms';
 import { readComparisons } from '@shared/comparisons';
 import { t, type Lang } from '@shared/i18n';
@@ -60,12 +61,22 @@ export async function loadComparisons(
 }
 
 function card(lang: Lang, comparison: ComparisonState): SafeHtml {
+  const contrast = contrastAnswers(
+    comparison.targets.map((platform) => ({
+      platform,
+      content: comparison.responses[platform]?.content ?? '',
+    })),
+  );
+  const uniqueBy = new Map(contrast.contrasts.map((entry) => [entry.platform, entry.unique]));
+
   return html`
     <div class="compare-card">
       <div class="compare-prompt">${truncate(comparison.text, 120)}</div>
+      ${renderContrast(lang, contrast)}
       <div class="compare-answers">
         ${comparison.targets.map((platform) => {
           const answer = comparison.responses[platform];
+          const unique = uniqueBy.get(platform) ?? [];
           return html`
             <div class="compare-answer">
               <h3>${platformLabel(platform)}</h3>
@@ -74,10 +85,37 @@ function card(lang: Lang, comparison: ComparisonState): SafeHtml {
                   ? truncate(answer.content, 900)
                   : html`<span class="muted">${t(lang, 'compareWaiting')}</span>`}
               </p>
+              ${unique.length > 0 &&
+              html`<div class="compare-unique">
+                <span class="muted">${t(lang, 'compareOnlyHere')}</span>
+                <ul>
+                  ${unique.slice(0, 3).map((point) => html`<li>${truncate(point, 180)}</li>`)}
+                </ul>
+              </div>`}
             </div>
           `;
         })}
       </div>
+    </div>
+  `;
+}
+
+/**
+ * The reason to ask three assistants at once is not three answers; it is
+ * knowing where they disagree, because that is where one of them is wrong.
+ */
+function renderContrast(lang: Lang, contrast: ComparisonContrast): SafeHtml {
+  if (contrast.contrasts.length < 2) return html``;
+  const percent = Math.round(contrast.agreement * 100);
+  return html`
+    <div class="compare-contrast">
+      <span class="muted">
+        ${t(lang, 'compareAgreement').replace('{percent}', String(percent))}
+      </span>
+      ${contrast.agreed.length > 0 &&
+      html`<ul>
+        ${contrast.agreed.slice(0, 3).map((point) => html`<li>${truncate(point, 180)}</li>`)}
+      </ul>`}
     </div>
   `;
 }

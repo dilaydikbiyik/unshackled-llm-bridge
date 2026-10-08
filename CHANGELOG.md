@@ -26,6 +26,25 @@ All notable changes to this project are documented here. The format follows
   downstream asks which kind it is holding.
 
 ### Added
+- **Comparison now says where the answers part.** Asking three assistants at once produced three
+  answers and left the reading to the user. Each comparison now states how much common ground there
+  is, lists the points every answer makes, and marks under each answer what only it claims — which
+  is where one of them is probably wrong. Done by comparing sentences structurally, so it needs no
+  model and no key, and it reports overlap rather than truth: a point all three make is agreed, not
+  correct. No provider will build this, because it means putting a competitor's answer beside your
+  own and pointing at the place yours stands alone.
+- **Relay: each leg carries only what the other side has missed.** A conversation remembers how far
+  it has been carried; once two are linked, the dialog offers and defaults to the turns added since.
+  The first leg still carries everything, the relay point never moves backwards, and the length
+  budget measures the leg rather than the history.
+- **A portable profile, counted from the user's own archive.** A provider's memory lives in their
+  account and describes you to them; this one is distilled locally from conversations on every
+  platform and lands in the editor as a draft to rewrite. Structural, so no model, key or network is
+  involved: only the user's own messages are read, since counting an assistant's prose profiles the
+  model rather than the person, and a subject counts once per conversation, because a word repeated
+  forty times in one thread says what that thread was about.
+
+### Added
 - **The round trip: take the answer back to the chat that asked for it.** A conversation created by
   a fork remembers where it came from, and the fork dialog offers that exact conversation as a
   target — selected by default, because returning is usually the reason to have forked. The package

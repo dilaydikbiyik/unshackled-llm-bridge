@@ -337,12 +337,10 @@ and those limits are the project's ground.
       construction for a provider; natural for a neutral client that holds both addresses.
 - [x] Provider-neutral by design: no site is privileged, and the user adds their own
 - [x] Nothing leaves the browser — the opposite of an import that feeds a training pipeline
-- [ ] **Relay mode**: keep two conversations on different providers in step across several
-      exchanges, rather than one trip each way
-- [ ] **Cross-provider memory**: distil a portable profile from conversations on every platform,
-      owned by the user rather than by whichever provider they are standing in
-- [ ] Sharpen parallel comparison into "same question, N providers, differences surfaced" — no
-      provider will ever show a competitor's answer beside its own
+- [x] **Relay mode**: each leg carries only what the other side has missed
+- [x] **Cross-provider memory**: a profile counted locally from every platform, owned and edited
+      by the user
+- [x] Parallel comparison surfaces common ground and what each answer alone claims
 
 ### Universal platform support — done (2026-10-07)
 

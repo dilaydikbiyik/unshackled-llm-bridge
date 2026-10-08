@@ -377,3 +377,60 @@ describe('sites', () => {
     expect(normalizeHost('  Perplexity.AI  ')).toBe('perplexity.ai');
   });
 });
+
+/**
+ * The point of asking three assistants at once is not three answers; it is
+ * seeing where they part. No provider will put a competitor's answer beside
+ * its own and mark the place where its own stands alone.
+ */
+describe('compare — contrasts', () => {
+  const comparison = {
+    id: 'cmp-1',
+    text: 'Which database for a small SaaS?',
+    targets: ['chatgpt', 'claude'] as const,
+    createdAt: '2026-10-08T00:00:00Z',
+    responses: {
+      chatgpt: {
+        content:
+          'Postgres is the safer default for a small SaaS product.\nIt handles JSON columns well.',
+        updatedAt: '2026-10-08T00:01:00Z',
+      },
+      claude: {
+        content:
+          'Postgres is the safer default for a small SaaS product.\nMySQL replication is simpler to operate.',
+        updatedAt: '2026-10-08T00:01:00Z',
+      },
+    },
+  };
+
+  function render() {
+    const root = document.createElement('div');
+    setHtml(root, renderCompare('en', [comparison as never]));
+    document.body.append(root);
+    return root;
+  }
+
+  it('states how much common ground there is', () => {
+    expect(render().querySelector('.compare-contrast')?.textContent).toContain('Common ground');
+  });
+
+  it('shows the point both answers make', () => {
+    expect(render().querySelector('.compare-contrast ul')?.textContent).toContain('Postgres');
+  });
+
+  it('marks what each answer alone claims', () => {
+    const text = render().querySelector('.compare-answers')?.textContent ?? '';
+    expect(text).toContain('Only here');
+    expect(text).toContain('JSON columns');
+    expect(text).toContain('replication');
+  });
+
+  it('says nothing about a comparison still waiting for its answers', () => {
+    const root = document.createElement('div');
+    setHtml(
+      root,
+      renderCompare('en', [{ ...comparison, responses: {} } as never]),
+    );
+    expect(root.querySelector('.compare-contrast')).toBeNull();
+  });
+});
