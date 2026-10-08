@@ -33,7 +33,9 @@ export default defineManifest({
   default_locale: 'tr',
   permissions: ['storage', 'sidePanel', 'tabs', 'scripting'],
   host_permissions: PLATFORM_HOSTS,
-  optional_host_permissions: ['https://*/*'],
+  // Local model UIs speak http and live on a port; Chrome's patterns ignore
+  // ports, so one localhost entry covers 11434, 3000, 1234 and the rest.
+  optional_host_permissions: ['https://*/*', 'http://localhost/*', 'http://127.0.0.1/*'],
   background: {
     service_worker: 'src/controllers/background/index.ts',
     type: 'module',

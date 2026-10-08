@@ -104,3 +104,38 @@ describe('extractMarkdown — accessibility-only nodes', () => {
     expect(extractMarkdown(el)).toBe('Kept');
   });
 });
+
+/**
+ * Found by pointing the generic adapter at a local model UI (2026-10-08). The
+ * three built-in platforms generate their markup without indentation, so the
+ * source's own whitespace never showed up in a transcript. A hand-written page
+ * indents, and every one of those spaces was arriving as text.
+ */
+describe('extractMarkdown — whitespace in the source', () => {
+  it('does not carry the markup’s indentation into the transcript', () => {
+    const el = document.createElement('div');
+    el.innerHTML = `
+      <div class="msg bot">Here is the shape:
+        <pre><code class="language-rust">let x = 1;</code></pre>
+        The guard releases the lock.
+      </div>`;
+
+    const output = extractMarkdown(el);
+    expect(output).not.toMatch(/\n {2,}/);
+    expect(output).toContain('```rust\nlet x = 1;\n```');
+    expect(output).toContain('The guard releases the lock.');
+  });
+
+  it('keeps the code block’s own whitespace, which is content', () => {
+    const el = document.createElement('div');
+    el.innerHTML =
+      '<pre><code class="language-python">def f():\n    return 1\n</code></pre>';
+    expect(extractMarkdown(el)).toContain('def f():\n    return 1');
+  });
+
+  it('still separates words that were split across source lines', () => {
+    const el = document.createElement('div');
+    el.innerHTML = '<p>one\n        two</p>';
+    expect(extractMarkdown(el)).toBe('one two');
+  });
+});

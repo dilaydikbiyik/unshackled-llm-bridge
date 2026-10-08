@@ -327,6 +327,17 @@ extension, and submit the store listing. Still unverified on the live sites: Cla
 (none of the 60 most recent conversations contains one, and producing one means sending a message)
 and ChatGPT's model label on a paid plan.
 
+### Local model check (2026-10-08)
+
+The generic reader was run against a chat UI served from this machine, with the real bundled
+heuristics loaded into the page — not a fixture. It found the composer, read all four turns, got
+the roles right, ignored the navigation bar, and fenced the Rust block correctly. Two real defects
+came out of it: local hosts could not be added at all, and the markup's indentation was being
+carried into the transcript. Both fixed.
+
+- [ ] Repeat against a real local runtime (Ollama / Open WebUI / LM Studio) once one is installed.
+      The served page mirrors their structure, but only the real thing settles it.
+
 ### Where the platforms' own import cannot follow (2026-10-08)
 
 Google shipped "Import memory to Gemini": paste a summary, or upload a 5 GB export, one way, into

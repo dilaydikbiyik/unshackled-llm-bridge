@@ -79,6 +79,19 @@ All notable changes to this project are documented here. The format follows
   picker or new-chat route, so it reports both as unavailable rather than failing at them later.
 
 ### Fixed
+- **Local model UIs could not be added at all** — the case that gives "any AI site" its meaning.
+  `localhost` was rejected for having no dot, `127.0.0.1` produced an `https://` pattern nothing
+  local serves, and ports were unsupported, so Ollama on 11434, Open WebUI on 3000 and LM Studio on
+  1234 were each unreachable. Local hosts now get `http://`, the port is kept in the address and
+  dropped from the match pattern (Chrome's patterns carry no port, so one grant covers every port
+  on the machine), and the manifest asks for `http://localhost/*` and `http://127.0.0.1/*` as
+  optional permissions.
+- **The markup's own indentation was arriving as text.** HTML collapses runs of whitespace; the
+  extractor did not. The three built-in platforms generate markup without indentation, so this only
+  surfaced when the generic adapter was pointed at a hand-written page — a local model UI — where
+  every line of the transcript carried the source's leading spaces.
+
+### Fixed
 - **CI failed for four commits while every test passed.** The side panel's Chrome ports threw into
   nothing when `chrome.tabs` or `chrome.permissions` was absent, and Vitest fails a run on an
   unhandled rejection even when the suite is green. The ports now guard every call — a panel that

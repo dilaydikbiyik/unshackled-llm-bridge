@@ -34,7 +34,12 @@ function isAccessibilityOnly(el: Element): boolean {
 }
 
 function serializeNode(node: Node): string {
-  if (node.nodeType === Node.TEXT_NODE) return node.textContent ?? '';
+  // HTML collapses runs of whitespace, so the source's own indentation is not
+  // text. Keeping it leaked the markup's layout into the transcript — visible
+  // on any hand-written UI, including the local model UIs this extension is
+  // meant to reach. Block elements add their line breaks separately, and <pre>
+  // never reaches here.
+  if (node.nodeType === Node.TEXT_NODE) return (node.textContent ?? '').replace(/\s+/g, ' ');
   if (node.nodeType !== Node.ELEMENT_NODE) return '';
   const el = node as Element;
   if (isAccessibilityOnly(el)) return '';
