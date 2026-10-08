@@ -25,8 +25,12 @@ export interface TransferPackage {
  *                    "move this chat over there")
  * - `upToMessage`  — everything up to the message the fork started from, which
  *                    is the branching case: continue from here, differently
+ * - `sinceLast`    — only what has been said since the last transfer between
+ *                    these two conversations. This is what turns a one-off
+ *                    hand-off into a relay: two assistants kept in step over
+ *                    several exchanges, each told only what it has missed.
  */
-export type TransferScope = 'whole' | 'upToMessage';
+export type TransferScope = 'whole' | 'upToMessage' | 'sinceLast';
 
 /**
  * How the context reaches the target.

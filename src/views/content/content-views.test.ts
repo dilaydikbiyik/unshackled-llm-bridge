@@ -43,7 +43,7 @@ describe('fork dialog', () => {
       attachments: [],
       buildPackage,
       showLengthWarning: false,
-    scopeCounts: { whole: 2, upToMessage: 1 },
+    scopeCounts: { whole: 2, upToMessage: 1, sinceLast: 0 },
       onTransfer,
       ...patch,
     });
@@ -335,7 +335,7 @@ describe('fork dialog — returning to the origin', () => {
         estimatedTokens: 1,
       }),
       showLengthWarning: false,
-      scopeCounts: { whole: 2, upToMessage: 1 },
+      scopeCounts: { whole: 2, upToMessage: 1, sinceLast: 0 },
       onTransfer,
       ...patch,
     });
@@ -374,5 +374,51 @@ describe('fork dialog — returning to the origin', () => {
   it('offers nothing of the sort for a conversation the user simply started', () => {
     const { $ } = open();
     expect($('#target').textContent).not.toContain('⤺');
+  });
+});
+
+/**
+ * Relay: two assistants kept in step over several exchanges. After the first
+ * hand-off, each leg should carry only what the other side has missed —
+ * otherwise the pair becomes unusable once the history is long.
+ */
+describe('fork dialog — relaying', () => {
+  function open(scopeCounts: Record<string, number>) {
+    const requests: TransferRequest[] = [];
+    openForkDialog({
+      conversation: createConversation({
+        id: 'claude-3',
+        sourcePlatform: 'claude',
+        createdAt: '2026-10-08T00:00:00Z',
+        messages: [{ role: 'user', content: 'hi', index: 0, attachmentRefs: [] }],
+        attachments: [],
+      }),
+      settings: { ...DEFAULT_SETTINGS, language: 'en' },
+      attachments: [],
+      buildPackage: async (request) => {
+        requests.push(request);
+        return { text: 'package', estimatedTokens: 1 };
+      },
+      showLengthWarning: false,
+      scopeCounts: scopeCounts as never,
+      onTransfer: vi.fn(async () => undefined),
+    });
+    const root = shadowOf(FORK_DIALOG_HOST_ID)!;
+    return { root, requests };
+  }
+
+  it('offers only-what-is-new, and picks it, once the pair has been linked', async () => {
+    const { root, requests } = open({ whole: 9, upToMessage: 5, sinceLast: 2 });
+
+    expect(root.querySelector<HTMLSelectElement>('#scope')?.value).toBe('sinceLast');
+    expect(root.querySelector('#scope')?.textContent).toContain('(2)');
+    await vi.waitFor(() => expect(requests.at(-1)?.scope).toBe('sinceLast'));
+  });
+
+  it('hides the option on a conversation that has never been carried anywhere', () => {
+    const { root } = open({ whole: 9, upToMessage: 5, sinceLast: 0 });
+
+    expect(root.querySelector<HTMLSelectElement>('#scope')?.value).toBe('whole');
+    expect(root.querySelector('option[value="sinceLast"]')).toBeNull();
   });
 });

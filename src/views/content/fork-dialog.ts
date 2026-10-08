@@ -106,7 +106,10 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
     returning: options.origin !== undefined,
     // Whole conversation by default: moving a chat is the common case, and
     // forking one message was never worth opening a dialog for.
-    scope: 'whole' as TransferScope,
+    // A conversation already linked to another defaults to sending only what
+    // the other side has missed: that is what keeps a pair usable past the
+    // first exchange.
+    scope: (options.scopeCounts.sinceLast > 0 ? 'sinceLast' : 'whole') as TransferScope,
     // Attached by default where the target accepts files: continuing a
     // conversation means the history is context, not the user's next message.
     delivery: (platformInfo(targets[0] as PlatformId).acceptsFileUpload
@@ -143,6 +146,10 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
           <div class="field">
             <label for="scope">${t(lang, 'forkScope')}</label>
             <select id="scope">
+              ${options.scopeCounts.sinceLast > 0 &&
+              html`<option value="sinceLast">
+                ${t(lang, 'forkScopeSinceLast')} (${String(options.scopeCounts.sinceLast)})
+              </option>`}
               <option value="whole">
                 ${t(lang, 'forkScopeWhole')} (${String(options.scopeCounts.whole)})
               </option>

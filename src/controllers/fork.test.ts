@@ -243,3 +243,47 @@ describe('attachment delivery', () => {
     expect(asFile.estimatedTokens).toBe(asText.estimatedTokens);
   });
 });
+
+/**
+ * Relay: the leg-by-leg form of a round trip. The first hand-off carries
+ * everything; after that each leg carries only what the other side has missed,
+ * which is what keeps a pair of assistants usable past the first exchange.
+ */
+describe('relay scope', () => {
+  it('carries only the messages added since the last hand-off', () => {
+    const slice = messagesInScope(conversation(6), 5, 'sinceLast', 3);
+    expect(slice.map((m) => m.index)).toEqual([4, 5]);
+  });
+
+  it('carries everything on the first leg, when there is no "since" yet', () => {
+    expect(messagesInScope(conversation(6), 5, 'sinceLast')).toHaveLength(6);
+  });
+
+  it('carries nothing when the other side is already up to date', () => {
+    expect(messagesInScope(conversation(6), 5, 'sinceLast', 5)).toEqual([]);
+  });
+
+  it('builds a package from the new messages alone', async () => {
+    const build = createTransferPackageBuilder({
+      conversation: conversation(4),
+      cutIndex: 3,
+      language: 'en',
+      relayedThrough: 2,
+    });
+    const pkg = await build({
+      target: 'claude',
+      mode: 'full',
+      scope: 'sinceLast',
+      delivery: 'inline',
+    });
+
+    expect(pkg.text).toContain('msg3');
+    expect(pkg.text).not.toContain('msg0');
+  });
+
+  it('measures the budget against the leg, not the whole history', () => {
+    // A long relayed conversation sending two new turns is a small transfer.
+    expect(exceedsTransferBudget(conversation(40, 4000), 39, 'sinceLast', 37)).toBe(false);
+    expect(exceedsTransferBudget(conversation(40, 4000), 39, 'whole', 37)).toBe(true);
+  });
+});
