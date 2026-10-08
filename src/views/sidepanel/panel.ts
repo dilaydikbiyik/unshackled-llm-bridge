@@ -22,16 +22,31 @@ let stopWatching: (() => void) | null = null;
  */
 /** Chrome's permission and tab APIs, injected so the panel is testable. */
 const chromePorts: SitesPorts = {
+  // Every call is guarded: these are conveniences, and a panel that throws
+  // because it could not read the current tab is worse than one that simply
+  // does not pre-fill the field.
   currentHost: async () => {
-    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
     try {
+      const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
       return tab?.url ? new URL(tab.url).hostname : null;
     } catch {
       return null;
     }
   },
-  requestOrigin: (pattern) => chrome.permissions.request({ origins: [pattern] }),
-  removeOrigin: (pattern) => chrome.permissions.remove({ origins: [pattern] }),
+  requestOrigin: async (pattern) => {
+    try {
+      return await chrome.permissions.request({ origins: [pattern] });
+    } catch {
+      return false;
+    }
+  },
+  removeOrigin: async (pattern) => {
+    try {
+      return await chrome.permissions.remove({ origins: [pattern] });
+    } catch {
+      return false;
+    }
+  },
 };
 
 export async function renderPanel(

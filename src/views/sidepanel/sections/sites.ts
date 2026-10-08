@@ -63,12 +63,17 @@ export function bindSites(
   const input = el<HTMLInputElement>(root, '#site-host');
   const status = el<HTMLElement>(root, '#site-status');
 
-  // Offer the site the user is already on; typing a host is the fallback.
-  void ports.currentHost().then((host) => {
-    if (host && !input.value && isAddableHost(host) && !hasSite(settings, host)) {
-      input.value = host;
-    }
-  });
+  // Offer the site the user is already on; typing a host is the fallback. A
+  // failure here must not escape: nothing depends on it, and an unhandled
+  // rejection in a side panel is invisible until it takes something else down.
+  void ports
+    .currentHost()
+    .then((host) => {
+      if (host && !input.value && isAddableHost(host) && !hasSite(settings, host)) {
+        input.value = host;
+      }
+    })
+    .catch(() => undefined);
 
   el<HTMLButtonElement>(root, '#site-add').addEventListener('click', () => {
     const host = normalizeHost(input.value);

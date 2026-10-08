@@ -79,6 +79,14 @@ All notable changes to this project are documented here. The format follows
   picker or new-chat route, so it reports both as unavailable rather than failing at them later.
 
 ### Fixed
+- **CI failed for four commits while every test passed.** The side panel's Chrome ports threw into
+  nothing when `chrome.tabs` or `chrome.permissions` was absent, and Vitest fails a run on an
+  unhandled rejection even when the suite is green. The ports now guard every call — a panel that
+  throws because it could not read the current tab is worse than one that does not pre-fill a field
+  — the panel test stubs those APIs so the real ports are exercised, and a regression test asserts
+  the panel renders with no unhandled rejection when they are missing.
+
+### Fixed
 - **Every fork carried the previous fork's transcript as well.** The generated transcript is stored
   like any attachment so the replay path can carry it, and the fork dialog was then offering it
   back as one of the user's own files, pre-ticked. A second fork arrived with two transcripts, a
