@@ -14,6 +14,9 @@ import { BASE_STYLES, copyText, createShadowHost } from './shadow-host';
 
 export const FORK_DIALOG_HOST_ID = 'ulb-fork-dialog-host';
 
+/** Sentinel for the "back where this came from" option in the target list. */
+export const RETURN_TARGET = 'origin';
+
 export interface ForkDialogOptions {
   conversation: BridgeConversation;
   settings: Settings;
@@ -24,12 +27,20 @@ export interface ForkDialogOptions {
   showLengthWarning: boolean;
   /** How many messages each scope covers, so the view does no index math. */
   scopeCounts: Record<TransferScope, number>;
+  /**
+   * Set when this conversation began as a fork of another. Offered as a target
+   * of its own: the answer goes back to the chat that asked for it, rather
+   * than starting a third conversation nobody wanted.
+   */
+  origin?: { platform: PlatformId; label: string; url: string };
   onTransfer: (result: {
     target: PlatformId;
     text: string;
     scope: TransferScope;
     /** Present when the context travels as a file the controller must store. */
     contextFile?: { name: string; text: string };
+    /** Set when the package is going back to the conversation it came from. */
+    returnUrl?: string;
     attachmentIds: string[];
   }) => Promise<void>;
 }
@@ -88,8 +99,11 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
     .map((site) => site.id)
     .filter((p) => p !== conversation.sourcePlatform);
 
+  // A conversation that came from somewhere defaults to going back there: the
+  // round trip is the reason to have forked in the first place.
   const state = {
-    target: targets[0] as PlatformId,
+    target: (options.origin ? options.origin.platform : targets[0]) as PlatformId,
+    returning: options.origin !== undefined,
     // Whole conversation by default: moving a chat is the common case, and
     // forking one message was never worth opening a dialog for.
     scope: 'whole' as TransferScope,
@@ -117,8 +131,13 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
           <div class="field">
             <label for="target">${t(lang, 'forkTarget')}</label>
             <select id="target">
+              ${options.origin &&
+              html`<option value="${RETURN_TARGET}">
+                ⤺ ${t(lang, 'forkReturnTo').replace('{name}', options.origin.label)}
+              </option>`}
               ${targets.map((p) => html`<option value="${p}">${platformLabel(p)}</option>`)}
             </select>
+            ${options.origin && html`<span class="muted">${t(lang, 'forkReturnHint')}</span>`}
           </div>
 
           <div class="field">
@@ -236,7 +255,11 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
 
   const deliverySelect = $<HTMLSelectElement>('delivery');
   $<HTMLSelectElement>('target').addEventListener('change', (event) => {
-    state.target = (event.target as HTMLSelectElement).value as PlatformId;
+    const value = (event.target as HTMLSelectElement).value;
+    state.returning = value === RETURN_TARGET;
+    state.target = state.returning
+      ? (options.origin?.platform as PlatformId)
+      : (value as PlatformId);
     // A target that takes no uploads cannot receive the context as a file.
     const canAttach = platformInfo(state.target).acceptsFileUpload;
     deliverySelect.disabled = !canAttach;
@@ -285,6 +308,7 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
       target: state.target,
       text: state.text,
       scope: state.scope,
+      ...(state.returning && options.origin ? { returnUrl: options.origin.url } : {}),
       ...(state.contextFile ? { contextFile: state.contextFile } : {}),
       attachmentIds: state.attachmentIds,
     });

@@ -327,6 +327,23 @@ extension, and submit the store listing. Still unverified on the live sites: Cla
 (none of the 60 most recent conversations contains one, and producing one means sending a message)
 and ChatGPT's model label on a paid plan.
 
+### Where the platforms' own import cannot follow (2026-10-08)
+
+Google shipped "Import memory to Gemini": paste a summary, or upload a 5 GB export, one way, into
+Gemini, with the ingested data used for training. It maps the limits of what a provider can build,
+and those limits are the project's ground.
+
+- [x] **Round trip.** Carry an answer back into the conversation that asked for it. One-way by
+      construction for a provider; natural for a neutral client that holds both addresses.
+- [x] Provider-neutral by design: no site is privileged, and the user adds their own
+- [x] Nothing leaves the browser — the opposite of an import that feeds a training pipeline
+- [ ] **Relay mode**: keep two conversations on different providers in step across several
+      exchanges, rather than one trip each way
+- [ ] **Cross-provider memory**: distil a portable profile from conversations on every platform,
+      owned by the user rather than by whichever provider they are standing in
+- [ ] Sharpen parallel comparison into "same question, N providers, differences surfaced" — no
+      provider will ever show a competitor's answer beside its own
+
 ### Universal platform support — done (2026-10-07)
 
 - [x] The core no longer knows three platforms: `PLATFORMS` became a registry, and `PlatformId`

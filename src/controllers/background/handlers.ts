@@ -68,9 +68,17 @@ export function createHandlers(deps: BackgroundDeps): HandlerMap {
     'inject/initiate': async ({ request }) => {
       // Hand-off across tabs: park the package, open the target, and let the
       // target's content script claim it once its composer is ready.
-      await deps.session.set(pendingKey(request.targetPlatform), request.injection);
+      // The lineage travels with the package: the target needs it to offer the
+      // trip back, and only the forking side knows it.
+      await deps.session.set(pendingKey(request.targetPlatform), {
+        ...request.injection,
+        ...(request.lineage ? { lineage: request.lineage } : {}),
+      });
       if (request.lineage) await deps.repo.recordFork(request.lineage, request.targetPlatform);
-      await deps.openTab(platformInfo(request.targetPlatform).newChatUrl, { active: true });
+      // A return trip reopens the origin conversation; a fork starts a new one.
+      await deps.openTab(request.openUrl ?? platformInfo(request.targetPlatform).newChatUrl, {
+        active: true,
+      });
       return { ok: true };
     },
 

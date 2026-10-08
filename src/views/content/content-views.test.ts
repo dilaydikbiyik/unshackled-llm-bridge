@@ -4,7 +4,13 @@ import { createConversation } from '@domain/conversation/schema';
 import type { TransferPackageBuilder, TransferRequest } from '@domain/transfer';
 import { DEFAULT_SETTINGS, type Settings } from '@shared/settings';
 import { FORK_BUTTON_HOST_ID, HIDE_DELAY_MS, mountForkButtons } from './fork-button';
-import { FORK_DIALOG_HOST_ID, formatSize, openForkDialog, type ForkDialogOptions } from './fork-dialog';
+import {
+  FORK_DIALOG_HOST_ID,
+  formatSize,
+  openForkDialog,
+  RETURN_TARGET,
+  type ForkDialogOptions,
+} from './fork-dialog';
 import { showToast, TOAST_DURATION_MS, TOAST_HOST_ID } from './toast';
 
 const shadowOf = (hostId: string) => document.getElementById(hostId)?.shadowRoot ?? null;
@@ -298,5 +304,75 @@ describe('fork affordance — drag out', () => {
     button.dispatchEvent(event);
     expect(event.defaultPrevented).toBe(true);
     unmount();
+  });
+});
+
+/**
+ * The round trip. A platform's own import brings context in and never carries
+ * an answer out, because it exists to move people onto that platform. A client
+ * that belongs to no provider can offer the way back, and it is the obvious
+ * default on a conversation that came from somewhere.
+ */
+describe('fork dialog — returning to the origin', () => {
+  const origin = { platform: 'gemini' as const, label: 'Gemini', url: 'https://gemini.google.com/app/abc' };
+
+  const conversation = createConversation({
+    id: 'claude-2',
+    sourcePlatform: 'claude',
+    createdAt: '2026-10-08T00:00:00Z',
+    messages: [{ role: 'user', content: 'hi', index: 0, attachmentRefs: [] }],
+    attachments: [],
+  });
+
+  function open(patch: Partial<ForkDialogOptions> = {}) {
+    const onTransfer = vi.fn(async () => undefined);
+    openForkDialog({
+      conversation,
+      settings: { ...DEFAULT_SETTINGS, language: 'en' },
+      attachments: [],
+      buildPackage: async (request) => ({
+        text: `package for ${request.target}`,
+        estimatedTokens: 1,
+      }),
+      showLengthWarning: false,
+      scopeCounts: { whole: 2, upToMessage: 1 },
+      onTransfer,
+      ...patch,
+    });
+    const root = shadowOf(FORK_DIALOG_HOST_ID)!;
+    const $ = <T extends Element>(selector: string) => root.querySelector<T>(selector)!;
+    return { $, onTransfer };
+  }
+
+  it('offers the origin as a target, selected by default', () => {
+    const { $ } = open({ origin });
+    expect($<HTMLSelectElement>('#target').value).toBe(RETURN_TARGET);
+    expect($('#target').textContent).toContain('Gemini');
+  });
+
+  it('sends the package back to that exact conversation', async () => {
+    const { $, onTransfer } = open({ origin });
+    await vi.waitFor(() => expect($<HTMLTextAreaElement>('#preview').value).not.toBe(''));
+    $<HTMLButtonElement>('#transfer').click();
+
+    expect(onTransfer).toHaveBeenCalledWith(
+      expect.objectContaining({ target: 'gemini', returnUrl: 'https://gemini.google.com/app/abc' }),
+    );
+  });
+
+  it('carries no return address when the user picks an ordinary target', async () => {
+    const { $, onTransfer } = open({ origin });
+    const target = $<HTMLSelectElement>('#target');
+    target.value = 'claude';
+    target.dispatchEvent(new Event('change'));
+    await vi.waitFor(() => expect($<HTMLTextAreaElement>('#preview').value).not.toBe(''));
+    $<HTMLButtonElement>('#transfer').click();
+
+    expect(onTransfer).toHaveBeenCalledWith(expect.not.objectContaining({ returnUrl: expect.anything() }));
+  });
+
+  it('offers nothing of the sort for a conversation the user simply started', () => {
+    const { $ } = open();
+    expect($('#target').textContent).not.toContain('⤺');
   });
 });

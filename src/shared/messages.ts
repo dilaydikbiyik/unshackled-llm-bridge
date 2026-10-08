@@ -4,6 +4,19 @@ import type { AdapterHealth } from '@shared/health';
 import type { Lang } from '@shared/i18n';
 
 /** A package parked for a target platform's content script to claim. */
+export interface ForkLineage {
+  sourceConversationId: string;
+  sourcePlatform: PlatformId;
+  cutIndex: number;
+  /**
+   * Where the conversation came from, exactly. A platform's own "import from
+   * another assistant" can only ever bring context in; carrying an answer back
+   * to the conversation that asked for it needs the origin's address, and only
+   * a client that belongs to no provider is in a position to keep it.
+   */
+  sourceUrl?: string;
+}
+
 export interface PendingInjection {
   text: string;
   attachmentIds: string[];
@@ -14,18 +27,22 @@ export interface PendingInjection {
    */
   fallbackText?: string;
   comparisonId?: string;
-}
-
-export interface ForkLineage {
-  sourceConversationId: string;
-  sourcePlatform: PlatformId;
-  cutIndex: number;
+  /**
+   * Travels with the package so the target knows which conversation it came
+   * from, and can offer to take an answer back there.
+   */
+  lineage?: ForkLineage;
 }
 
 export interface InjectRequest {
   targetPlatform: PlatformId;
   injection: PendingInjection;
   lineage?: ForkLineage;
+  /**
+   * Open this exact conversation instead of a new chat. Set when the package
+   * is going back to the conversation it was forked from.
+   */
+  openUrl?: string;
 }
 
 export interface CapturedAttachmentMeta {

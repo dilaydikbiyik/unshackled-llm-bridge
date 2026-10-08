@@ -89,7 +89,11 @@ describe('transfer hand-off', () => {
   it('parks the package, records lineage, and opens the target in the foreground', async () => {
     const { call, session, repo, openTab } = setup();
     await call({ type: 'inject/initiate', request });
-    expect(session.snapshot()[pendingKey('claude')]).toEqual(request.injection);
+    // The lineage rides along, so the target can offer the trip back.
+    expect(session.snapshot()[pendingKey('claude')]).toEqual({
+      ...request.injection,
+      lineage: request.lineage,
+    });
     expect(repo.recordFork).toHaveBeenCalledWith(request.lineage, 'claude');
     expect(openTab).toHaveBeenCalledWith('https://claude.ai/new', { active: true });
   });
@@ -97,7 +101,10 @@ describe('transfer hand-off', () => {
   it('hands the package out exactly once', async () => {
     const { call } = setup();
     await call({ type: 'inject/initiate', request });
-    expect(await call({ type: 'inject/pending-check', platform: 'claude' })).toEqual(request.injection);
+    expect(await call({ type: 'inject/pending-check', platform: 'claude' })).toEqual({
+      ...request.injection,
+      lineage: request.lineage,
+    });
     expect(await call({ type: 'inject/pending-check', platform: 'claude' })).toBeNull();
   });
 
@@ -286,5 +293,43 @@ describe('generated transcripts are not the user’s files', () => {
     const listed = await call({ type: 'attachment/list', conversationKey: 'k' });
 
     expect(listed.map((meta) => meta.id)).toEqual(['a1']);
+  });
+});
+
+/**
+ * The move no platform's own "import from another assistant" can make: taking
+ * an answer back to the conversation that asked for it. Their import exists to
+ * bring people in, so it only ever points one way.
+ */
+describe('return trip', () => {
+  const forked = {
+    targetPlatform: 'claude' as const,
+    injection: { text: 'context package', attachmentIds: [] },
+    lineage: {
+      sourceConversationId: 'chatgpt-abc',
+      sourcePlatform: 'chatgpt' as const,
+      cutIndex: 1,
+      sourceUrl: 'https://chatgpt.com/c/the-original',
+    },
+  };
+
+  it('reopens the origin conversation instead of starting a new chat', async () => {
+    const { call, openTab } = setup();
+    await call({
+      type: 'inject/initiate',
+      request: {
+        ...forked,
+        targetPlatform: 'chatgpt',
+        openUrl: 'https://chatgpt.com/c/the-original',
+      },
+    });
+
+    expect(openTab).toHaveBeenCalledWith('https://chatgpt.com/c/the-original', { active: true });
+  });
+
+  it('still opens a new chat for an ordinary fork', async () => {
+    const { call, openTab } = setup();
+    await call({ type: 'inject/initiate', request: forked });
+    expect(openTab).toHaveBeenCalledWith('https://claude.ai/new', { active: true });
   });
 });

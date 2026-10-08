@@ -26,6 +26,18 @@ All notable changes to this project are documented here. The format follows
   downstream asks which kind it is holding.
 
 ### Added
+- **The round trip: take the answer back to the chat that asked for it.** A conversation created by
+  a fork remembers where it came from, and the fork dialog offers that exact conversation as a
+  target — selected by default, because returning is usually the reason to have forked. The package
+  reopens the origin conversation rather than starting a third one nobody wanted.
+
+  This is the part a platform's own "import from another assistant" is not in a position to build.
+  That feature exists to move people onto the platform, so it points one way by construction; it
+  imports a summary or a bulk export, once, and the data it ingests becomes training material. The
+  round trip needs a client that belongs to no provider, holds the addresses on both sides, and
+  keeps everything local — which is this project's whole premise.
+
+### Added
 - **Add any AI site, from the side panel.** A new *Sites* section lists the three built-in
   platforms and the user's own together, because they are the same kind of thing. Adding one asks
   Chrome for that single host — `optional_host_permissions`, requested inside the click, since

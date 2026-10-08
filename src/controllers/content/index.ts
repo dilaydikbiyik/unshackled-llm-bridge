@@ -17,9 +17,10 @@ import {
   messagesInScope,
 } from '@controllers/fork';
 import { t, type Lang } from '@shared/i18n';
-import { detectPlatform } from '@domain/platforms';
+import { detectPlatform, platformLabel } from '@domain/platforms';
 import { sendToBackground } from '@shared/messages';
 import { guardContext } from '@shared/lifecycle';
+import { bindOrigin, readOrigin, rememberOrigin } from './origin';
 import { loadRegisteredSites } from '@shared/sites';
 import { getSettings } from '@shared/settings';
 import { mountForkButtons } from '@views/content/fork-button';
@@ -133,13 +134,14 @@ async function prepareConversationDrag(
 }
 
 async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Promise<void> {
-  const [conversation, settings, attachments] = await Promise.all([
+  const [conversation, settings, attachments, origin] = await Promise.all([
     adapter.readConversation(),
     getSettings(),
     sendToBackground({
       type: 'attachment/list',
       conversationKey: conversationKey(adapter.platform),
     }),
+    readOrigin(conversationKey(adapter.platform)),
   ]);
 
   openForkDialog({
@@ -153,11 +155,20 @@ async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Pr
     }),
     // The warning is sized for the default scope, the whole conversation.
     showLengthWarning: exceedsTransferBudget(conversation, messageIndex, 'whole'),
+    ...(origin
+      ? {
+          origin: {
+            platform: origin.platform,
+            label: platformLabel(origin.platform),
+            url: origin.url,
+          },
+        }
+      : {}),
     scopeCounts: {
       whole: conversation.messages.length,
       upToMessage: messagesInScope(conversation, messageIndex, 'upToMessage').length,
     },
-    onTransfer: async ({ target, text, scope, contextFile, attachmentIds }) => {
+    onTransfer: async ({ target, text, scope, contextFile, returnUrl, attachmentIds }) => {
       // The context travels as a file: store it, then reference it like any
       // other attachment so the target replays it through the same path.
       const contextId = contextFile
@@ -167,6 +178,7 @@ async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Pr
         type: 'inject/initiate',
         request: {
           targetPlatform: target,
+          ...(returnUrl ? { openUrl: returnUrl } : {}),
           injection: {
             text,
             attachmentIds: contextId ? [contextId, ...attachmentIds] : attachmentIds,
@@ -176,6 +188,7 @@ async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Pr
           lineage: {
             sourceConversationId: conversation.id,
             sourcePlatform: conversation.sourcePlatform,
+            sourceUrl: location.href,
             // A whole-conversation fork branches from the end, not from the
             // message the dialog happened to be opened from.
             cutIndex: scope === 'whole' ? conversation.messages.length - 1 : messageIndex,
@@ -194,6 +207,8 @@ async function claimPendingInjection(adapter: PlatformAdapter): Promise<void> {
   if (!pending) return;
 
   const settings = await getSettings();
+  // Remembered before injection: this is what makes the trip back possible.
+  rememberOrigin(pending.lineage);
   try {
     await waitUntilReady(adapter);
     // Injection fills the composer only; sending stays a user action.
@@ -254,6 +269,7 @@ async function watchForArchive(adapter: PlatformAdapter): Promise<void> {
       const signature = `${conversation.id}:${conversation.messages.length}`;
       if (signature === lastSignature) return;
       lastSignature = signature;
+      await bindOrigin(conversationKey(adapter.platform));
       await sendToBackground({ type: 'archive/save', conversation });
     }, abandonPage);
   });
