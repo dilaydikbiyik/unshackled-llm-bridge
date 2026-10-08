@@ -106,6 +106,20 @@ export async function getConversation(id: string): Promise<BridgeConversation | 
   return record ? parseConversation(JSON.parse(record.data)) : null;
 }
 
+/**
+ * Every archived conversation, newest first, for distilling a portable profile.
+ * Capped because the profile only needs enough to see a pattern, and a whole
+ * archive would be read into memory to find one.
+ */
+export async function listConversations(limit = 200): Promise<BridgeConversation[]> {
+  const records = await getDb()
+    .conversations.orderBy('updatedAt')
+    .reverse()
+    .limit(limit)
+    .toArray();
+  return records.map((record) => parseConversation(JSON.parse(record.data)));
+}
+
 /** Naive local full-text search; empty query returns the most recent entries. */
 export async function searchConversations(query: string, limit = 20): Promise<ArchiveHit[]> {
   const needle = query.trim().toLowerCase();

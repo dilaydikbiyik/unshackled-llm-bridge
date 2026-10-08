@@ -56,6 +56,10 @@ const STRINGS = {
     forkTitle: 'Sohbeti çatalla',
     forkTarget: 'Hedef platform',
     contextFileFailed: 'Bağlam dosyası yüklenemedi; tamamı mesaj kutusuna yazıldı.',
+    personaDistil: 'Arşivimden çıkar',
+    personaDistilHint:
+      'Kendi sohbetlerinden sayılarak bir taslak çıkarır — tüm platformlardan, tarayıcından çıkmadan. Sonra istediğin gibi düzenlersin.',
+    personaDistilEmpty: 'Arşiv boş',
     sitesSection: 'Siteler',
     sitesHint:
       'Üç platform hazır gelir. Başka bir AI sitesini kendin ekleyebilirsin — seçici yazmaya gerek yok, sayfayı tanımadan okur. Her site için izni sen verirsin, listeden kaldırınca izin de gider.',
@@ -148,6 +152,10 @@ const STRINGS = {
     forkTitle: 'Fork conversation',
     forkTarget: 'Target platform',
     contextFileFailed: 'The context file could not be uploaded; the full package is in the composer instead.',
+    personaDistil: 'Draw from my archive',
+    personaDistilHint:
+      'Counts a draft from your own conversations, across every platform, without leaving your browser. Edit it however you like.',
+    personaDistilEmpty: 'Archive is empty',
     sitesSection: 'Sites',
     sitesHint:
       'Three platforms ship with the extension. Add any other AI site yourself — no selectors needed, it reads a page it has never seen. You grant each site, and removing it here gives the permission back.',

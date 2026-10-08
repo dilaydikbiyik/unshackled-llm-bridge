@@ -3,6 +3,7 @@ import type { summarizeTranscript } from '@data/summarize/client';
 import { MAX_ATTACHMENT_BYTES } from '@domain/attachments';
 import { serializeConversation } from '@domain/conversation/serializer';
 import { conversationToMarkdown, exportFilename } from '@domain/export';
+import { distilMemory } from '@domain/memory/distil';
 import { platformIds, platformInfo, type PlatformId } from '@domain/platforms';
 import { base64ToBytes, bytesToBase64 } from '@shared/base64';
 import { readComparisons, writeComparisons } from '@shared/comparisons';
@@ -19,6 +20,7 @@ export type RepoPort = Pick<
   | 'saveConversation'
   | 'getConversation'
   | 'searchConversations'
+  | 'listConversations'
   | 'recordFork'
   | 'listForksFrom'
 >;
@@ -118,6 +120,10 @@ export function createHandlers(deps: BackgroundDeps): HandlerMap {
     },
 
     'archive/search': ({ query }) => deps.repo.searchConversations(query),
+
+    // Distilled in the worker, where the archive lives. Nothing leaves the
+    // browser: the profile is counted from the user's own conversations.
+    'memory/distil': async () => distilMemory(await deps.repo.listConversations()),
 
     'archive/export': async ({ id, format }) => {
       const conversation = await deps.repo.getConversation(id);

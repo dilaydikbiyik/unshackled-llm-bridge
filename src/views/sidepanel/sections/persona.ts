@@ -1,4 +1,6 @@
+import { draftProfileText, type MemoryProfile } from '@domain/memory/distil';
 import { t, type Lang } from '@shared/i18n';
+import { sendToBackground } from '@shared/messages';
 import { updateSettings, type Persona, type Settings } from '@shared/settings';
 import { html, type SafeHtml } from '@views/html';
 import { el, flash } from '../dom';
@@ -35,6 +37,10 @@ export function renderPersona(settings: Settings): SafeHtml {
       <div class="field">
         <textarea id="persona-text" placeholder="${t(lang, 'personaText')}">${active?.text ?? ''}</textarea>
       </div>
+      <div class="row">
+        <button id="persona-distil">${t(lang, 'personaDistil')}</button>
+        <span class="hint">${t(lang, 'personaDistilHint')}</span>
+      </div>
       <div class="row end">
         ${active && html`<button id="persona-delete">${t(lang, 'personaDelete')}</button>`}
         <button class="primary" id="persona-save">${t(lang, 'personaSave')}</button>
@@ -43,8 +49,31 @@ export function renderPersona(settings: Settings): SafeHtml {
   `;
 }
 
-export function bindPersona(root: ParentNode, settings: Settings, onChanged: () => void): void {
+export function bindPersona(
+  root: ParentNode,
+  settings: Settings,
+  onChanged: () => void,
+  distil: () => Promise<MemoryProfile> = () => sendToBackground({ type: 'memory/distil' }),
+): void {
   const lang = settings.language;
+
+  // A profile the user owns, counted from their own archive across every
+  // platform — and a draft, not a verdict: it lands in the editor for them to
+  // rewrite before it is ever attached to anything.
+  const distilButton = el<HTMLButtonElement>(root, '#persona-distil');
+  distilButton.addEventListener('click', () => {
+    void distil().then((profile) => {
+      const draft = draftProfileText(profile);
+      if (!draft) {
+        flash(distilButton, t(lang, 'personaDistilEmpty'), 2600);
+        return;
+      }
+      const textarea = el<HTMLTextAreaElement>(root, '#persona-text');
+      const existing = textarea.value.trim();
+      textarea.value = existing ? `${existing}\n\n${draft}` : draft;
+      textarea.focus();
+    });
+  });
 
   el<HTMLSelectElement>(root, '#persona-select').addEventListener('change', (event) => {
     const id = (event.target as HTMLSelectElement).value || null;

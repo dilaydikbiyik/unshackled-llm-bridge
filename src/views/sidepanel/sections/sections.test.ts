@@ -8,6 +8,7 @@ import { setHtml, type SafeHtml } from '@views/html';
 import { bindArchive, renderArchive, renderHits } from './archive';
 import { bindCompare, renderCompare, truncate } from './compare';
 import { bindOnboarding, renderOnboarding } from './onboarding';
+import type { MemoryProfile } from '@domain/memory/distil';
 import { bindPersona, renderPersona, upsertPersona } from './persona';
 import { bindSettings, renderSettings } from './settings';
 import { bindSites, normalizeHost, renderSites, type SitesPorts } from './sites';
@@ -219,6 +220,73 @@ describe('compare', () => {
  * read by the generic adapter, so the list here is the whole of what the
  * extension can reach.
  */
+/**
+ * Memory the user owns. A provider's memory lives in their account, describes
+ * you to them, and reaches only the conversations you had with them; this one
+ * is counted locally from every platform and handed over as a draft.
+ */
+describe('persona — distilled from the archive', () => {
+  function mount(profile: MemoryProfile, settings_ = settings()) {
+    const root = document.createElement('div');
+    setHtml(root, renderPersona(settings_));
+    document.body.append(root);
+    const distil = vi.fn(async () => profile);
+    bindPersona(root, settings_, vi.fn(), distil);
+    return { root, distil };
+  }
+
+  const profile: MemoryProfile = {
+    platforms: [{ platform: 'claude', conversations: 4 }],
+    topics: ['kubernetes'],
+    codeLanguages: ['go'],
+    conversationCount: 4,
+    span: { from: '2026-03-01', to: '2026-09-01' },
+  };
+
+  it('fills the editor with a draft instead of saving anything', async () => {
+    const { root, distil } = mount(profile);
+    root.querySelector<HTMLButtonElement>('#persona-distil')!.click();
+
+    await vi.waitFor(() =>
+      expect(root.querySelector<HTMLTextAreaElement>('#persona-text')?.value).toContain('kubernetes'),
+    );
+    expect(distil).toHaveBeenCalled();
+    // Nothing is persisted until the user reads it and presses save.
+    expect((await getSettings()).personas).toEqual([]);
+  });
+
+  it('adds to what the user already wrote rather than replacing it', async () => {
+    const { root } = mount(profile, settings({
+      personas: [{ id: 'p', name: 'Work', text: 'Be terse.' }],
+      activePersonaId: 'p',
+    }));
+    root.querySelector<HTMLButtonElement>('#persona-distil')!.click();
+
+    await vi.waitFor(() => {
+      const value = root.querySelector<HTMLTextAreaElement>('#persona-text')?.value ?? '';
+      expect(value).toContain('Be terse.');
+      expect(value).toContain('kubernetes');
+    });
+  });
+
+  it('says so when there is no archive to draw from', async () => {
+    const empty: MemoryProfile = {
+      platforms: [],
+      topics: [],
+      codeLanguages: [],
+      conversationCount: 0,
+      span: null,
+    };
+    const { root } = mount(empty);
+    root.querySelector<HTMLButtonElement>('#persona-distil')!.click();
+
+    await vi.waitFor(() =>
+      expect(root.querySelector('#persona-distil')?.textContent).toContain('Archive is empty'),
+    );
+    expect(root.querySelector<HTMLTextAreaElement>('#persona-text')?.value).toBe('');
+  });
+});
+
 describe('sites', () => {
   const ports = (overrides: Partial<SitesPorts> = {}): SitesPorts => ({
     currentHost: async () => null,

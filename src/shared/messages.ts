@@ -1,4 +1,5 @@
 import type { BridgeConversation } from '@domain/conversation/schema';
+import type { MemoryProfile } from '@domain/memory/distil';
 import type { PlatformId } from '@domain/platforms';
 import type { AdapterHealth } from '@shared/health';
 import type { Lang } from '@shared/i18n';
@@ -129,6 +130,7 @@ export interface MessageContract {
   'attachment/get': { request: { id: string }; response: AttachmentPayload | null };
   'archive/save': { request: { conversation: BridgeConversation }; response: Ack };
   'archive/search': { request: { query: string }; response: ArchiveHit[] };
+  'memory/distil': { request: Record<never, never>; response: MemoryProfile };
   'archive/export': { request: { id: string; format: ExportFormat }; response: ExportedFile | null };
   'compare/start': {
     request: { text: string; targets: PlatformId[] };
