@@ -5,9 +5,16 @@
  * children, so unexpected wrappers degrade to plain text instead of loss.
  */
 export function extractMarkdown(root: Element): string {
-  return serializeChildren(root)
-    .replace(/\n{3,}/g, '\n\n')
-    .trim();
+  return (
+    serializeChildren(root)
+      // Whitespace between block elements collapses to a single space, which
+      // then sits alone on its own line — visible as a blank-looking line that
+      // is not blank, on either side of a code block.
+      .replace(/\n[ \t]+(?=\n)/g, '\n')
+      .replace(/[ \t]+$/gm, '')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim()
+  );
 }
 
 function serializeChildren(node: Node): string {

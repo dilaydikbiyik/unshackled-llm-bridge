@@ -86,6 +86,9 @@ All notable changes to this project are documented here. The format follows
   dropped from the match pattern (Chrome's patterns carry no port, so one grant covers every port
   on the machine), and the manifest asks for `http://localhost/*` and `http://127.0.0.1/*` as
   optional permissions.
+- **Lines holding nothing but a space.** Whitespace between block elements collapses to a single
+  space, which then stood alone on its own line either side of every code block. Found reading a
+  real local model's answer.
 - **The markup's own indentation was arriving as text.** HTML collapses runs of whitespace; the
   extractor did not. The three built-in platforms generate markup without indentation, so this only
   surfaced when the generic adapter was pointed at a hand-written page — a local model UI — where

@@ -335,8 +335,13 @@ the roles right, ignored the navigation bar, and fenced the Rust block correctly
 came out of it: local hosts could not be added at all, and the markup's indentation was being
 carried into the transcript. Both fixed.
 
-- [ ] Repeat against a real local runtime (Ollama / Open WebUI / LM Studio) once one is installed.
-      The served page mirrors their structure, but only the real thing settles it.
+- [x] Repeated against the real thing (2026-10-08): Ollama 0.40.1 serving llama3.2:1b, read through
+      the third-party `ollama-ui` front end, with the bundled heuristics loaded into the live page.
+      The reader picked `textarea#user-input` out of four text inputs — a system-prompt field, a
+      host-address field and a username field were all on the page — read both exchanges, assigned
+      the roles correctly and fenced the Rust block with its indentation intact. Health reported
+      the site as fine. One more defect fell out of it: whitespace between block elements collapsed
+      to a single space sitting alone on a line, on both sides of every code block.
 
 ### Where the platforms' own import cannot follow (2026-10-08)
 

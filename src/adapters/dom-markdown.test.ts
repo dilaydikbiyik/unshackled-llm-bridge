@@ -139,3 +139,21 @@ describe('extractMarkdown — whitespace in the source', () => {
     expect(extractMarkdown(el)).toBe('one two');
   });
 });
+
+describe('extractMarkdown — blank-looking lines', () => {
+  // Seen against a real local model UI: the whitespace between block elements
+  // collapsed to a single space and then stood alone on its own line, on both
+  // sides of every code block.
+  it('leaves no line holding only a space', () => {
+    const el = document.createElement('div');
+    el.innerHTML = `
+      <p>Here it is:</p>
+      <pre><code class="language-rust">let x = 1;</code></pre>
+      <p>That is all.</p>`;
+
+    const output = extractMarkdown(el);
+    expect(output.split('\n').every((line) => line === line.trimEnd())).toBe(true);
+    expect(output).not.toMatch(/\n \n/);
+    expect(output).toBe('Here it is:\n\n```rust\nlet x = 1;\n```\n\nThat is all.');
+  });
+})
