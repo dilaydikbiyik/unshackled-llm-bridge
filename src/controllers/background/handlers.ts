@@ -48,6 +48,12 @@ export const pendingKey = (platform: PlatformId): string => `pending-injection:$
 export const healthKey = (platform: PlatformId): string => `health:${platform}`;
 
 /** Gap between comparison tab opens: N identical prompts at once is what rate limiters look for. */
+/**
+ * How long a parked package waits to be collected. Long enough for a slow tab
+ * and a slow login; short enough that it cannot surprise the user later.
+ */
+export const PENDING_TTL_MS = 10 * 60 * 1000;
+
 export const COMPARE_STAGGER_MS = 800;
 
 /**
@@ -97,6 +103,7 @@ export function createHandlers(deps: BackgroundDeps): HandlerMap {
       // trip back, and only the forking side knows it.
       await deps.session.set(pendingKey(request.targetPlatform), {
         ...request.injection,
+        parkedAt: now().toISOString(),
         ...(request.lineage ? { lineage: request.lineage } : {}),
       });
       if (request.lineage) await deps.repo.recordFork(request.lineage, request.targetPlatform);
@@ -117,6 +124,12 @@ export function createHandlers(deps: BackgroundDeps): HandlerMap {
       if (!pending) return null;
       // Claimed exactly once: a second tab on the same platform must not re-inject it.
       await deps.session.remove(key);
+
+      // A package nobody collected is stale, not pending. Handing it to a tab
+      // opened long afterwards would drop a prompt into unrelated work.
+      if (pending.parkedAt && now().getTime() - Date.parse(pending.parkedAt) > PENDING_TTL_MS) {
+        return null;
+      }
       return pending;
     },
 

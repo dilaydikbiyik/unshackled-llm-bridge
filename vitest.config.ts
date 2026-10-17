@@ -29,6 +29,10 @@ export default defineConfig({
         'src/shared/health.ts',
         // Entry points that only wire the real browser into tested modules.
         // They are exercised end to end by the Playwright suite in e2e/.
+        //
+        // This exclusion is only honest while they stay wiring. The comparison
+        // watcher grew into real logic inside content/index.ts and was invisible
+        // here because of this line; it now lives in compare-watch.ts, tested.
         'src/controllers/background/index.ts',
         'src/controllers/content/index.ts',
         'src/views/sidepanel/main.ts',

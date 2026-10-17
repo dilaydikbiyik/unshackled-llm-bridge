@@ -29,6 +29,13 @@ export interface PendingInjection {
   fallbackText?: string;
   /** The attached transcript's filename, so the target can check it arrived. */
   contextFileName?: string;
+  /**
+   * When the package was parked. A target tab that never opens — closed, or
+   * failed to load — would otherwise leave the package waiting, and the next
+   * tab of that platform opened in this browser session would be handed a
+   * prompt belonging to work the user had moved on from.
+   */
+  parkedAt?: string;
   comparisonId?: string;
   /**
    * Travels with the package so the target knows which conversation it came

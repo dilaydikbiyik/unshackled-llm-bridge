@@ -9,6 +9,7 @@ import {
   COMPARE_STAGGER_MS,
   createHandlers,
   healthKey,
+  PENDING_TTL_MS,
   pendingKey,
   safeReturnUrl,
   type RepoPort,
@@ -29,7 +30,13 @@ const conversation = createConversation({
   attachments: [],
 });
 
-function setup(options: { settings?: Partial<Settings>; repo?: Partial<Record<keyof RepoPort, unknown>> } = {}) {
+function setup(
+  options: {
+    settings?: Partial<Settings>;
+    repo?: Partial<Record<keyof RepoPort, unknown>>;
+    now?: () => Date;
+  } = {},
+) {
   const session = memoryStore();
   const local = memoryStore();
   const openTab = vi.fn(async (_url: string, _options: { active: boolean }) => undefined);
@@ -54,7 +61,7 @@ function setup(options: { settings?: Partial<Settings>; repo?: Partial<Record<ke
     summarize,
     getSettings: async () => ({ ...DEFAULT_SETTINGS, ...options.settings }),
     sleep,
-    now: () => new Date('2026-09-11T10:00:00.000Z'),
+    now: options.now ?? (() => new Date('2026-09-11T10:00:00.000Z')),
     newId: () => 'cmp-1',
   });
   const call = <T extends MessageType>(message: MessageOf<T>): Promise<ResponseOf<T>> =>
@@ -100,6 +107,8 @@ describe('transfer hand-off', () => {
     expect(session.snapshot()[pendingKey('claude')]).toEqual({
       ...request.injection,
       lineage: request.lineage,
+      // Stamped so a package nobody collects can expire.
+      parkedAt: '2026-09-11T10:00:00.000Z',
     });
     expect(repo.recordFork).toHaveBeenCalledWith(request.lineage, 'claude');
     expect(openTab).toHaveBeenCalledWith('https://claude.ai/new', { active: true });
@@ -111,6 +120,7 @@ describe('transfer hand-off', () => {
     expect(await call({ type: 'inject/pending-check', platform: 'claude' })).toEqual({
       ...request.injection,
       lineage: request.lineage,
+      parkedAt: '2026-09-11T10:00:00.000Z',
     });
     expect(await call({ type: 'inject/pending-check', platform: 'claude' })).toBeNull();
   });
@@ -383,5 +393,48 @@ describe('return address', () => {
     });
 
     expect(openTab).toHaveBeenCalledWith('https://claude.ai/new', { active: true });
+  });
+})
+
+/**
+ * A package nobody collected is stale, not pending. A target tab that never
+ * opened — closed, or failed to load — used to leave it waiting, and the next
+ * tab of that platform opened in the same browser session was handed a prompt
+ * belonging to work the user had moved on from.
+ */
+describe('parked packages expire', () => {
+  const parked = {
+    targetPlatform: 'claude' as const,
+    injection: { text: 'the comparison prompt', attachmentIds: [] },
+  };
+
+  it('hands over a package collected in time', async () => {
+    let at = Date.parse('2026-10-18T10:00:00.000Z');
+    const { call } = setup({ now: () => new Date(at) });
+    await call({ type: 'inject/initiate', request: parked });
+
+    at += 60_000;
+    expect(await call({ type: 'inject/pending-check', platform: 'claude' })).toMatchObject({
+      text: 'the comparison prompt',
+    });
+  });
+
+  it('drops one nobody came for', async () => {
+    let at = Date.parse('2026-10-18T10:00:00.000Z');
+    const { call } = setup({ now: () => new Date(at) });
+    await call({ type: 'inject/initiate', request: parked });
+
+    at += PENDING_TTL_MS + 1000;
+    expect(await call({ type: 'inject/pending-check', platform: 'claude' })).toBeNull();
+  });
+
+  it('clears the stale package rather than leaving it to surprise a later tab', async () => {
+    let at = Date.parse('2026-10-18T10:00:00.000Z');
+    const { call, session } = setup({ now: () => new Date(at) });
+    await call({ type: 'inject/initiate', request: parked });
+
+    at += PENDING_TTL_MS + 1000;
+    await call({ type: 'inject/pending-check', platform: 'claude' });
+    expect(session.snapshot()[pendingKey('claude')]).toBeUndefined();
   });
 })

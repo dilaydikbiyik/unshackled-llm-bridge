@@ -21,6 +21,7 @@ import { detectPlatform, platformIds, platformLabel } from '@domain/platforms';
 import { sendToBackground } from '@shared/messages';
 import { isForkCommand } from '@shared/commands';
 import { guardContext } from '@shared/lifecycle';
+import { watchForAnswer } from './compare-watch';
 import { bindOrigin, readOrigin, rememberOrigin } from './origin';
 import { markRelayed, readRelayPoints } from './relay';
 import { loadRegisteredSites } from '@shared/sites';
@@ -284,23 +285,25 @@ async function claimPendingInjection(adapter: PlatformAdapter): Promise<void> {
 /**
  * Parallel comparison: once the user sends the injected prompt, capture the
  * assistant's reply and hand it to the side panel's side-by-side view.
+ *
+ * The watching itself lives in compare-watch.ts, where it is tested: it has to
+ * cope with a streaming answer, with having no way to ask the page whether
+ * generation finished, and with the user carrying on in the tab afterwards.
  */
 function reportComparisonAnswer(adapter: PlatformAdapter, comparisonId: string): void {
-  const startedAt = Date.now();
-  const stop = adapter.observeMessages(() => {
-    void (async () => {
-      if (Date.now() - startedAt > 10 * 60 * 1000) return stop();
-      const conversation = await adapter.readConversation();
-      const last = conversation.messages.at(-1);
-      if (last?.role !== 'assistant' || last.content.length < 40) return;
-      await sendToBackground({
-        type: 'compare/report',
-        comparisonId,
-        platform: adapter.platform,
-        content: last.content,
-      });
-    })();
-  });
+  const stop = watchForAnswer(adapter, (content) =>
+    guardContext(
+      () =>
+        sendToBackground({
+          type: 'compare/report',
+          comparisonId,
+          platform: adapter.platform,
+          content,
+        }).then(() => undefined),
+      abandonPage,
+    ).then(() => undefined),
+  );
+  teardowns.push(stop);
 }
 
 /** Opt-in passive archiving of whatever conversation the user is looking at. */

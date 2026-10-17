@@ -7,6 +7,16 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- **A comparison kept overwriting its own answer.** The watcher took the last assistant message on
+  every page change and never stopped, so it reported the answer while it was still streaming and
+  then replaced it with whatever the user asked that tab next. It now takes the first assistant
+  turn that appears after the prompt was injected, waits for it to settle, reports it once and
+  stops. A length threshold that silently dropped short answers is gone with it, and the watcher is
+  guarded and torn down like every other long-lived listener.
+- **A package nobody collected waited forever.** If a target tab never opened — closed, or failed
+  to load — the parked prompt stayed in session storage, and the next tab of that platform opened
+  in the same browser session was handed work the user had moved on from. Parked packages now carry
+  a timestamp and expire after ten minutes.
 - **A failed upload was reported as a success.** The replay counted drops dispatched, not files
   that arrived — a synthetic drop is dispatched, never acknowledged — so a target that ignored it
   left the user with a note referring to a file that was never there, and the documented fallback
