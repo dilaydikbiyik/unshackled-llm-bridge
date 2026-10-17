@@ -1,0 +1,80 @@
+<!doctype html>
+<!--
+  A neutral chat page, used only for the store screenshots.
+
+  It carries the same structure the ChatGPT adapter reads, so the extension
+  behaves exactly as it does on the real site, but it imitates no product's
+  interface: a listing should not put another company's UI in its images, and
+  a screenshot of a bare test fixture tells a user nothing.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Assistant</title>
+    <style>
+      :root { color-scheme: light; }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0; font: 15px/1.6 ui-sans-serif, system-ui, -apple-system, sans-serif;
+        background: #faf9f7; color: #22211f; display: grid; grid-template-columns: 240px 1fr;
+        height: 100vh;
+      }
+      aside { background: #f1efea; border-right: 1px solid #e3e0d8; padding: 16px 12px; }
+      aside h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: #86827a; margin: 0 0 12px 4px; }
+      aside a { display: block; padding: 8px 10px; border-radius: 8px; color: #44413c; text-decoration: none; font-size: 14px; }
+      aside a.current { background: #e5e1d8; }
+      main { display: grid; grid-template-rows: 1fr auto; overflow: hidden; }
+      .thread { overflow: auto; padding: 32px 40px; display: flex; flex-direction: column; gap: 22px; }
+      section { max-width: 720px; width: 100%; margin: 0 auto; }
+      .bubble { background: #ece8e0; padding: 12px 16px; border-radius: 16px; display: inline-block; max-width: 80%; }
+      .turn-user { text-align: right; }
+      .markdown p { margin: 0 0 10px; }
+      pre { background: #22211f; color: #f5f3ee; padding: 14px 16px; border-radius: 12px; overflow: auto; font-size: 13px; }
+      pre button { float: right; background: #3a3833; color: #cfcabd; border: 0; border-radius: 6px; padding: 2px 8px; font-size: 11px; }
+      footer { border-top: 1px solid #e3e0d8; padding: 16px 40px 24px; background: #faf9f7; }
+      form { max-width: 720px; margin: 0 auto; }
+      #prompt-textarea {
+        min-height: 52px; background: #fff; border: 1px solid #ddd9d0; border-radius: 14px;
+        padding: 14px 16px; color: #8a867e;
+      }
+    </style>
+  </head>
+  <body>
+    <aside>
+      <h2>Chats</h2>
+      <a data-testid="create-new-chat-button" href="/">New chat</a>
+      <a class="current" href="/c/1">Kyoto in April</a>
+      <a href="/c/2">Postgres vs MySQL</a>
+      <a href="/c/3">Rewriting the parser</a>
+    </aside>
+    <main>
+      <div class="thread">
+        <section data-testid="conversation-turn-1" class="turn-user">
+          <div data-message-author-role="user">
+            <div class="bubble">Plan a trip to Kyoto in April</div>
+          </div>
+        </section>
+        <section data-testid="conversation-turn-2">
+          <div data-message-author-role="assistant">
+            <div class="flex w-full flex-col gap-1">
+              <div class="LR5Y_W_content markdown prose">
+                <p>Go for the <strong>cherry blossoms</strong> in early April — the first week is
+                  usually the peak, and the crowds thin out by the second.</p>
+                <p>Here is a rough budget for five days:</p>
+                <pre><button>Copy</button><code class="language-js">const days = 5;
+const perDay = 120; // EUR, mid-range
+const total = days * perDay;</code></pre>
+              </div>
+            </div>
+            <button aria-label="Switch model">Switch model</button>
+          </div>
+        </section>
+      </div>
+      <footer>
+        <form data-type="unified-composer">
+          <div id="prompt-textarea" contenteditable="true">Ask anything…</div>
+        </form>
+      </footer>
+    </main>
+  </body>
+</html>

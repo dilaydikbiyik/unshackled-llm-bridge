@@ -8,6 +8,9 @@ import { defineConfig } from '@playwright/test';
  */
 export default defineConfig({
   testDir: 'e2e',
+  // The store screenshots drive the same extension but are not a test of it,
+  // and they write files. `npm run screenshots` runs them by name.
+  testIgnore: '**/screenshots.spec.ts',
   timeout: 60_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,

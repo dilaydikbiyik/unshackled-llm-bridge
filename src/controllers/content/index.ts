@@ -19,6 +19,7 @@ import {
 import { t, type Lang } from '@shared/i18n';
 import { detectPlatform, platformLabel } from '@domain/platforms';
 import { sendToBackground } from '@shared/messages';
+import { isForkCommand } from '@shared/commands';
 import { guardContext } from '@shared/lifecycle';
 import { bindOrigin, readOrigin, rememberOrigin } from './origin';
 import { markRelayed, readRelayPoint } from './relay';
@@ -69,6 +70,7 @@ async function main(): Promise<void> {
     await reportHealth(adapter);
     teardowns.push(mountAttachmentCapture(adapter));
     teardowns.push(mountFork(adapter, config, (await getSettings()).language));
+    teardowns.push(listenForShortcut(adapter));
     void watchForArchive(adapter);
     await claimPendingInjection(adapter);
   }, abandonPage);
@@ -91,6 +93,23 @@ function mountFork(
     onFork: (messageIndex) => void openDialogFor(adapter, messageIndex),
     prepareDrag: () => prepareConversationDrag(adapter),
   });
+}
+
+/**
+ * The keyboard shortcut, which forks the conversation as a whole — there is no
+ * pointer resting on a message to take a cut point from.
+ */
+function listenForShortcut(adapter: PlatformAdapter): () => void {
+  const listener = (message: unknown, sender: chrome.runtime.MessageSender): undefined => {
+    if (!isForkCommand(message, sender.id ?? '', chrome.runtime.id)) return undefined;
+    void adapter.readConversation().then((conversation) => {
+      const lastIndex = conversation.messages.at(-1)?.index ?? 0;
+      void openDialogFor(adapter, lastIndex);
+    });
+    return undefined;
+  };
+  chrome.runtime.onMessage.addListener(listener);
+  return () => chrome.runtime.onMessage.removeListener(listener);
 }
 
 /**

@@ -93,3 +93,17 @@ describe('panel ports', () => {
     expect(rejections).toEqual([]);
   });
 });
+
+describe('document language', () => {
+  // Caught in a store screenshot: CSS case transforms follow the document's
+  // language, so with lang="tr" an English heading rendered as "COMPARİSON".
+  it('follows the chosen language, so uppercase headings are cased correctly', async () => {
+    stubChrome();
+    document.documentElement.lang = 'tr';
+    const root = document.createElement('div');
+    document.body.append(root);
+
+    await renderPanel(root, () => () => undefined);
+    expect(document.documentElement.lang).toBe('en');
+  });
+});

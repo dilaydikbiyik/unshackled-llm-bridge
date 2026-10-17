@@ -3,6 +3,10 @@
     "message": "Unshackled LLM Bridge"
   },
   "appDesc": {
-    "message": "Sohbetlerini ChatGPT ve Claude arasında çatallayıp taşı. Tamamen yerel, gizlilik öncelikli."
+    "message": "Bir yapay zekâ sohbetini dosyaları ve bağlamıyla taşı: ChatGPT, Claude, Gemini ya da eklediğin herhangi bir site. Tamamen yerel."
+  },
+  "cmdFork": {
+    "message": "Bu sohbeti başka bir yapay zekâya çatalla",
+    "description": "Klavye kısayolu etiketi"
   }
 }

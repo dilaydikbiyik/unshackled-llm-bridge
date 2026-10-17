@@ -3,6 +3,10 @@
     "message": "Unshackled LLM Bridge"
   },
   "appDesc": {
-    "message": "Fork and bridge your conversations across ChatGPT and Claude. Local-only, privacy-first."
+    "message": "Move an AI conversation — with its files and context — between ChatGPT, Claude, Gemini or any chat site you add. Local-only."
+  },
+  "cmdFork": {
+    "message": "Fork this conversation to another AI",
+    "description": "Keyboard shortcut label"
   }
 }

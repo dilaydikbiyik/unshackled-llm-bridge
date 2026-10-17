@@ -320,6 +320,41 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
       attachmentIds: state.attachmentIds,
     });
   });
+  /**
+   * A modal has to be operable without a mouse, and has to give the keyboard
+   * back when it closes. Escape dismisses it, Tab stays inside it while it is
+   * open, and focus starts on the target list — the first decision to make.
+   */
+  const focusable = (): HTMLElement[] =>
+    [...shadow.querySelectorAll<HTMLElement>('select, textarea, button, input')].filter(
+      (el) => !(el as HTMLButtonElement).disabled,
+    );
+
+  shadow.addEventListener('keydown', (event) => {
+    const key = (event as KeyboardEvent).key;
+    if (key === 'Escape') {
+      event.preventDefault();
+      close();
+      return;
+    }
+    if (key !== 'Tab') return;
+
+    const items = focusable();
+    const first = items[0];
+    const last = items.at(-1);
+    if (!first || !last) return;
+    const active = shadow.activeElement as HTMLElement | null;
+
+    if ((event as KeyboardEvent).shiftKey && active === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!(event as KeyboardEvent).shiftKey && active === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  });
+  $<HTMLSelectElement>('target').focus();
+
   shadow.querySelector('.backdrop')?.addEventListener('click', (event) => {
     if (event.target === event.currentTarget) close();
   });

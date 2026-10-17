@@ -56,6 +56,9 @@ export async function renderPanel(
 ): Promise<void> {
   const settings = await getSettings();
   const lang = settings.language;
+  // CSS case transforms follow the document's language: with lang="tr" the
+  // uppercase of "i" is "İ", so an English heading read "COMPARİSON".
+  root.ownerDocument.documentElement.lang = lang;
 
   const [healths, comparisons, archiveHits] = await Promise.all([
     fetchHealths(),

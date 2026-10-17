@@ -6,3 +6,6 @@ dist/
 coverage/
 playwright-report/
 test-results/
+
+# Generated for the store listing by `npm run screenshots`.
+store-assets/

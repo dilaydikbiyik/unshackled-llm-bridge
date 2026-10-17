@@ -422,3 +422,62 @@ describe('fork dialog — relaying', () => {
     expect(root.querySelector('option[value="sinceLast"]')).toBeNull();
   });
 });
+
+/**
+ * A modal has to be operable without a mouse. Escape dismisses it, Tab stays
+ * inside it, and focus starts on the first decision — the target list.
+ */
+describe('fork dialog — keyboard', () => {
+  function open() {
+    openForkDialog({
+      conversation: createConversation({
+        id: 'claude-4',
+        sourcePlatform: 'claude',
+        createdAt: '2026-10-18T00:00:00Z',
+        messages: [{ role: 'user', content: 'hi', index: 0, attachmentRefs: [] }],
+        attachments: [],
+      }),
+      settings: { ...DEFAULT_SETTINGS, language: 'en' },
+      attachments: [],
+      buildPackage: async () => ({ text: 'package', estimatedTokens: 1 }),
+      showLengthWarning: false,
+      scopeCounts: { whole: 1, upToMessage: 1, sinceLast: 0 },
+      onTransfer: vi.fn(async () => undefined),
+    });
+    return shadowOf(FORK_DIALOG_HOST_ID)!;
+  }
+
+  const press = (root: ShadowRoot, key: string, shiftKey = false) =>
+    root.dispatchEvent(new KeyboardEvent('keydown', { key, shiftKey, bubbles: true, cancelable: true }));
+
+  it('opens with focus on the target list', () => {
+    const root = open();
+    expect((root.activeElement as HTMLElement | null)?.id).toBe('target');
+  });
+
+  it('closes on Escape, giving the page back', () => {
+    const root = open();
+    press(root, 'Escape');
+    expect(document.getElementById(FORK_DIALOG_HOST_ID)).toBeNull();
+  });
+
+  it('keeps Tab inside the dialog', async () => {
+    const root = open();
+    // The transfer button is disabled until the package is built, and a
+    // disabled control is not in the tab order.
+    await vi.waitFor(() =>
+      expect(root.querySelector<HTMLButtonElement>('#transfer')?.disabled).toBe(false),
+    );
+    const items = [...root.querySelectorAll<HTMLElement>('select, textarea, button, input')];
+    const first = items[0]!;
+    const last = items.at(-1)!;
+
+    last.focus();
+    press(root, 'Tab');
+    expect(root.activeElement).toBe(first);
+
+    first.focus();
+    press(root, 'Tab', true);
+    expect(root.activeElement).toBe(last);
+  });
+});

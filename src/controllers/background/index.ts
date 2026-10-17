@@ -1,5 +1,6 @@
 import * as repo from '@data/store/repo';
 import { summarizeTranscript } from '@data/summarize/client';
+import { FORK_COMMAND } from '@shared/commands';
 import { onRuntimeMessage } from '@shared/messages';
 import { getSettings } from '@shared/settings';
 import { loadRegisteredSites } from '@shared/sites';
@@ -57,3 +58,22 @@ void syncSites();
 // The side panel edits the list; the worker reacts rather than being told.
 watchChromeKey('local', 'settings', () => void syncSites());
 chrome.runtime.onStartup.addListener(() => void syncSites());
+
+/**
+ * The keyboard shortcut. The worker hears the key; the page has to act, so the
+ * message is passed to the tab the user is looking at. A tab with no content
+ * script — any page that is not a bridged site — simply does not answer, and
+ * the failure is swallowed rather than logged as an error.
+ */
+chrome.commands.onCommand.addListener((command) => {
+  if (command !== FORK_COMMAND) return;
+  void (async () => {
+    const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
+    if (tab?.id === undefined) return;
+    try {
+      await chrome.tabs.sendMessage(tab.id, { type: 'command/fork' });
+    } catch {
+      // No content script on this page: nothing to fork, nothing to report.
+    }
+  })();
+});

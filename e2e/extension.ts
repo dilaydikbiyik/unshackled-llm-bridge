@@ -14,7 +14,10 @@ const SELECTORS = readFileSync(new URL('../config/selectors.json', import.meta.u
 function pageFor(url: URL): string | null {
   switch (url.host) {
     case 'chatgpt.com':
-      return 'chatgpt-conversation.html';
+      // The store screenshots use a neutral page with the same structure: a
+      // listing should not show another company's interface, and a picture of
+      // a bare test fixture tells a user nothing.
+      return process.env['ULB_SHOWCASE'] ? 'showcase.html' : 'chatgpt-conversation.html';
     case 'claude.ai':
       return url.pathname.startsWith('/chat/') ? 'claude-conversation.html' : 'claude-new.html';
     case 'gemini.google.com':

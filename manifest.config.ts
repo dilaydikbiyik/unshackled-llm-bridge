@@ -54,5 +54,19 @@ export default defineManifest({
     default_title: 'Unshackled LLM Bridge',
     default_icon: ICONS,
   },
+  /**
+   * Reaching for the mouse to move a conversation defeats the point of the
+   * gesture. Both shortcuts are suggestions — Chrome gives the user the final
+   * say in chrome://extensions/shortcuts — and neither sends anything.
+   */
+  commands: {
+    'fork-conversation': {
+      suggested_key: { default: 'Alt+Shift+F', mac: 'Alt+Shift+F' },
+      description: '__MSG_cmdFork__',
+    },
+    _execute_action: {
+      suggested_key: { default: 'Alt+Shift+B', mac: 'Alt+Shift+B' },
+    },
+  },
   icons: ICONS,
 });
