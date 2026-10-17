@@ -5,7 +5,14 @@ import type { AdapterHealth } from '@shared/health';
 import type { MessageOf, MessageType, ResponseOf } from '@shared/messages';
 import { DEFAULT_SETTINGS, type Settings } from '@shared/settings';
 import { memoryStore } from '@shared/storage';
-import { COMPARE_STAGGER_MS, createHandlers, healthKey, pendingKey, type RepoPort } from './handlers';
+import {
+  COMPARE_STAGGER_MS,
+  createHandlers,
+  healthKey,
+  pendingKey,
+  safeReturnUrl,
+  type RepoPort,
+} from './handlers';
 
 // A tiny cap keeps the size tests from allocating 25 MB.
 vi.mock('@domain/attachments', () => ({ MAX_ATTACHMENT_BYTES: 4 }));
@@ -333,3 +340,48 @@ describe('return trip', () => {
     expect(openTab).toHaveBeenCalledWith('https://claude.ai/new', { active: true });
   });
 });
+
+/**
+ * The return address reaches the service worker from a content script. An
+ * extension that opens whatever it is handed is a way to open anything, so the
+ * address is checked against the site it claims to belong to.
+ */
+describe('return address', () => {
+  it('accepts the origin conversation on that platform', () => {
+    expect(safeReturnUrl('https://chatgpt.com/c/abc', 'chatgpt')).toBe('https://chatgpt.com/c/abc');
+    expect(safeReturnUrl('https://www.chatgpt.com/c/abc', 'chatgpt')).toBe(
+      'https://www.chatgpt.com/c/abc',
+    );
+  });
+
+  it('refuses a scheme that is not the web', () => {
+    expect(safeReturnUrl('javascript:alert(1)', 'chatgpt')).toBeNull();
+    expect(safeReturnUrl('file:///etc/passwd', 'chatgpt')).toBeNull();
+    expect(safeReturnUrl('data:text/html,<script>x</script>', 'chatgpt')).toBeNull();
+  });
+
+  it('refuses a host the target does not claim, including a look-alike', () => {
+    expect(safeReturnUrl('https://evil.example/c/abc', 'chatgpt')).toBeNull();
+    expect(safeReturnUrl('https://notchatgpt.com/c/abc', 'chatgpt')).toBeNull();
+    expect(safeReturnUrl('https://chatgpt.com.attacker.example/', 'chatgpt')).toBeNull();
+  });
+
+  it('refuses nonsense rather than throwing on it', () => {
+    expect(safeReturnUrl('not a url', 'chatgpt')).toBeNull();
+    expect(safeReturnUrl(undefined, 'chatgpt')).toBeNull();
+  });
+
+  it('falls back to the platform’s new chat when the address is refused', async () => {
+    const { call, openTab } = setup();
+    await call({
+      type: 'inject/initiate',
+      request: {
+        targetPlatform: 'claude',
+        injection: { text: 'package', attachmentIds: [] },
+        openUrl: 'https://evil.example/steal',
+      },
+    });
+
+    expect(openTab).toHaveBeenCalledWith('https://claude.ai/new', { active: true });
+  });
+})

@@ -16,6 +16,16 @@ it keeps two assistants in step across several exchanges. Those three are what a
 "import from another assistant" cannot do, because that feature exists to move people onto a
 platform and so points one way by construction.
 
+### Security
+- **The return address is checked rather than trusted.** A round trip's destination reaches the
+  service worker from a content script, and an extension that opens whatever it is handed is a way
+  to open anything. The address must be http(s) and on a host the target site claims; anything else
+  falls back to that platform's new-chat page, so a bad value costs the return trip and nothing
+  more.
+- **Saved sites are re-validated on load.** A stored host that could not be granted today never
+  becomes a match pattern or an address to open, even though the list is written by the extension
+  itself.
+
 ### Release engineering
 - `npm run screenshots` produces the store's 1280×800 images by driving the built extension, so a
   listing cannot show a dialog the build does not have. They render against a neutral chat page

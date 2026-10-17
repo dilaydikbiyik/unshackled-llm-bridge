@@ -108,3 +108,17 @@ describe('local model UIs', () => {
     expect(hostnameOf('perplexity.ai')).toBe('perplexity.ai');
   });
 });
+
+describe('siteInfos — stored values are not trusted', () => {
+  it('drops a saved host that could not be granted today', () => {
+    // Settings are the extension's own, but a value that cannot be granted
+    // must not become a match pattern or an address to open.
+    const infos = siteInfos([
+      { host: 'perplexity.ai', label: 'Perplexity' },
+      { host: '*', label: 'Everything' },
+      { host: 'example.com/../../etc', label: 'Sneaky' },
+    ]);
+
+    expect(infos.map((info) => info.hosts[0])).toEqual(['perplexity.ai']);
+  });
+});

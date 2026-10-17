@@ -32,7 +32,10 @@ export function schemeFor(host: string): 'http' | 'https' {
 }
 
 export function siteInfos(sites: readonly CustomSiteSetting[]): PlatformInfo[] {
-  return sites.map((site) => ({
+  // Stored values are checked again on the way out, not only on the way in.
+  // The list is written by this extension, but a host that cannot be granted
+  // should never become a match pattern or a URL to open.
+  return sites.filter((site) => isAddableHost(site.host)).map((site) => ({
     id: siteIdForHost(site.host),
     label: site.label || site.host,
     hosts: [hostnameOf(site.host)],

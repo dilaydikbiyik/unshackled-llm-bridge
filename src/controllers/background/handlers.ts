@@ -50,6 +50,29 @@ export const healthKey = (platform: PlatformId): string => `health:${platform}`;
 /** Gap between comparison tab opens: N identical prompts at once is what rate limiters look for. */
 export const COMPARE_STAGGER_MS = 800;
 
+/**
+ * An address the extension is willing to reopen: http or https, and on a host
+ * the target site actually claims. Anything else — another scheme, another
+ * site — is discarded in favour of that platform's new-chat page, so a bad
+ * value loses the return trip rather than opening something unexpected.
+ */
+export function safeReturnUrl(candidate: string | undefined, target: PlatformId): string | null {
+  if (!candidate) return null;
+  let url: URL;
+  try {
+    url = new URL(candidate);
+  } catch {
+    return null;
+  }
+  if (url.protocol !== 'https:' && url.protocol !== 'http:') return null;
+
+  const hosts = platformInfo(target).hosts;
+  const allowed = hosts.some(
+    (host) => url.hostname === host || url.hostname.endsWith(`.${host}`),
+  );
+  return allowed ? url.href : null;
+}
+
 export function createHandlers(deps: BackgroundDeps): HandlerMap {
   const now = deps.now ?? (() => new Date());
   const newId = deps.newId ?? (() => crypto.randomUUID());
@@ -78,7 +101,11 @@ export function createHandlers(deps: BackgroundDeps): HandlerMap {
       });
       if (request.lineage) await deps.repo.recordFork(request.lineage, request.targetPlatform);
       // A return trip reopens the origin conversation; a fork starts a new one.
-      await deps.openTab(request.openUrl ?? platformInfo(request.targetPlatform).newChatUrl, {
+      // The address is checked rather than trusted: it reaches the worker from
+      // a content script, and "open whatever you are handed" is how an
+      // extension becomes a way to open anything.
+      const fallback = platformInfo(request.targetPlatform).newChatUrl;
+      await deps.openTab(safeReturnUrl(request.openUrl, request.targetPlatform) ?? fallback, {
         active: true,
       });
       return { ok: true };
