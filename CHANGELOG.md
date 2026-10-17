@@ -6,6 +6,23 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- **A second fork would have arrived with no history.** The relay point was stored per
+  conversation, not per pair, so after carrying a chat to one assistant the dialog offered "only
+  what is new since the last transfer" for *every* target — including one that had seen nothing.
+  Relay points are now keyed by conversation and target, and the dialog asks about the target that
+  is actually selected, re-labelling the scopes when it changes.
+- **A chat with no id in its URL got a new identity on every read.** A new chat before the platform
+  assigns an id, or a local UI served from `/`, minted a fresh UUID each time it was read: two
+  reads disagreed about which conversation it was, and with archiving on, every observed change was
+  stored as a brand-new record. The fallback id is now minted once per page.
+
+### Added
+- The i18n catalogs are compared whole rather than by sample — keys, empty strings and
+  placeholders — so a translation added to one language and forgotten in the other fails the build.
+- `adapters/registry.ts` is covered: the switch that decides how a site is read, including the
+  default case that makes an unknown site ordinary rather than unsupported.
+
 ## [1.0.0] — 2026-10-18
 
 First release candidate for the Chrome Web Store.

@@ -43,7 +43,7 @@ describe('fork dialog', () => {
       attachments: [],
       buildPackage,
       showLengthWarning: false,
-    scopeCounts: { whole: 2, upToMessage: 1, sinceLast: 0 },
+    scopeCounts: () => ({ whole: 2, upToMessage: 1, sinceLast: 0 }),
       onTransfer,
       ...patch,
     });
@@ -335,7 +335,7 @@ describe('fork dialog — returning to the origin', () => {
         estimatedTokens: 1,
       }),
       showLengthWarning: false,
-      scopeCounts: { whole: 2, upToMessage: 1, sinceLast: 0 },
+      scopeCounts: () => ({ whole: 2, upToMessage: 1, sinceLast: 0 }),
       onTransfer,
       ...patch,
     });
@@ -400,7 +400,7 @@ describe('fork dialog — relaying', () => {
         return { text: 'package', estimatedTokens: 1 };
       },
       showLengthWarning: false,
-      scopeCounts: scopeCounts as never,
+      scopeCounts: () => scopeCounts as never,
       onTransfer: vi.fn(async () => undefined),
     });
     const root = shadowOf(FORK_DIALOG_HOST_ID)!;
@@ -415,11 +415,15 @@ describe('fork dialog — relaying', () => {
     await vi.waitFor(() => expect(requests.at(-1)?.scope).toBe('sinceLast'));
   });
 
-  it('hides the option on a conversation that has never been carried anywhere', () => {
+  it('offers nothing to relay on a conversation never carried anywhere', () => {
     const { root } = open({ whole: 9, upToMessage: 5, sinceLast: 0 });
 
     expect(root.querySelector<HTMLSelectElement>('#scope')?.value).toBe('whole');
-    expect(root.querySelector('option[value="sinceLast"]')).toBeNull();
+    // The option stays in the list but is unavailable: the target can change
+    // while the dialog is open, and then it becomes meaningful again.
+    const since = root.querySelector<HTMLOptionElement>('#scope-since');
+    expect(since?.disabled).toBe(true);
+    expect(since?.hidden).toBe(true);
   });
 });
 
@@ -441,7 +445,7 @@ describe('fork dialog — keyboard', () => {
       attachments: [],
       buildPackage: async () => ({ text: 'package', estimatedTokens: 1 }),
       showLengthWarning: false,
-      scopeCounts: { whole: 1, upToMessage: 1, sinceLast: 0 },
+      scopeCounts: () => ({ whole: 1, upToMessage: 1, sinceLast: 0 }),
       onTransfer: vi.fn(async () => undefined),
     });
     return shadowOf(FORK_DIALOG_HOST_ID)!;
@@ -479,5 +483,67 @@ describe('fork dialog — keyboard', () => {
     first.focus();
     press(root, 'Tab', true);
     expect(root.activeElement).toBe(last);
+  });
+});
+
+/**
+ * The dialog must ask about the target the user has actually chosen. With the
+ * counts fixed at open time, switching to a platform that had seen nothing
+ * still offered "only what is new" — and would have sent it a handful of
+ * recent turns with no history.
+ */
+describe('fork dialog — scope follows the target', () => {
+  function open() {
+    const asked: string[] = [];
+    openForkDialog({
+      conversation: createConversation({
+        id: 'claude-5',
+        sourcePlatform: 'claude',
+        createdAt: '2026-10-18T00:00:00Z',
+        messages: [{ role: 'user', content: 'hi', index: 0, attachmentRefs: [] }],
+        attachments: [],
+      }),
+      settings: { ...DEFAULT_SETTINGS, language: 'en' },
+      attachments: [],
+      buildPackage: async () => ({ text: 'package', estimatedTokens: 1 }),
+      showLengthWarning: false,
+      scopeCounts: (target) => {
+        asked.push(target);
+        // ChatGPT has been relayed to; Gemini has seen nothing.
+        return target === 'chatgpt'
+          ? { whole: 9, upToMessage: 5, sinceLast: 2 }
+          : { whole: 9, upToMessage: 5, sinceLast: 0 };
+      },
+      onTransfer: vi.fn(async () => undefined),
+    });
+    const root = shadowOf(FORK_DIALOG_HOST_ID)!;
+    return { root, asked };
+  }
+
+  it('asks about the target that is selected', () => {
+    const { asked } = open();
+    expect(asked[0]).toBe('chatgpt');
+  });
+
+  it('drops the relay option when the user switches to a target that has seen nothing', async () => {
+    const { root } = open();
+    expect(root.querySelector<HTMLSelectElement>('#scope')?.value).toBe('sinceLast');
+
+    const target = root.querySelector<HTMLSelectElement>('#target')!;
+    target.value = 'gemini';
+    target.dispatchEvent(new Event('change'));
+
+    await vi.waitFor(() => {
+      expect(root.querySelector<HTMLSelectElement>('#scope')?.value).toBe('whole');
+      expect(root.querySelector<HTMLOptionElement>('#scope-since')?.disabled).toBe(true);
+    });
+  });
+
+  it('labels each scope with the size it has for that target', async () => {
+    const { root } = open();
+    await vi.waitFor(() =>
+      expect(root.querySelector('#scope-since')?.textContent).toContain('(2)'),
+    );
+    expect(root.querySelector('#scope-whole')?.textContent).toContain('(9)');
   });
 });

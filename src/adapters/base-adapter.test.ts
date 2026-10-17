@@ -203,3 +203,31 @@ describe('health check — partial matches', () => {
     expect(health.brokenSelectors.some((s) => s.startsWith('messageContainer ('))).toBe(false);
   });
 });
+
+describe('conversation id', () => {
+  /**
+   * A chat with no id in its URL — a new chat, or a local UI served from "/" —
+   * used to get a fresh UUID on every read. Two reads then disagreed about
+   * which conversation it was, and with archiving on, every observed change
+   * was stored as a brand-new record.
+   */
+  it('stays the same across reads when the URL has no id', async () => {
+    history.pushState({}, '', '/');
+    const a = adapter();
+    const first = await a.readConversation();
+    const second = await a.readConversation();
+    expect(second.id).toBe(first.id);
+  });
+
+  it('follows the URL once the platform has assigned one', async () => {
+    history.pushState({}, '', '/c/abc123');
+    expect((await adapter().readConversation()).id).toBe('chatgpt-abc123');
+  });
+
+  it('keeps two pages apart', async () => {
+    history.pushState({}, '', '/');
+    const one = await adapter().readConversation();
+    const two = await adapter().readConversation();
+    expect(two.id).not.toBe(one.id);
+  });
+});

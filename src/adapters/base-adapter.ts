@@ -51,10 +51,22 @@ export abstract class BaseAdapter implements PlatformAdapter {
     return resolveSelector(document, this.selectors[target]);
   }
 
-  /** Stable id derived from the platform's conversation URL, else a fresh UUID. */
+  /**
+   * Stable id derived from the platform's conversation URL.
+   *
+   * A chat that has no id in its URL yet — a new chat before the platform
+   * assigns one, or a local UI served from `/` — used to mint a fresh UUID on
+   * every read. Two reads of the same conversation then disagreed about which
+   * conversation it was, and with archiving on, every observed change was
+   * stored as a brand-new record. The fallback is now minted once per page.
+   */
+  private pageId: string | null = null;
+
   protected conversationId(): string {
     const match = this.conversationPath.exec(location.pathname);
-    return `${this.platform}-${match?.[1] ?? crypto.randomUUID()}`;
+    if (match?.[1]) return `${this.platform}-${match[1]}`;
+    this.pageId ??= crypto.randomUUID();
+    return `${this.platform}-${this.pageId}`;
   }
 
   async isReady(): Promise<boolean> {

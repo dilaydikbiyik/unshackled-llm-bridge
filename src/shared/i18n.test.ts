@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { t, type StringKey } from './i18n';
+import { STRINGS, t, type StringKey } from './i18n';
 
 /**
  * The catalogs must stay in lockstep. A key added to one language and not the
@@ -49,5 +49,35 @@ describe('i18n catalogs', () => {
     // would quietly drop the thing the extension is built to promise.
     expect(t('tr', 'privacyNote')).toMatch(/tarayıcıda kalır/);
     expect(t('en', 'privacyNote')).toMatch(/never leaves this browser/);
+  });
+});
+
+describe('catalog parity — every key, not a sample', () => {
+  // The existing test samples keys. A translation added to one catalog and
+  // forgotten in the other falls straight through a sample.
+  it('has exactly the same keys in both languages', () => {
+    const trKeys = Object.keys(STRINGS.tr).sort();
+    const enKeys = Object.keys(STRINGS.en).sort();
+
+    expect(enKeys.filter((key) => !trKeys.includes(key))).toEqual([]);
+    expect(trKeys.filter((key) => !enKeys.includes(key))).toEqual([]);
+  });
+
+  it('leaves no string empty in either language', () => {
+    for (const [lang, catalog] of Object.entries(STRINGS)) {
+      for (const [key, value] of Object.entries(catalog)) {
+        expect(value.trim(), `${lang}.${key}`).not.toBe('');
+      }
+    }
+  });
+
+  it('keeps every placeholder in the translation', () => {
+    // A dropped {percent} or {file} renders as a sentence missing its subject.
+    for (const [key, english] of Object.entries(STRINGS.en)) {
+      const placeholders = [...english.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+      const turkish = (STRINGS.tr as Record<string, string>)[key] ?? '';
+      const theirs = [...turkish.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
+      expect(theirs, key).toEqual(placeholders);
+    }
   });
 });

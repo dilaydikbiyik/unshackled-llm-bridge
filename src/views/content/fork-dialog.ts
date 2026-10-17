@@ -25,8 +25,13 @@ export interface ForkDialogOptions {
   buildPackage: TransferPackageBuilder;
   /** Precomputed by the controller so the view holds no sizing policy. */
   showLengthWarning: boolean;
-  /** How many messages each scope covers, so the view does no index math. */
-  scopeCounts: Record<TransferScope, number>;
+  /**
+   * How many messages each scope covers for a given target, so the view does
+   * no index math. It takes the target because "what is new since last time"
+   * is a fact about one pair: a platform that has seen nothing must not be
+   * offered the latest turns alone.
+   */
+  scopeCounts: (target: PlatformId) => Record<TransferScope, number>;
   /**
    * Set when this conversation began as a fork of another. Offered as a target
    * of its own: the answer goes back to the chat that asked for it, rather
@@ -101,6 +106,9 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
 
   // A conversation that came from somewhere defaults to going back there: the
   // round trip is the reason to have forked in the first place.
+  const firstTarget = (options.origin ? options.origin.platform : targets[0]) as PlatformId;
+  const initialCounts = options.scopeCounts(firstTarget);
+
   const state = {
     target: (options.origin ? options.origin.platform : targets[0]) as PlatformId,
     returning: options.origin !== undefined,
@@ -109,7 +117,7 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
     // A conversation already linked to another defaults to sending only what
     // the other side has missed: that is what keeps a pair usable past the
     // first exchange.
-    scope: (options.scopeCounts.sinceLast > 0 ? 'sinceLast' : 'whole') as TransferScope,
+    scope: (initialCounts.sinceLast > 0 ? 'sinceLast' : 'whole') as TransferScope,
     // Attached by default where the target accepts files: continuing a
     // conversation means the history is context, not the user's next message.
     delivery: (platformInfo(targets[0] as PlatformId).acceptsFileUpload
@@ -146,16 +154,11 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
           <div class="field">
             <label for="scope">${t(lang, 'forkScope')}</label>
             <select id="scope">
-              ${options.scopeCounts.sinceLast > 0 &&
-              html`<option value="sinceLast">
-                ${t(lang, 'forkScopeSinceLast')} (${String(options.scopeCounts.sinceLast)})
-              </option>`}
-              <option value="whole">
-                ${t(lang, 'forkScopeWhole')} (${String(options.scopeCounts.whole)})
+              <option value="sinceLast" id="scope-since">
+                ${t(lang, 'forkScopeSinceLast')}
               </option>
-              <option value="upToMessage">
-                ${t(lang, 'forkScopeUpTo')} (${String(options.scopeCounts.upToMessage)})
-              </option>
+              <option value="whole" id="scope-whole">${t(lang, 'forkScopeWhole')}</option>
+              <option value="upToMessage" id="scope-upto">${t(lang, 'forkScopeUpTo')}</option>
             </select>
           </div>
 
@@ -222,7 +225,26 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
   const transferButton = $<HTMLButtonElement>('transfer');
   const close = () => shadow.host.remove();
 
+  /**
+   * Scope labels carry their size, and the sizes change with the target: the
+   * same conversation may be new to one assistant and half-known to another.
+   */
+  function refreshScopes(): void {
+    const counts = options.scopeCounts(state.target);
+    const since = $<HTMLOptionElement>('scope-since');
+    since.hidden = counts.sinceLast === 0;
+    since.disabled = counts.sinceLast === 0;
+    since.textContent = `${t(lang, 'forkScopeSinceLast')} (${String(counts.sinceLast)})`;
+    $('scope-whole').textContent = `${t(lang, 'forkScopeWhole')} (${String(counts.whole)})`;
+    $('scope-upto').textContent = `${t(lang, 'forkScopeUpTo')} (${String(counts.upToMessage)})`;
+
+    // The chosen scope may have just become meaningless for this target.
+    if (state.scope === 'sinceLast' && counts.sinceLast === 0) state.scope = 'whole';
+    $<HTMLSelectElement>('scope').value = state.scope;
+  }
+
   async function rebuild(): Promise<void> {
+    refreshScopes();
     transferButton.disabled = true;
     setHtml(
       notice,

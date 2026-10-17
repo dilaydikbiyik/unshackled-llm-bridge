@@ -4,7 +4,8 @@ export type Lang = 'tr' | 'en';
  * Turkish-first UI copy. Keys are shared by the side panel and the in-page
  * views; content scripts read the language from settings.
  */
-const STRINGS = {
+/** Exported so a test can compare the catalogs whole, not by sample. */
+export const STRINGS = {
   tr: {
     appTitle: 'Unshackled LLM Bridge',
     privacyNote: 'Verilerin hiçbir sunucuya gitmez — her şey bu tarayıcıda kalır.',

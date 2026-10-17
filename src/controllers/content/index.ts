@@ -17,12 +17,12 @@ import {
   messagesInScope,
 } from '@controllers/fork';
 import { t, type Lang } from '@shared/i18n';
-import { detectPlatform, platformLabel } from '@domain/platforms';
+import { detectPlatform, platformIds, platformLabel } from '@domain/platforms';
 import { sendToBackground } from '@shared/messages';
 import { isForkCommand } from '@shared/commands';
 import { guardContext } from '@shared/lifecycle';
 import { bindOrigin, readOrigin, rememberOrigin } from './origin';
-import { markRelayed, readRelayPoint } from './relay';
+import { markRelayed, readRelayPoints } from './relay';
 import { loadRegisteredSites } from '@shared/sites';
 import { getSettings } from '@shared/settings';
 import { mountForkButtons } from '@views/content/fork-button';
@@ -154,7 +154,7 @@ async function prepareConversationDrag(
 }
 
 async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Promise<void> {
-  const [conversation, settings, attachments, origin, relayedThrough] = await Promise.all([
+  const [conversation, settings, attachments, origin, relayPoints] = await Promise.all([
     adapter.readConversation(),
     getSettings(),
     sendToBackground({
@@ -162,7 +162,7 @@ async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Pr
       conversationKey: conversationKey(adapter.platform),
     }),
     readOrigin(conversationKey(adapter.platform)),
-    readRelayPoint(conversationKey(adapter.platform)),
+    readRelayPoints(conversationKey(adapter.platform), platformIds()),
   ]);
 
   openForkDialog({
@@ -173,7 +173,7 @@ async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Pr
       conversation,
       cutIndex: messageIndex,
       language: settings.language,
-      ...(relayedThrough !== undefined ? { relayedThrough } : {}),
+      relayedThrough: (target) => relayPoints.get(target),
     }),
     // The warning is sized for the default scope, the whole conversation.
     showLengthWarning: exceedsTransferBudget(conversation, messageIndex, 'whole'),
@@ -186,15 +186,18 @@ async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Pr
           },
         }
       : {}),
-    scopeCounts: {
-      whole: conversation.messages.length,
-      upToMessage: messagesInScope(conversation, messageIndex, 'upToMessage').length,
-      // Zero unless this conversation has been carried somewhere before and
-      // has grown since; the dialog hides the option in that case.
-      sinceLast:
-        relayedThrough === undefined
-          ? 0
-          : messagesInScope(conversation, messageIndex, 'sinceLast', relayedThrough).length,
+    // Per target: the same conversation may be new to one assistant and
+    // half-known to another.
+    scopeCounts: (target) => {
+      const relayed = relayPoints.get(target);
+      return {
+        whole: conversation.messages.length,
+        upToMessage: messagesInScope(conversation, messageIndex, 'upToMessage').length,
+        sinceLast:
+          relayed === undefined
+            ? 0
+            : messagesInScope(conversation, messageIndex, 'sinceLast', relayed).length,
+      };
     },
     onTransfer: async ({ target, text, scope, contextFile, returnUrl, attachmentIds }) => {
       // The context travels as a file: store it, then reference it like any
@@ -205,7 +208,9 @@ async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Pr
       // The pair is now in step up to here, so the next leg carries only what
       // comes after it.
       const lastIndex = conversation.messages.at(-1)?.index;
-      if (lastIndex !== undefined) await markRelayed(conversationKey(adapter.platform), lastIndex);
+      if (lastIndex !== undefined) {
+        await markRelayed(conversationKey(adapter.platform), target, lastIndex);
+      }
 
       await sendToBackground({
         type: 'inject/initiate',

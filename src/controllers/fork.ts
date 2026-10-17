@@ -1,4 +1,5 @@
 import type { BridgeConversation, ChatMessage } from '@domain/conversation/schema';
+import type { PlatformId } from '@domain/platforms';
 import type {
   TransferMode,
   TransferPackage,
@@ -22,10 +23,12 @@ export interface ForkContext {
   cutIndex: number;
   language: Lang;
   /**
-   * The index already carried to the other side, so a relay can send only what
-   * has been said since. Absent on a conversation that has never been relayed.
+   * How far this conversation has already been carried to a given target, so a
+   * relay can send only what that one has missed. A function of the target
+   * because the answer differs per pair: a platform that has seen nothing must
+   * not be offered the latest turns alone.
    */
-  relayedThrough?: number;
+  relayedThrough?: (target: PlatformId) => number | undefined;
   /** Injected so the build logic is testable without the extension runtime. */
   summarize?: Summarizer;
 }
@@ -48,7 +51,7 @@ export function createTransferPackageBuilder(context: ForkContext): TransferPack
   }: TransferRequest): Promise<TransferPackage> => {
     // Resolved per request: the dialog lets the user switch scope without the
     // controller rebuilding the builder.
-    const slice = messagesInScope(conversation, cutIndex, scope, relayedThrough);
+    const slice = messagesInScope(conversation, cutIndex, scope, relayedThrough?.(target));
     const base = {
       sourcePlatform: conversation.sourcePlatform,
       attachmentNames: conversation.attachments.map((a) => a.name),

@@ -268,7 +268,7 @@ describe('relay scope', () => {
       conversation: conversation(4),
       cutIndex: 3,
       language: 'en',
-      relayedThrough: 2,
+      relayedThrough: () => 2,
     });
     const pkg = await build({
       target: 'claude',
