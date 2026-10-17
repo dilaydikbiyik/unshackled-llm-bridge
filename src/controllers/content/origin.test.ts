@@ -63,3 +63,28 @@ describe('conversation origin', () => {
     expect(await readOrigin('claude:/new', memoryStore())).toBeNull();
   });
 });
+
+/**
+ * The round trip has to survive a reload, because that is when it is used: you
+ * go to the other assistant, work there, come back later. Binding the origin
+ * used to sit inside the archive watcher — behind a setting that is off by
+ * default — so for almost everyone the origin was forgotten the moment the
+ * page reloaded, and the way back silently stopped being offered.
+ */
+describe('origin survives a reload without archiving', () => {
+  it('is readable after the page memory is gone, once bound', async () => {
+    const store = memoryStore();
+    rememberOrigin(lineage);
+    await bindOrigin('claude:/chat/xyz', store);
+
+    // A reload: module memory starts empty, storage does not.
+    resetOriginMemory();
+    const recovered = await readOrigin('claude:/chat/xyz', store);
+
+    expect(recovered).toEqual({
+      platform: 'gemini',
+      url: 'https://gemini.google.com/app/abc',
+      cutIndex: 3,
+    });
+  });
+});

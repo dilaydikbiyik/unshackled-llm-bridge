@@ -71,7 +71,7 @@ async function main(): Promise<void> {
     teardowns.push(mountAttachmentCapture(adapter));
     teardowns.push(mountFork(adapter, config, (await getSettings()).language));
     teardowns.push(listenForShortcut(adapter));
-    void watchForArchive(adapter);
+    void watchConversation(adapter);
     await claimPendingInjection(adapter);
   }, abandonPage);
 }
@@ -294,9 +294,19 @@ function reportComparisonAnswer(adapter: PlatformAdapter, comparisonId: string):
 }
 
 /** Opt-in passive archiving of whatever conversation the user is looking at. */
-async function watchForArchive(adapter: PlatformAdapter): Promise<void> {
-  if (!(await getSettings()).archiveEnabled) return;
+/**
+ * One observer over the conversation, doing two jobs that used to be one.
+ *
+ * Binding the origin lived inside the archive watcher, behind the archiving
+ * setting — which is off by default. A conversation created by a fork
+ * therefore forgot where it came from as soon as the page reloaded, for almost
+ * everyone, and the trip back quietly stopped being offered. Binding happens
+ * whatever the setting; archiving is the part that is opt-in.
+ */
+async function watchConversation(adapter: PlatformAdapter): Promise<void> {
+  const archiving = (await getSettings()).archiveEnabled;
   let lastSignature = '';
+
   // The longest-lived listener in the page, and so the one most likely to fire
   // after the extension has been reloaded out from under it.
   const stop = adapter.observeMessages(() => {
@@ -304,10 +314,15 @@ async function watchForArchive(adapter: PlatformAdapter): Promise<void> {
     void guardContext(async () => {
       const conversation = await adapter.readConversation();
       if (conversation.messages.length === 0) return;
+
+      // The platform assigns a conversation id at some point after the first
+      // message; this is where a fork's origin becomes attachable to it.
+      await bindOrigin(conversationKey(adapter.platform));
+
+      if (!archiving) return;
       const signature = `${conversation.id}:${conversation.messages.length}`;
       if (signature === lastSignature) return;
       lastSignature = signature;
-      await bindOrigin(conversationKey(adapter.platform));
       await sendToBackground({ type: 'archive/save', conversation });
     }, abandonPage);
   });

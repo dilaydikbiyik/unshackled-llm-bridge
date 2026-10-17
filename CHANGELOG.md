@@ -7,6 +7,15 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- **The round trip did not survive a reload for most people.** Binding a fork's origin to the
+  conversation sat inside the archive watcher, behind a setting that is off by default, so the way
+  back was forgotten as soon as the page reloaded — which is exactly when it is wanted, since you
+  work on the other side first and come back later. Binding now happens whatever the setting;
+  archiving remains opt-in.
+- **Returning to a site that takes no uploads tried to send it a file.** The delivery choice was
+  read from the first platform in the list rather than from the target actually selected, so a trip
+  back to a local model's web UI opened on file delivery, and the control showed "attached as a
+  file" while the transfer would have gone as text.
 - **A second fork would have arrived with no history.** The relay point was stored per
   conversation, not per pair, so after carrying a chat to one assistant the dialog offered "only
   what is new since the last transfer" for *every* target — including one that had seen nothing.

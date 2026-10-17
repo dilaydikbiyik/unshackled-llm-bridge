@@ -120,7 +120,10 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
     scope: (initialCounts.sinceLast > 0 ? 'sinceLast' : 'whole') as TransferScope,
     // Attached by default where the target accepts files: continuing a
     // conversation means the history is context, not the user's next message.
-    delivery: (platformInfo(targets[0] as PlatformId).acceptsFileUpload
+    // Asked of the target that is actually selected — which is the origin when
+    // there is one. Read from targets[0] instead, a return trip to a site that
+    // takes no uploads would have tried to send it a file.
+    delivery: (platformInfo(firstTarget).acceptsFileUpload
       ? 'attachment'
       : 'inline') as TransferDelivery,
     mode: 'full' as TransferMode,
@@ -283,6 +286,11 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
   }
 
   const deliverySelect = $<HTMLSelectElement>('delivery');
+  // The opening state has to be shown, not only held: a target that takes no
+  // uploads starts on inline delivery, and a select still reading "attached as
+  // a file" would promise something the transfer is not doing.
+  deliverySelect.value = state.delivery;
+  deliverySelect.disabled = !platformInfo(state.target).acceptsFileUpload;
   $<HTMLSelectElement>('target').addEventListener('change', (event) => {
     const value = (event.target as HTMLSelectElement).value;
     state.returning = value === RETURN_TARGET;

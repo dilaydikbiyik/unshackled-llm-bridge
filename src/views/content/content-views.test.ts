@@ -1,6 +1,7 @@
 // @vitest-environment happy-dom
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createConversation } from '@domain/conversation/schema';
+import { registerCustomSites } from '@domain/platforms';
 import type { TransferPackageBuilder, TransferRequest } from '@domain/transfer';
 import { DEFAULT_SETTINGS, type Settings } from '@shared/settings';
 import { FORK_BUTTON_HOST_ID, HIDE_DELAY_MS, mountForkButtons } from './fork-button';
@@ -545,5 +546,72 @@ describe('fork dialog — scope follows the target', () => {
       expect(root.querySelector('#scope-since')?.textContent).toContain('(2)'),
     );
     expect(root.querySelector('#scope-whole')?.textContent).toContain('(9)');
+  });
+});
+
+/**
+ * What the dialog shows has to be what it will do. A target that takes no
+ * uploads starts on inline delivery, and the select used to keep reading
+ * "attached as a file" while the transfer went as text.
+ */
+describe('fork dialog — delivery shown matches delivery used', () => {
+  function open(
+    sites: { id: string; label: string; acceptsFileUpload: boolean }[],
+    origin?: { platform: never; label: string; url: string },
+  ) {
+    registerCustomSites(
+      sites.map((site) => ({
+        id: site.id as never,
+        label: site.label,
+        hosts: [site.label],
+        newChatUrl: `https://${site.label}/`,
+        acceptsFileUpload: site.acceptsFileUpload,
+      })),
+    );
+    const requests: TransferRequest[] = [];
+    openForkDialog({
+      conversation: createConversation({
+        id: 'claude-6',
+        sourcePlatform: 'claude',
+        createdAt: '2026-10-18T00:00:00Z',
+        messages: [{ role: 'user', content: 'hi', index: 0, attachmentRefs: [] }],
+        attachments: [],
+      }),
+      settings: { ...DEFAULT_SETTINGS, language: 'en' },
+      attachments: [],
+      buildPackage: async (request) => {
+        requests.push(request);
+        return { text: 'package', estimatedTokens: 1 };
+      },
+      showLengthWarning: false,
+      scopeCounts: () => ({ whole: 1, upToMessage: 1, sinceLast: 0 }),
+      ...(origin ? { origin } : {}),
+      onTransfer: vi.fn(async () => undefined),
+    });
+    return { root: shadowOf(FORK_DIALOG_HOST_ID)!, requests };
+  }
+
+  afterEach(() => {
+    registerCustomSites([]);
+  });
+
+  it('shows inline when returning to a site that takes no files', async () => {
+    // The real case: this conversation was forked from a local model's web UI,
+    // and the dialog opens with that site as the target. The extension cannot
+    // know whether it accepts uploads, so it does not claim that it does.
+    const { root, requests } = open(
+      [{ id: 'site:localhost', label: 'localhost', acceptsFileUpload: false }],
+      { platform: 'site:localhost' as never, label: 'localhost', url: 'http://localhost:3000/' },
+    );
+
+    const select = root.querySelector<HTMLSelectElement>('#delivery')!;
+    expect(select.value).toBe('inline');
+    expect(select.disabled).toBe(true);
+    await vi.waitFor(() => expect(requests.at(-1)?.delivery).toBe('inline'));
+  });
+
+  it('shows attachment where the target accepts files', () => {
+    const { root } = open([]);
+    expect(root.querySelector<HTMLSelectElement>('#delivery')?.value).toBe('attachment');
   });
 });
