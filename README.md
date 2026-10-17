@@ -1,11 +1,25 @@
 # unshackled-llm-bridge
 
-Break free from vendor lock-in. A privacy-first, local-only browser extension to fork, sync, and
-bridge your AI conversations across ChatGPT, Claude, and Gemini through a unified adapter layer.
+A local-only browser extension that moves an AI conversation — with its files and its context —
+between ChatGPT, Claude, Gemini, or any chat site you add, including a model running on your own
+machine.
 
-Most "chat exporter" extensions are text porters: they move a blob of text and stop. This is an
-**ecosystem bridge** — it carries the conversation, the files you uploaded, the model that produced
-it, and your personal context across platforms, and it never sends any of it to a server.
+Extensions that move a chat between assistants already exist, and several are good. Nearly all of
+them do the same one thing: take the transcript out of A and paste it into B, once, in one
+direction. This one is built around what that shape cannot do.
+
+| | A transfer extension | This |
+|---|---|---|
+| Direction | One way, once | **Round trip** — carry the answer back to the chat that asked |
+| Repeat trips | Re-sends the whole history | **Relay** — only what the other side has not seen |
+| Where the context lands | Pasted into the message box | **Attached as a file**, so the box stays yours |
+| Which sites | A list the developer maintains | **Any site you add**, read by shape, local models included |
+| Comparison | Answers side by side, if at all | **Where they part** — which is where one of them is wrong |
+| Memory | The provider's, or none | **Yours** — counted from your own archive, across platforms |
+
+A provider cannot build most of that row. "Import from another assistant" exists to move people
+onto a platform, so it points one way by construction, and nobody will put a competitor's answer
+beside their own and mark the place where theirs stands alone.
 
 ## What it does
 
@@ -18,6 +32,11 @@ it, and your personal context across platforms, and it never sends any of it to 
 | **Parallel comparison** | Compose once, inject into several platforms, read the answers side by side. |
 | **Portable persona** | A "who I am, how I want answers" profile you can attach to any transfer — platform-independent memory. |
 | **Universal archive** | Opt-in local indexing of visited conversations, searchable across platforms, exportable to Markdown or JSON. |
+| **Round trip** | A conversation born from a fork remembers its origin and can carry an answer back into it. |
+| **Relay** | After the first hand-off, each trip carries only the turns the other side has not seen. |
+| **Drag it out** | Pick the conversation up and drop it on another tab, window, browser or app — it arrives as an ordinary file. |
+| **Any site, including local models** | Add a host in the side panel; the generic adapter reads a chat page it has never seen by its shape. Verified against Ollama. |
+| **Answer contrast** | A comparison states the common ground and marks what each answer alone claims. |
 
 ## The promises
 
@@ -28,6 +47,19 @@ it, and your personal context across platforms, and it never sends any of it to 
 - **Nothing is silently lost.** If automatic injection fails, the package is offered on your
   clipboard. If a Claude artifact can't be carried over, it is marked in the transcript rather than
   dropped.
+
+## Releasing
+
+```bash
+npm run verify        # lint, typecheck, coverage, build — the gate CI applies
+npm run e2e           # the built extension, driven through real forks in Chromium
+npm run screenshots   # 1280×800 store images, produced by driving the build
+npm run package       # release/unshackled-llm-bridge-<version>.zip, for the store
+```
+
+Listing copy, permission justifications and the data-disclosure answers are in
+[docs/store-listing.md](docs/store-listing.md). The manual matrix to run before submitting is in
+[docs/smoke-test.md](docs/smoke-test.md).
 
 ## Install (development)
 

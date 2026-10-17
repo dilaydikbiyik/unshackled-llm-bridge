@@ -6,6 +6,26 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.0.0] — 2026-10-18
+
+First release candidate for the Chrome Web Store.
+
+The 0.x line was a bridge between three platforms. 1.0 is a bridge between *assistants*: it reads a
+chat site it has never seen, it carries an answer back to the conversation that asked for it, and
+it keeps two assistants in step across several exchanges. Those three are what a platform's own
+"import from another assistant" cannot do, because that feature exists to move people onto a
+platform and so points one way by construction.
+
+### Release engineering
+- `npm run screenshots` produces the store's 1280×800 images by driving the built extension, so a
+  listing cannot show a dialog the build does not have. They render against a neutral chat page
+  rather than a real product's interface.
+- `npm run package` writes the upload zip and refuses to build one from a stale `dist/`, a version
+  that disagrees with `package.json`, or a package carrying source maps.
+- The listing copy, permission justifications and data-disclosure answers are written against the
+  code in [docs/store-listing.md](docs/store-listing.md), including the one answer that needs care:
+  conversation text does leave the browser — to the site the user is transferring it to.
+
 ### Fixed
 - **Gemini's send button selector had drifted.** The button lost its `send-button` class, and its
   only label is a translated `aria-label` ("Mesaj gönder"). Its wrapper keeps a stable
@@ -333,7 +353,8 @@ Architecture hardening, following a critical review of 0.3.1.
 - ChatGPT and Claude adapters with DOM-fixture tests. Claude artifacts are marked in the
   transcript rather than silently dropped.
 
-[Unreleased]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.4.0...v1.0.0
 [0.4.0]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.2.0...v0.3.0

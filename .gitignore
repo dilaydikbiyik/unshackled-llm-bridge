@@ -9,3 +9,6 @@ test-results/
 
 # Generated for the store listing by `npm run screenshots`.
 store-assets/
+
+# Built for upload by `npm run package`.
+release/
