@@ -80,7 +80,8 @@ describe('local model UIs', () => {
   it('keeps the port in the address, so a new chat opens where the model is', () => {
     const [info] = siteInfos([{ host: 'localhost:11434', label: 'Ollama' }]);
     expect(info?.newChatUrl).toBe('http://localhost:11434/');
-    expect(info?.hosts).toEqual(['localhost']);
+    // The port stays in the identity too: two local models share a hostname.
+    expect(info?.hosts).toEqual(['localhost:11434']);
   });
 
   it('still asks for https everywhere else', () => {
@@ -120,5 +121,20 @@ describe('siteInfos — stored values are not trusted', () => {
     ]);
 
     expect(infos.map((info) => info.hosts[0])).toEqual(['perplexity.ai']);
+  });
+});
+
+describe('two local models at once', () => {
+  it('tells them apart by port', () => {
+    const [ollama, webui] = siteInfos([
+      { host: 'localhost:11434', label: 'Ollama' },
+      { host: 'localhost:3000', label: 'Open WebUI' },
+    ]);
+
+    expect(ollama?.id).not.toBe(webui?.id);
+    expect(ollama?.newChatUrl).toBe('http://localhost:11434/');
+    expect(webui?.newChatUrl).toBe('http://localhost:3000/');
+    // One grant covers the machine; Chrome's patterns carry no port.
+    expect(matchPatternFor('localhost:11434')).toBe(matchPatternFor('localhost:3000'));
   });
 });

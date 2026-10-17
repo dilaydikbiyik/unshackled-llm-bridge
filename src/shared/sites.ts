@@ -38,7 +38,9 @@ export function siteInfos(sites: readonly CustomSiteSetting[]): PlatformInfo[] {
   return sites.filter((site) => isAddableHost(site.host)).map((site) => ({
     id: siteIdForHost(site.host),
     label: site.label || site.host,
-    hosts: [hostnameOf(site.host)],
+    // The port is part of the identity: two local models live on the same
+    // hostname and are told apart only by it.
+    hosts: [site.host],
     // Keeps the port: a local UI lives on one, and a new chat opened without
     // it would land nowhere.
     newChatUrl: `${schemeFor(site.host)}://${site.host}/`,

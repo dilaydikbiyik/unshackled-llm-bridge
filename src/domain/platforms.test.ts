@@ -114,3 +114,45 @@ describe('user-added sites', () => {
     expect(isPlatformId(42)).toBe(false);
   });
 });
+
+/**
+ * Two models running on the same machine differ only by port. Matching on the
+ * hostname alone made the second one answer to the first one's identity — its
+ * label, its relay history, and a return trip opening the wrong port.
+ */
+describe('sites that share a hostname', () => {
+  afterEach(() => {
+    registerCustomSites([]);
+  });
+
+  const local = (port: string, label: string) => ({
+    id: `site:localhost:${port}` as const,
+    label,
+    hosts: [`localhost:${port}`],
+    newChatUrl: `http://localhost:${port}/`,
+    acceptsFileUpload: false,
+    heuristic: true,
+  });
+
+  it('identifies each by its port', () => {
+    registerCustomSites([local('11434', 'Ollama'), local('3000', 'Open WebUI')]);
+
+    expect(detectPlatform('localhost:11434')).toBe('site:localhost:11434');
+    expect(detectPlatform('localhost:3000')).toBe('site:localhost:3000');
+  });
+
+  it('claims nothing on a port the user never added', () => {
+    registerCustomSites([local('11434', 'Ollama')]);
+    expect(detectPlatform('localhost:8080')).toBeNull();
+  });
+
+  it('still matches a plain domain on any port', () => {
+    expect(detectPlatform('chatgpt.com')).toBe('chatgpt');
+    expect(detectPlatform('www.chatgpt.com')).toBe('chatgpt');
+  });
+
+  it('still rejects a look-alike host', () => {
+    expect(detectPlatform('evilclaude.ai')).toBeNull();
+    expect(detectPlatform('claude.ai.attacker.example')).toBeNull();
+  });
+});

@@ -231,3 +231,37 @@ describe('conversation id', () => {
     expect(two.id).not.toBe(one.id);
   });
 });
+
+/**
+ * A synthetic drop is dispatched, not acknowledged. If the site ignores it,
+ * nothing says so — and the transfer would leave a note referring to a file
+ * that is not there. Platforms show an uploaded file by name, so the name
+ * appearing outside the composer is the one signal available without knowing
+ * the site.
+ */
+describe('attachment arrival', () => {
+  it('sees the file once the platform shows its name', () => {
+    document.body.innerHTML =
+      '<textarea id="composer"></textarea><div class="chip">chatgpt-conversation.md</div>';
+    expect(adapter().attachmentVisible('chatgpt-conversation.md')).toBe(true);
+  });
+
+  it('does not count the composer’s own mention of the file', () => {
+    // The continuation note says which file is attached. Finding the name
+    // there would confirm every upload, including the ones that never landed.
+    document.body.innerHTML =
+      '<textarea id="composer">Its transcript is attached as chatgpt-conversation.md</textarea>';
+    expect(adapter().attachmentVisible('chatgpt-conversation.md')).toBe(false);
+  });
+
+  it('reports nothing on a page where the drop was ignored', () => {
+    document.body.innerHTML = '<textarea id="composer"></textarea><main>No files here</main>';
+    expect(adapter().attachmentVisible('chatgpt-conversation.md')).toBe(false);
+  });
+
+  it('ignores a different file that happens to be on the page', () => {
+    document.body.innerHTML =
+      '<textarea id="composer"></textarea><div class="chip">holiday-photos.zip</div>';
+    expect(adapter().attachmentVisible('chatgpt-conversation.md')).toBe(false);
+  });
+});

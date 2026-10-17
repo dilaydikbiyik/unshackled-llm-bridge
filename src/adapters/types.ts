@@ -37,6 +37,15 @@ export interface PlatformAdapter {
   /** Writes into the composer. Never auto-sends — sending stays a user action. */
   injectText(text: string): Promise<void>;
   uploadFile(blob: Blob, name: string): Promise<void>;
+  /**
+   * Whether a file of this name appears to have landed on the page.
+   *
+   * A synthetic drop is dispatched, not acknowledged: if the site ignores it,
+   * nothing says so. Platforms show an uploaded file by name, so the name
+   * appearing outside the composer is the one signal available without
+   * knowing the site.
+   */
+  attachmentVisible(name: string): boolean;
   getModelMode(): Promise<ModelMode>;
   openNewChat(): Promise<void>;
   observeMessages(onChange: () => void): Unsubscribe;

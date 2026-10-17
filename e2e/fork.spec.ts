@@ -74,6 +74,15 @@ test('forks a ChatGPT conversation into Claude, filling the composer and sending
       }),
     ]);
   expect(await target.evaluate(() => (window as { __sendClicks?: number }).__sendClicks ?? 0)).toBe(0);
+
+  // The upload is checked, not assumed: the page is asked whether the file
+  // appeared. It did, so the composer keeps the short note rather than being
+  // overwritten with the whole transcript as a fallback.
+  // Longer than ATTACHMENT_WAIT_MS in the content controller, so a fallback
+  // would have had time to fire if the check had judged the upload failed.
+  await target.waitForTimeout(5000);
+  await expect(composer).toContainText('chatgpt-conversation.md');
+  await expect(composer).not.toContainText('cherry blossoms');
 });
 
 test('forks a Claude conversation into Gemini, in the target platform’s format', async ({ context }) => {
@@ -118,4 +127,34 @@ test('reports a healthy platform in the side panel, and a new chat is not flagge
   await expect(row('ChatGPT').locator('.status-dot')).toHaveClass(/ok/);
   await expect(row('Claude').locator('.status-dot')).toHaveClass(/ok/);
   await expect(row('Gemini').locator('.status-dot')).toHaveClass(/unknown/);
+});
+
+/**
+ * The promise that matters when a platform changes: nothing is silently lost.
+ *
+ * A synthetic drop is dispatched, not acknowledged, so a target that quietly
+ * swallows it used to leave the user with a note referring to a file that was
+ * never there. The transfer now checks, and falls back to the whole package.
+ */
+test('falls back to the full package when the attachment does not land', async ({ context }) => {
+  const source = await context.newPage();
+  await source.goto('https://chatgpt.com/c/e2e-silent');
+
+  await source.locator('section[data-testid="conversation-turn-2"]').hover();
+  await source.locator('#ulb-fork-button-host #fork').click();
+
+  const dialog = source.locator('#ulb-fork-dialog-host');
+  await expect(dialog.locator('#preview')).toHaveValue(/chatgpt-conversation\.md/);
+
+  const [target] = await Promise.all([
+    context.waitForEvent('page'),
+    dialog.locator('#transfer').click(),
+  ]);
+  await arrive(target, 'https://claude.ai/silent');
+
+  // The conversation itself arrives in the composer instead — a paste is worse
+  // than an attachment, and far better than a note pointing at nothing.
+  const composer = target.locator('div.ProseMirror[contenteditable="true"]');
+  await expect(composer).toContainText('cherry blossoms', { timeout: 15_000 });
+  expect(await target.evaluate(() => (window as { __sendClicks?: number }).__sendClicks ?? 0)).toBe(0);
 });

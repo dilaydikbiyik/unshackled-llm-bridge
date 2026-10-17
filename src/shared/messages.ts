@@ -27,6 +27,8 @@ export interface PendingInjection {
    * with a continuation note and no conversation to continue.
    */
   fallbackText?: string;
+  /** The attached transcript's filename, so the target can check it arrived. */
+  contextFileName?: string;
   comparisonId?: string;
   /**
    * Travels with the package so the target knows which conversation it came

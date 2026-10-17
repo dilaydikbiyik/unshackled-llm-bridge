@@ -16,6 +16,12 @@
       document.addEventListener('drop', (event) => {
         for (const file of event.dataTransfer?.files ?? []) {
           file.text().then((text) => window.__droppedFiles.push({ name: file.name, text }));
+          // Platforms show an uploaded file by name; the extension looks for
+          // exactly that to tell a real upload from a drop that went nowhere.
+          const chip = document.createElement('div');
+          chip.className = 'attachment-chip';
+          chip.textContent = file.name;
+          document.body.append(chip);
         }
       }, true);
     </script>

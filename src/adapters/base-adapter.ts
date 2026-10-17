@@ -132,6 +132,23 @@ export abstract class BaseAdapter implements PlatformAdapter {
   }
 
   /**
+   * Looks for the file's name on the page, outside the composer.
+   *
+   * The composer itself carries the name — the continuation note says which
+   * file is attached — so finding it there would confirm every upload,
+   * including the ones that never happened.
+   */
+  attachmentVisible(name: string): boolean {
+    const composer = this.composerElement();
+    for (const element of document.querySelectorAll<HTMLElement>('body *')) {
+      if (element === composer || composer?.contains(element)) continue;
+      if (element.children.length > 0) continue;
+      if ((element.textContent ?? '').includes(name)) return true;
+    }
+    return false;
+  }
+
+  /**
    * Best-effort read of the model picker label. Honest version of "mode sync":
    * we record which model produced the conversation and surface it in the
    * transfer package; we never silently switch models on the target.

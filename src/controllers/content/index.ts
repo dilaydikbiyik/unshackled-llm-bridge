@@ -59,7 +59,8 @@ function abandonPage(): void {
 async function main(): Promise<void> {
   // A site the user added is only detectable once it is in the registry.
   await loadRegisteredSites();
-  const platform = detectPlatform(location.hostname);
+  // The full host: a local model is identified by its port.
+  const platform = detectPlatform(location.host);
   if (!platform) return;
 
   const config = await loadSelectorConfig();
@@ -221,7 +222,9 @@ async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Pr
             text,
             attachmentIds: contextId ? [contextId, ...attachmentIds] : attachmentIds,
             // Nothing is lost if the upload fails on the far side.
-            ...(contextFile ? { fallbackText: contextFile.text } : {}),
+            ...(contextFile
+              ? { fallbackText: contextFile.text, contextFileName: contextFile.name }
+              : {}),
           },
           lineage: {
             sourceConversationId: conversation.id,
@@ -254,8 +257,15 @@ async function claimPendingInjection(adapter: PlatformAdapter): Promise<void> {
     if (pending.attachmentIds.length) {
       const replayed = await replayAttachments(adapter, pending.attachmentIds);
       // A continuation note with no conversation attached is worse than a
-      // plain paste, so fall back to the full package in the composer.
-      if (replayed === 0 && pending.fallbackText) {
+      // plain paste. A synthetic drop is dispatched rather than acknowledged,
+      // so a count of attempts proves nothing — the page is asked whether the
+      // file actually arrived.
+      const landed =
+        replayed > 0 && pending.contextFileName
+          ? await waitForAttachment(adapter, pending.contextFileName)
+          : replayed > 0;
+
+      if (!landed && pending.fallbackText) {
         await adapter.injectText(pending.fallbackText);
         showToast(t(settings.language, 'contextFileFailed'));
       }
@@ -327,6 +337,23 @@ async function watchConversation(adapter: PlatformAdapter): Promise<void> {
     }, abandonPage);
   });
   teardowns.push(stop);
+}
+
+/**
+ * Gives the platform a moment to show the dropped file. Uploads render
+ * asynchronously, so a single check right after the drop would call every
+ * transfer a failure.
+ */
+export const ATTACHMENT_WAIT_MS = 4000;
+const ATTACHMENT_POLL_MS = 250;
+
+async function waitForAttachment(adapter: PlatformAdapter, name: string): Promise<boolean> {
+  const deadline = Date.now() + ATTACHMENT_WAIT_MS;
+  while (Date.now() < deadline) {
+    if (adapter.attachmentVisible(name)) return true;
+    await new Promise((resolve) => setTimeout(resolve, ATTACHMENT_POLL_MS));
+  }
+  return false;
 }
 
 async function waitUntilReady(adapter: PlatformAdapter, timeoutMs = 20_000): Promise<void> {

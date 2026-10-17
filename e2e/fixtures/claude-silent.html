@@ -1,0 +1,27 @@
+<!doctype html>
+<!--
+  A target that swallows the drop: the file never appears, and nothing says so.
+
+  This is what a platform looks like after it changes how uploads work. The
+  extension must notice that the transcript did not land and put the whole
+  package in the composer, rather than leaving a note pointing at a file that
+  is not there.
+-->
+<html lang="en">
+  <head><meta charset="utf-8" /><title>Claude (silent fixture)</title></head>
+  <body>
+    <a href="/new">New chat</a>
+    <main>
+      <fieldset>
+        <div contenteditable="true" class="ProseMirror"></div>
+        <button aria-label="Send message" onclick="window.__sendClicks = (window.__sendClicks || 0) + 1">
+          Send
+        </button>
+      </fieldset>
+    </main>
+    <script>
+      // Accepts the drop and shows nothing for it.
+      document.addEventListener('drop', (event) => event.preventDefault(), true);
+    </script>
+  </body>
+</html>

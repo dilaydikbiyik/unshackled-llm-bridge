@@ -111,9 +111,24 @@ export function platformLabel(id: PlatformId): string {
   return platformInfo(id).label;
 }
 
-export function detectPlatform(hostname: string): PlatformId | null {
+/**
+ * Which site this page belongs to. Takes the full host — `localhost:3000`, not
+ * `localhost` — because two local models differ only by their port, and
+ * matching on the hostname alone made the second one answer to the first one's
+ * identity, wrong label, wrong relay history and all.
+ *
+ * An exact host wins. Only then is a bare hostname matched as a domain, on the
+ * dot boundary, so a look-alike like `evilclaude.ai` is still rejected.
+ */
+export function detectPlatform(host: string): PlatformId | null {
   for (const info of registry.values()) {
-    if (info.hosts.some((h) => hostname === h || hostname.endsWith(`.${h}`))) {
+    if (info.hosts.includes(host)) return info.id;
+  }
+
+  const hostname = host.split(':')[0] ?? host;
+  for (const info of registry.values()) {
+    const domains = info.hosts.filter((h) => !h.includes(':'));
+    if (domains.some((h) => hostname === h || hostname.endsWith(`.${h}`))) {
       return info.id;
     }
   }

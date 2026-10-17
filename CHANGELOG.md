@@ -7,6 +7,17 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- **A failed upload was reported as a success.** The replay counted drops dispatched, not files
+  that arrived — a synthetic drop is dispatched, never acknowledged — so a target that ignored it
+  left the user with a note referring to a file that was never there, and the documented fallback
+  could not fire. The page is now asked whether the file appeared (platforms show an upload by
+  name, outside the composer, which is the one signal available without knowing the site), and the
+  whole package goes into the composer when it did not. An end-to-end test drives a target that
+  swallows the drop.
+- **Two local models were the same site.** A site's identity dropped the port, so a second model on
+  the same machine answered to the first one's id: its label, its relay history, and a return trip
+  opening the wrong port. Sites are identified by host and port, and an exact host now wins over a
+  domain match — which still respects the dot boundary, so look-alike hosts stay rejected.
 - **The round trip did not survive a reload for most people.** Binding a fork's origin to the
   conversation sat inside the archive watcher, behind a setting that is off by default, so the way
   back was forgotten as soon as the page reloaded — which is exactly when it is wanted, since you

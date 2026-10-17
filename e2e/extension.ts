@@ -19,6 +19,7 @@ function pageFor(url: URL): string | null {
       // a bare test fixture tells a user nothing.
       return process.env['ULB_SHOWCASE'] ? 'showcase.html' : 'chatgpt-conversation.html';
     case 'claude.ai':
+      if (url.pathname === '/silent') return 'claude-silent.html';
       return url.pathname.startsWith('/chat/') ? 'claude-conversation.html' : 'claude-new.html';
     case 'gemini.google.com':
       return 'gemini-new.html';
