@@ -8,6 +8,7 @@ import {
   listAttachments,
   listForksFrom,
   recordFork,
+  rekeyAttachments,
   saveAttachment,
   saveConversation,
   searchConversations,
@@ -197,3 +198,37 @@ describe('fork ordering', () => {
     expect(new Set(stamps).size).toBe(2);
   });
 });
+
+/**
+ * A new chat has no id until the first message is sent, so a file attached
+ * before that was stored under the bare path while the fork looked under the
+ * real one — and the most advertised feature of the extension quietly did
+ * nothing in its most ordinary case.
+ */
+describe('files catch up with the conversation', () => {
+  it('moves a page’s files to the key the platform finally gave it', async () => {
+    await saveAttachment(input('chatgpt:/'), new Uint8Array([1, 2, 3]));
+    await saveAttachment(input('chatgpt:/', 'spec.pdf'), new Uint8Array([4, 5, 6]));
+
+    expect(await rekeyAttachments('chatgpt:/', 'chatgpt:/c/abc')).toBe(2);
+    expect(await listAttachments('chatgpt:/')).toEqual([]);
+    expect((await listAttachments('chatgpt:/c/abc')).map((a) => a.name).sort()).toEqual([
+      'notes.txt',
+      'spec.pdf',
+    ]);
+  });
+
+  it('leaves another conversation’s files alone', async () => {
+    await saveAttachment(input('chatgpt:/'), new Uint8Array([1]));
+    await saveAttachment(input('claude:/chat/other'), new Uint8Array([2]));
+
+    await rekeyAttachments('chatgpt:/', 'chatgpt:/c/abc');
+    expect(await listAttachments('claude:/chat/other')).toHaveLength(1);
+  });
+
+  it('does nothing when the key has not changed', async () => {
+    await saveAttachment(input('chatgpt:/c/abc'), new Uint8Array([1]));
+    expect(await rekeyAttachments('chatgpt:/c/abc', 'chatgpt:/c/abc')).toBe(0);
+    expect(await listAttachments('chatgpt:/c/abc')).toHaveLength(1);
+  });
+})

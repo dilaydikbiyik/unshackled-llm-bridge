@@ -136,6 +136,7 @@ export interface MessageContract {
     response: CapturedAttachmentMeta | Failure;
   };
   'attachment/list': { request: { conversationKey: string }; response: CapturedAttachmentMeta[] };
+  'attachment/rekey': { request: { from: string; to: string }; response: { moved: number } };
   'attachment/get': { request: { id: string }; response: AttachmentPayload | null };
   'archive/save': { request: { conversation: BridgeConversation }; response: Ack };
   'archive/search': { request: { query: string }; response: ArchiveHit[] };

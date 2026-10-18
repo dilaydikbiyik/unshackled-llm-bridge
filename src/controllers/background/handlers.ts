@@ -16,6 +16,7 @@ export type RepoPort = Pick<
   typeof RepoModule,
   | 'saveAttachment'
   | 'listAttachments'
+  | 'rekeyAttachments'
   | 'getAttachment'
   | 'saveConversation'
   | 'getConversation'
@@ -144,6 +145,10 @@ export function createHandlers(deps: BackgroundDeps): HandlerMap {
     // each fork carry every previous fork's transcript with it.
     'attachment/list': async ({ conversationKey }) =>
       (await deps.repo.listAttachments(conversationKey)).filter((meta) => !meta.generated),
+
+    'attachment/rekey': async ({ from, to }) => ({
+      moved: await deps.repo.rekeyAttachments(from, to),
+    }),
 
     'attachment/get': async ({ id }) => {
       const stored = await deps.repo.getAttachment(id);

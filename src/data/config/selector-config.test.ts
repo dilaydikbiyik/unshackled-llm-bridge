@@ -114,6 +114,81 @@ describe('loadSelectorConfig — remote first, bundled fallback', () => {
     const fetch = respond(304);
     vi.stubGlobal('fetch', fetch);
     expect((await loadSelectorConfig()).version).toBe(bundled.version + 3);
-    expect(fetch).toHaveBeenCalledWith(expect.any(String), { headers: { 'If-None-Match': '"v3"' } });
+    // The request also carries an abort signal, so that a hung fetch cannot
+    // hold up the content script.
+    expect(fetch).toHaveBeenCalledWith(expect.any(String), {
+      headers: { 'If-None-Match': '"v3"' },
+      signal: expect.any(AbortSignal),
+    });
   });
 });
+
+/**
+ * The remote config exists so a platform's UI change can be repaired without a
+ * store update. Dropping back to the bundled copy the moment a refresh failed
+ * undid the repair exactly when the user could do least about it — and a
+ * request that hung blocked the content script before it mounted anything.
+ */
+describe('loadSelectorConfig — when the network is not there', () => {
+  type Cached = { config: { version: number; platforms: object }; etag: string | null; fetchedAt: number };
+
+  function stubChrome(cached?: Cached) {
+    vi.stubGlobal('chrome', {
+      storage: {
+        local: {
+          get: vi.fn(async (key: string) => (cached ? { [key]: cached } : {})),
+          set: vi.fn(async () => undefined),
+        },
+      },
+    });
+  }
+
+  const staleCache = (version: number): Cached => ({
+    config: { ...bundled, version },
+    etag: '"cached"',
+    fetchedAt: 0, // long expired, so a refresh is attempted
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it('keeps a repair it already has when the refresh fails', async () => {
+    stubChrome(staleCache(bundled.version + 5));
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); }));
+
+    const config = await loadSelectorConfig();
+    expect(config.version).toBe(bundled.version + 5);
+  });
+
+  it('falls back to the bundled config when there is nothing cached', async () => {
+    stubChrome();
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); }));
+
+    expect((await loadSelectorConfig()).version).toBe(bundled.version);
+  });
+
+  it('never prefers a cached config older than the bundled one', async () => {
+    stubChrome(staleCache(bundled.version - 3));
+    vi.stubGlobal('fetch', vi.fn(async () => { throw new Error('offline'); }));
+
+    expect((await loadSelectorConfig()).version).toBe(bundled.version);
+  });
+
+  it('gives up on a request that hangs, rather than holding up the page', async () => {
+    stubChrome(staleCache(bundled.version + 2));
+    // Aborts when the signal fires, the way fetch does.
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        (_url: string, init?: { signal?: AbortSignal }) =>
+          new Promise((_resolve, reject) => {
+            init?.signal?.addEventListener('abort', () => reject(new Error('aborted')));
+          }),
+      ),
+    );
+
+    const config = await loadSelectorConfig();
+    expect(config.version).toBe(bundled.version + 2);
+  }, 10_000);
+})

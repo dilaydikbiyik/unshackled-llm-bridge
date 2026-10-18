@@ -36,20 +36,34 @@ interface CachedConfig {
  * — never conversation data. Any failure degrades to the bundled copy, so the
  * extension keeps working offline.
  */
+/**
+ * How long the fetch may take before the page is given what is already known.
+ *
+ * The content script waits on this before it mounts anything, so a request
+ * that hangs — a captive portal, a blocked host, a slow network — left the
+ * extension looking dead on the page. Selector repairs can wait; the fork
+ * button cannot.
+ */
+export const CONFIG_FETCH_TIMEOUT_MS = 4000;
+
 export async function loadSelectorConfig(): Promise<SelectorConfig> {
   const bundled = bundledConfig as SelectorConfig;
   if (typeof chrome === 'undefined' || !chrome.storage?.local) return bundled; // test env
 
+  let cached: CachedConfig | undefined;
   try {
     const stored = await chrome.storage.local.get(CACHE_KEY);
-    const cached = stored[CACHE_KEY] as CachedConfig | undefined;
+    cached = stored[CACHE_KEY] as CachedConfig | undefined;
 
     if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
       return newest(bundled, cached.config);
     }
 
     const headers: HeadersInit = cached?.etag ? { 'If-None-Match': cached.etag } : {};
-    const response = await fetch(REMOTE_URL, { headers });
+    const response = await fetch(REMOTE_URL, {
+      headers,
+      signal: AbortSignal.timeout(CONFIG_FETCH_TIMEOUT_MS),
+    });
 
     if (response.status === 304 && cached) {
       await chrome.storage.local.set({ [CACHE_KEY]: { ...cached, fetchedAt: Date.now() } });
@@ -67,7 +81,11 @@ export async function loadSelectorConfig(): Promise<SelectorConfig> {
     });
     return newest(bundled, remote);
   } catch {
-    return bundled;
+    // A failed refresh is not a reason to forget what was already fetched.
+    // Returning the bundled config here would undo a repair the user had
+    // already received — the one thing the remote config exists to deliver —
+    // the moment their network went down.
+    return cached ? newest(bundled, cached.config) : bundled;
   }
 }
 

@@ -319,6 +319,8 @@ function reportComparisonAnswer(adapter: PlatformAdapter, comparisonId: string):
 async function watchConversation(adapter: PlatformAdapter): Promise<void> {
   const archiving = (await getSettings()).archiveEnabled;
   let lastSignature = '';
+  /** The key this page started under, before the platform gave the chat a URL. */
+  let keyAtStart = conversationKey(adapter.platform);
 
   // The longest-lived listener in the page, and so the one most likely to fire
   // after the extension has been reloaded out from under it.
@@ -330,7 +332,16 @@ async function watchConversation(adapter: PlatformAdapter): Promise<void> {
 
       // The platform assigns a conversation id at some point after the first
       // message; this is where a fork's origin becomes attachable to it.
-      await bindOrigin(conversationKey(adapter.platform));
+      const key = conversationKey(adapter.platform);
+      await bindOrigin(key);
+
+      // And where files attached before the chat had a URL catch up with it.
+      // Without this they stay under the bare path and a fork never finds
+      // them — the plainest case being: new chat, attach a document, fork.
+      if (key !== keyAtStart) {
+        await sendToBackground({ type: 'attachment/rekey', from: keyAtStart, to: key });
+        keyAtStart = key;
+      }
 
       if (!archiving) return;
       const signature = `${conversation.id}:${conversation.messages.length}`;

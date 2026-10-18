@@ -7,6 +7,19 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- **Files attached in a new chat never travelled.** Captured files are keyed by the conversation
+  they were seen in, and a new chat has no id until the first message is sent — so a file attached
+  before that was stored under the bare path while the fork looked under the real one. The most
+  advertised feature of the extension did nothing in its most ordinary case: open a new chat,
+  attach a document, talk about it, fork. Files now catch up with the conversation when the platform
+  gives it a URL.
+- **A failed config refresh threw away a repair already received.** The remote selector config
+  exists so a platform's UI change can be fixed without a store update; falling back to the bundled
+  copy the moment a refresh failed undid that fix exactly when the user could do least about it. A
+  cached config is kept, and is still never preferred to a newer bundled one.
+- **A hanging config request held up the whole content script.** It is awaited before anything
+  mounts, so a blocked or slow host left the extension looking dead on the page. The request now
+  gives up after four seconds; selector repairs can wait, the fork button cannot.
 - **Trimming could miss its budget by any margin at all.** Dropping whole messages stops at two, so
   a pair of very long ones — a pasted document and a long answer — came through untouched, eight
   times over budget, while the package reported that nothing had been trimmed. What cannot be

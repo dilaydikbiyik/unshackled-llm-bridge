@@ -58,6 +58,20 @@ export async function listAttachments(conversationKey: string): Promise<Captured
   return records.map(toMeta);
 }
 
+/**
+ * Moves captured files from one conversation key to another.
+ *
+ * Files are keyed by the conversation they were seen in, and a new chat has no
+ * id until the first message is sent — so a file attached before that was
+ * stored under the bare path and the fork, looking under the real one, found
+ * nothing. The most ordinary case there is: open a new chat, attach a
+ * document, talk about it, fork.
+ */
+export async function rekeyAttachments(from: string, to: string): Promise<number> {
+  if (from === to) return 0;
+  return getDb().attachments.where('conversationKey').equals(from).modify({ conversationKey: to });
+}
+
 export async function getAttachment(
   id: string,
 ): Promise<{ meta: CapturedAttachmentMeta; blob: Blob } | null> {
