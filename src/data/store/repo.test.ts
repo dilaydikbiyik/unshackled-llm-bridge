@@ -11,6 +11,7 @@ import {
   saveAttachment,
   saveConversation,
   searchConversations,
+  SEARCH_SCAN_LIMIT,
   useDatabase,
 } from './repo';
 
@@ -124,5 +125,75 @@ describe('fork lineage', () => {
       ['claude', 2],
       ['gemini', 4],
     ]);
+  });
+});
+
+/**
+ * An archive gets slower the longer it is used unless the search is bounded.
+ * Every record used to be parsed from JSON, so a query that matched nothing
+ * parsed the lot.
+ */
+describe('search cost', () => {
+  it('reads only the most recent conversations', async () => {
+    for (let i = 0; i < SEARCH_SCAN_LIMIT + 20; i += 1) {
+      await saveConversation(
+        conversation(`c-${String(i)}`, [`entry ${String(i)}`]),
+      );
+    }
+    // The oldest entries fall outside the scan, which is the trade the bound
+    // makes: a search stays fast, and it searches what people search.
+    expect(await searchConversations('entry 0')).toEqual([]);
+    expect((await searchConversations(`entry ${String(SEARCH_SCAN_LIMIT + 19)}`)).length).toBe(1);
+  });
+
+  it('still finds a match by message text and by title', async () => {
+    await saveConversation(
+      conversation('c-find', ['something about kubernetes']),
+    );
+    const byText = await searchConversations('kubernetes');
+    expect(byText).toHaveLength(1);
+    expect(byText[0]?.snippet).toContain('kubernetes');
+  });
+
+  it('matches case-insensitively, as the box implies', async () => {
+    await saveConversation(
+      conversation('c-case', ['Postgres beats MySQL here']),
+    );
+    expect(await searchConversations('postgres')).toHaveLength(1);
+  });
+});
+
+describe('fork ordering', () => {
+  /**
+   * Two forks taken in the same millisecond shared a timestamp, and their
+   * order was then whatever the database felt like — so a conversation's
+   * lineage could be exported out of sequence. It showed up as a test that
+   * passed or failed depending on how fast the machine was.
+   */
+  it('keeps the order of forks taken in the same millisecond', async () => {
+    const lineage = {
+      sourceConversationId: 'chatgpt-burst',
+      sourcePlatform: 'chatgpt' as const,
+      cutIndex: 0,
+    };
+    for (let i = 0; i < 12; i += 1) {
+      await recordFork({ ...lineage, cutIndex: i }, i % 2 === 0 ? 'claude' : 'gemini');
+    }
+
+    const forks = await listForksFrom('chatgpt-burst');
+    expect(forks.map((f) => f.cutIndex)).toEqual([...Array(12).keys()]);
+  });
+
+  it('gives each fork its own timestamp', async () => {
+    const lineage = {
+      sourceConversationId: 'chatgpt-two',
+      sourcePlatform: 'chatgpt' as const,
+      cutIndex: 1,
+    };
+    await recordFork(lineage, 'claude');
+    await recordFork(lineage, 'gemini');
+
+    const stamps = (await listForksFrom('chatgpt-two')).map((f) => f.createdAt);
+    expect(new Set(stamps).size).toBe(2);
   });
 });

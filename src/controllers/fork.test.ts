@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createConversation, type BridgeConversation } from '@domain/conversation/schema';
+import { SUMMARY_INPUT_BUDGET } from '@domain/wrap/limits';
 import {
   createTransferPackageBuilder,
   exceedsTransferBudget,
@@ -287,3 +288,50 @@ describe('relay scope', () => {
     expect(exceedsTransferBudget(conversation(40, 4000), 39, 'whole', 37)).toBe(true);
   });
 });
+
+/**
+ * Summarizing exists to rescue conversations too long to carry whole — which
+ * are exactly the ones large enough for the model to refuse the request. The
+ * transcript sent is trimmed first, so the mode fails for real reasons rather
+ * than for being asked to read too much.
+ */
+describe('summary input is bounded', () => {
+  it('trims an enormous conversation before sending it', async () => {
+    const sent: string[] = [];
+    const summarize: Summarizer = async (transcript) => {
+      sent.push(transcript);
+      return { ok: true, summary: 'brief' };
+    };
+    // Far past the budget: 200 messages of 4,000 characters each.
+    const build = createTransferPackageBuilder({
+      conversation: conversation(200, 4000),
+      cutIndex: 199,
+      language: 'en',
+      summarize,
+    });
+
+    await build({ target: 'claude', mode: 'summary', scope: 'whole', delivery: 'inline' });
+
+    expect(sent[0]?.length).toBeGreaterThan(0);
+    expect((sent[0]?.length ?? 0) / 4).toBeLessThanOrEqual(SUMMARY_INPUT_BUDGET);
+  });
+
+  it('sends a normal conversation untouched', async () => {
+    const sent: string[] = [];
+    const summarize: Summarizer = async (transcript) => {
+      sent.push(transcript);
+      return { ok: true, summary: 'brief' };
+    };
+    const build = createTransferPackageBuilder({
+      conversation: conversation(4),
+      cutIndex: 3,
+      language: 'en',
+      summarize,
+    });
+
+    await build({ target: 'claude', mode: 'summary', scope: 'whole', delivery: 'inline' });
+
+    expect(sent[0]).toContain('msg0');
+    expect(sent[0]).toContain('msg3');
+  });
+})

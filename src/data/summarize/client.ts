@@ -25,6 +25,16 @@ Keep code, names, numbers, and identifiers verbatim. Drop pleasantries and
 restatements. Write it as notes addressed to the assistant that takes over,
 not as a summary addressed to the user.`;
 
+/**
+ * How long a summarization may take before it is abandoned.
+ *
+ * The SDK's default is ten minutes. The fork dialog waits on this with its
+ * transfer button disabled, so a stalled request would leave the user staring
+ * at a frozen dialog with no way forward. Failing turns into a full transfer,
+ * which is a worse package but an immediate one.
+ */
+export const SUMMARIZE_TIMEOUT_MS = 60_000;
+
 export interface SummarizeOptions {
   apiKey: string;
   model: string;
@@ -38,6 +48,7 @@ export async function summarizeTranscript(options: SummarizeOptions): Promise<st
   const client = new Anthropic({
     apiKey: options.apiKey,
     dangerouslyAllowBrowser: true,
+    timeout: SUMMARIZE_TIMEOUT_MS,
     ...(options.fetch ? { fetch: options.fetch, maxRetries: 0 } : {}),
   });
 

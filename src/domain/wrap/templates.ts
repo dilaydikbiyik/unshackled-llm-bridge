@@ -14,6 +14,8 @@ export interface WrapInput {
   messages: ChatMessage[];
   /** > 0 when the slice was trimmed; rendered as an elision note. */
   trimmedCount?: number;
+  /** > 0 when surviving messages were shortened; rendered alongside the elision. */
+  truncatedCount?: number;
   /** Active persona text to carry along, if the user opted in. */
   personaText?: string;
   /** Replaces the transcript entirely (summarize-on-fork). */
@@ -25,10 +27,17 @@ export interface WrapInput {
 export function wrapForTarget(input: WrapInput, target: PlatformId): string {
   const source = platformLabel(input.sourcePlatform);
   const model = input.model ? ` (model: ${input.model})` : '';
-  const elision =
-    input.trimmedCount && input.trimmedCount > 0
-      ? `[${input.trimmedCount} earlier messages omitted for length]`
-      : null;
+  // Both facts are stated: a reader of the package should be able to tell what
+  // it is missing, and silence about a cut is the one thing this project will
+  // not do.
+  const notes: string[] = [];
+  if (input.trimmedCount && input.trimmedCount > 0) {
+    notes.push(`${String(input.trimmedCount)} earlier messages omitted for length`);
+  }
+  if (input.truncatedCount && input.truncatedCount > 0) {
+    notes.push(`${String(input.truncatedCount)} messages shortened for length`);
+  }
+  const elision = notes.length > 0 ? `[${notes.join('; ')}]` : null;
 
   // Derived from the slice, not from the source platform: the brief states
   // where the work stands, which a transcript leaves the target to infer.

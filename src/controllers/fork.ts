@@ -7,7 +7,13 @@ import type {
   TransferRequest,
   TransferScope,
 } from '@domain/transfer';
-import { sliceTokens, sliceUpTo, trimToBudget, TRANSFER_TOKEN_BUDGET } from '@domain/wrap/limits';
+import {
+  sliceTokens,
+  sliceUpTo,
+  SUMMARY_INPUT_BUDGET,
+  trimToBudget,
+  TRANSFER_TOKEN_BUDGET,
+} from '@domain/wrap/limits';
 import { continuationNote, wrapForTarget } from '@domain/wrap/templates';
 import type { Lang } from '@shared/i18n';
 import { sendToBackground, type SummarizeResponse } from '@shared/messages';
@@ -60,7 +66,10 @@ export function createTransferPackageBuilder(context: ForkContext): TransferPack
     };
 
     if (mode === 'summary') {
-      const transcript = slice.map((m) => `${m.role}: ${m.content}`).join('\n\n');
+      // Trimmed first: the conversations worth summarizing are the ones large
+      // enough to be refused, and failing there defeats the point of the mode.
+      const forSummary = trimToBudget(slice, SUMMARY_INPUT_BUDGET).messages;
+      const transcript = forSummary.map((m) => `${m.role}: ${m.content}`).join('\n\n');
       const result = await summarize(transcript, language);
       if (result.ok) {
         const text = wrapForTarget({ ...base, messages: [], summary: result.summary }, target);
@@ -71,9 +80,16 @@ export function createTransferPackageBuilder(context: ForkContext): TransferPack
       return { text, estimatedTokens: sliceTokens(slice), summaryError: result.error };
     }
 
-    const prepared: { messages: typeof slice; trimmedCount: number } =
-      mode === 'trimmed' ? trimToBudget(slice) : { messages: slice, trimmedCount: 0 };
-    const wrapped = { ...base, messages: prepared.messages, trimmedCount: prepared.trimmedCount };
+    const prepared =
+      mode === 'trimmed'
+        ? trimToBudget(slice)
+        : { messages: slice, trimmedCount: 0, truncatedCount: 0 };
+    const wrapped = {
+      ...base,
+      messages: prepared.messages,
+      trimmedCount: prepared.trimmedCount,
+      truncatedCount: prepared.truncatedCount,
+    };
     const text = wrapForTarget(wrapped, target);
     const estimatedTokens = sliceTokens(prepared.messages);
 

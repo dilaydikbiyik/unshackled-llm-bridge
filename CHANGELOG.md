@@ -7,6 +7,24 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Fixed
+- **Trimming could miss its budget by any margin at all.** Dropping whole messages stops at two, so
+  a pair of very long ones — a pasted document and a long answer — came through untouched, eight
+  times over budget, while the package reported that nothing had been trimmed. What cannot be
+  dropped is now shortened, keeping each message's head and tail, and the package states both facts.
+- **Summarizing could be refused for being too long.** The whole slice was sent however large it
+  was, so the conversations the feature exists to rescue were the ones it failed on. The transcript
+  is trimmed to a budget first, and the request now carries a one-minute timeout — the fork dialog
+  waits on it with its transfer button disabled, and the SDK's default would have frozen it for ten.
+- **Searching parsed the entire archive.** Every record was read and its JSON parsed, so a query
+  matching nothing parsed everything, and the archive grew slower the longer it was useful. The
+  scan is bounded to the most recent conversations and rules a record out by string test before
+  parsing it.
+- **A failed export did nothing, silently.** The click swallowed both a missing record and a
+  rejected request — the latter as an unhandled rejection, the class of bug that had already taken
+  CI down once. It now says it failed.
+- **Fork lineage could be recorded out of order.** Two forks taken in the same millisecond shared a
+  timestamp, and their order was then whatever the database chose; the ids are random, so there was
+  no insertion order to fall back on. Timestamps are never issued twice.
 - **A comparison kept overwriting its own answer.** The watcher took the last assistant message on
   every page change and never stopped, so it reported the answer while it was still streaming and
   then replaced it with whatever the user asked that tab next. It now takes the first assistant

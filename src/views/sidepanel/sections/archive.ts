@@ -3,7 +3,7 @@ import { t, type Lang } from '@shared/i18n';
 import { sendToBackground, type ArchiveHit, type ExportFormat } from '@shared/messages';
 import { updateSettings, type Settings } from '@shared/settings';
 import { html, setHtml, type SafeHtml } from '@views/html';
-import { downloadText, el } from '../dom';
+import { downloadText, el, flash } from '../dom';
 
 /**
  * Universal archive: adapters can already read a conversation, so visited chats
@@ -47,12 +47,12 @@ export function bindArchive(root: ParentNode, settings: Settings, onChanged: () 
     debounce = setTimeout(() => {
       void searchArchive(search.value).then((hits) => {
         setHtml(results, renderHits(lang, hits));
-        bindExports(results);
+        bindExports(results, lang);
       });
     }, SEARCH_DEBOUNCE_MS);
   });
 
-  bindExports(results);
+  bindExports(results, lang);
 }
 
 export async function searchArchive(query: string): Promise<ArchiveHit[]> {
@@ -63,20 +63,28 @@ export async function searchArchive(query: string): Promise<ArchiveHit[]> {
   }
 }
 
-function bindExports(root: ParentNode): void {
+function bindExports(root: ParentNode, lang: Lang): void {
   root.querySelectorAll<HTMLButtonElement>('[data-export]').forEach((button) => {
     button.addEventListener('click', () => {
       const format = button.dataset['export'] as ExportFormat;
       const id = button.dataset['id'];
       if (!id) return;
-      void sendToBackground({ type: 'archive/export', id, format }).then((file) => {
-        if (!file) return;
-        downloadText(
-          file.filename,
-          file.content,
-          format === 'markdown' ? 'text/markdown' : 'application/json',
-        );
-      });
+      // A click that does nothing is worse than a failure that says so — and
+      // an uncaught rejection here is invisible until it takes something else
+      // down with it.
+      void sendToBackground({ type: 'archive/export', id, format })
+        .then((file) => {
+          if (!file) {
+            flash(button, t(lang, 'archiveExportFailed'), 2600);
+            return;
+          }
+          downloadText(
+            file.filename,
+            file.content,
+            format === 'markdown' ? 'text/markdown' : 'application/json',
+          );
+        })
+        .catch(() => flash(button, t(lang, 'archiveExportFailed'), 2600));
     });
   });
 }

@@ -120,10 +120,24 @@ export async function listConversations(limit = 200): Promise<BridgeConversation
   return records.map((record) => parseConversation(JSON.parse(record.data)));
 }
 
+/**
+ * How many of the most recent conversations a search reads.
+ *
+ * Searching read the whole archive and parsed every record's JSON. A query
+ * that matched nothing therefore parsed everything, which gets slower the
+ * longer someone uses the extension — the opposite of what an archive should
+ * do. The scan is bounded, and the recent end is the end people search.
+ */
+export const SEARCH_SCAN_LIMIT = 500;
+
 /** Naive local full-text search; empty query returns the most recent entries. */
 export async function searchConversations(query: string, limit = 20): Promise<ArchiveHit[]> {
   const needle = query.trim().toLowerCase();
-  const records = await getDb().conversations.orderBy('updatedAt').reverse().toArray();
+  const records = await getDb()
+    .conversations.orderBy('updatedAt')
+    .reverse()
+    .limit(SEARCH_SCAN_LIMIT)
+    .toArray();
   const hits: ArchiveHit[] = [];
   for (const record of records) {
     if (hits.length >= limit) break;
@@ -131,6 +145,12 @@ export async function searchConversations(query: string, limit = 20): Promise<Ar
       hits.push({ id: record.id, sourcePlatform: record.sourcePlatform, title: record.title, snippet: '', updatedAt: record.updatedAt });
       continue;
     }
+    // The serialized record carries the message text, so a string test rules
+    // out a record far more cheaply than parsing it does.
+    const couldMatch =
+      record.data.toLowerCase().includes(needle) || record.title.toLowerCase().includes(needle);
+    if (!couldMatch) continue;
+
     const conversation = parseConversation(JSON.parse(record.data));
     const match = conversation.messages.find((m) => m.content.toLowerCase().includes(needle));
     if (match || record.title.toLowerCase().includes(needle)) {
@@ -153,6 +173,21 @@ export async function listForksFrom(sourceConversationId: string): Promise<ForkR
   return getDb().forks.where('sourceConversationId').equals(sourceConversationId).sortBy('createdAt');
 }
 
+/**
+ * Fork records are ordered by their timestamp, and two forks taken in the same
+ * millisecond had the same one — leaving their order undefined, so a
+ * conversation's lineage could be exported out of sequence. Ids are random, so
+ * there is no insertion order to fall back on. A timestamp is therefore never
+ * issued twice: a collision is nudged a millisecond forward, which keeps the
+ * order true at a cost no reader of a date can notice.
+ */
+let lastIssuedAt = 0;
+
+function orderedTimestamp(): string {
+  lastIssuedAt = Math.max(Date.now(), lastIssuedAt + 1);
+  return new Date(lastIssuedAt).toISOString();
+}
+
 export async function recordFork(lineage: ForkLineage, targetPlatform: PlatformId): Promise<void> {
   await getDb().forks.add({
     id: crypto.randomUUID(),
@@ -160,7 +195,7 @@ export async function recordFork(lineage: ForkLineage, targetPlatform: PlatformI
     sourcePlatform: lineage.sourcePlatform,
     targetPlatform,
     cutIndex: lineage.cutIndex,
-    createdAt: new Date().toISOString(),
+    createdAt: orderedTimestamp(),
   });
 }
 
