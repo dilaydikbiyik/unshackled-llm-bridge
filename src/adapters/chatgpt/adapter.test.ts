@@ -172,3 +172,61 @@ describe('ChatGptAdapter.readConversation — live markup, October', () => {
     expect(answer).not.toContain('Model değiştir');
   });
 });
+
+/**
+ * Live markup, checked 2026-10-23: ChatGPT rebuilt its conversation DOM. Turns
+ * are no longer `<section data-testid="conversation-turn-N">` and carry no
+ * `data-message-author-role` at all — they are `[data-content-search-unit-key]`
+ * whose value ends in `:user` or `:assistant`. The extension read zero messages
+ * and would have forked an empty conversation.
+ *
+ * Role detection had been hard-coded to the dropped attribute, so the adapter
+ * could not be repaired by configuration — the one thing remote selectors
+ * exist to allow. It now reads roles through `userMessage`, like the others.
+ */
+const LIVE_FIXTURE_OCT_23 = `
+<main>
+  <div data-content-search-unit-key="fallback-turn-0:0:user">
+    <div data-user-message-bubble="true">
+      <div class="text-size-chat whitespace-pre-wrap">nasil 0dan 3 ayda romence ogrenilir</div>
+    </div>
+  </div>
+  <div data-content-search-unit-key="fallback-turn-0:1:assistant">
+    <div class="group flex min-w-0 flex-col">
+      <div dir="auto" class="DilRenderer-tB76Jj DilResponseRoot-HfQrEh Reveal-k2IWvM">
+        <p>Romenceyi <strong>3 ayda</strong> konuşabilirsin.</p>
+        <pre><button>Kopyala</button><code class="language-text">zi 1</code></pre>
+      </div>
+      <button aria-label="Kopyala">Kopyala</button>
+    </div>
+  </div>
+</main>
+`;
+
+describe('ChatGptAdapter.readConversation — live markup, October 23', () => {
+  beforeEach(() => {
+    document.body.innerHTML = LIVE_FIXTURE_OCT_23;
+  });
+
+  it('reads both turns from the rebuilt markup', async () => {
+    const conversation = await new ChatGptAdapter(selectors).readConversation();
+    expect(conversation.messages).toHaveLength(2);
+    expect(conversation.messages[0]?.content).toBe('nasil 0dan 3 ayda romence ogrenilir');
+  });
+
+  it('tells the speakers apart without the old role attribute', async () => {
+    // Every turn used to come back as the assistant's, which would have made
+    // a transferred conversation unreadable on the other side.
+    const conversation = await new ChatGptAdapter(selectors).readConversation();
+    expect(conversation.messages.map((m) => m.role)).toEqual(['user', 'assistant']);
+  });
+
+  it('takes the answer from the response root, not the whole turn', async () => {
+    const conversation = await new ChatGptAdapter(selectors).readConversation();
+    const answer = conversation.messages[1]?.content ?? '';
+
+    expect(answer).toContain('**3 ayda**');
+    expect(answer).toContain('```');
+    expect(answer).not.toContain('Kopyala');
+  });
+});

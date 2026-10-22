@@ -6,6 +6,26 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed — ChatGPT rebuilt its conversation DOM (2026-10-23)
+- **The extension was reading zero messages on ChatGPT.** Turns are no longer
+  `section[data-testid="conversation-turn-N"]`; they are `[data-content-search-unit-key]` whose
+  value ends in `:user` or `:assistant`. A fork would have carried an empty conversation. Selector
+  config v7, with the old shapes kept as fallbacks.
+- **Role detection could not be repaired remotely.** The ChatGPT adapter read speakers from a
+  `data-message-author-role` attribute hard-coded in its source, and the rebuild dropped it — so
+  every turn would have been read as the assistant's, and no configuration change could have fixed
+  it. Roles now come from the `userMessage` selector like every other adapter, which is what ADR 002
+  requires and what shipping selectors as configuration is for.
+- **The side panel's health was measured before the page existed.** It was reported once at
+  `document_idle`, which on these single-page apps is before the conversation renders, and never
+  corrected: Claude was shown as degraded in composer, new chat and drop zone while all three were
+  fine, and ChatGPT's genuinely broken message selectors were not shown at all. Health is reported
+  again once there is a conversation on the page.
+- **A new-chat button is no longer reported as broken.** Opening a new chat falls back to the
+  platform's URL, so a missing button cannot fail; ChatGPT's rebuild left that control with no
+  stable handle at all, and the panel was calling the whole platform degraded over it.
+
+
 ### Fixed
 - **Files attached in a new chat never travelled.** Captured files are keyed by the conversation
   they were seen in, and a new chat has no id until the first message is sent — so a file attached

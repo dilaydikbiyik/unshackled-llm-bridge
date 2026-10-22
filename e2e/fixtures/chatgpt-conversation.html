@@ -1,27 +1,28 @@
 <!doctype html>
-<!-- Mirrors chatgpt.com conversation markup as verified live on 2026-10-05 (config v6):
-     the CSS-module response root is gone and the answer sits in `.markdown`. -->
+<!-- Mirrors chatgpt.com conversation markup as verified live on 2026-10-23 (config v7):
+     turns are [data-content-search-unit-key] ending in :user or :assistant, and
+     data-message-author-role is gone entirely. -->
 <html lang="en">
   <head><meta charset="utf-8" /><title>ChatGPT (fixture)</title></head>
   <body>
-    <a data-testid="create-new-chat-button" href="/">New chat</a>
+    <button aria-label="New chat">New chat</button>
     <main>
-      <section data-testid="conversation-turn-1">
-        <div data-message-author-role="user"><div>Plan a trip to Kyoto in April</div></div>
-      </section>
-      <section data-testid="conversation-turn-2">
-        <div data-message-author-role="assistant">
-          <div class="flex w-full flex-col gap-1 empty:hidden">
-            <div class="LR5Y_W_content markdown prose dark:prose-invert w-full">
-              <p>Go for the <strong>cherry blossoms</strong> in early April.</p>
-              <pre><button>Copy</button><code class="language-js">const days = 5;</code></pre>
-            </div>
+      <div data-content-search-unit-key="fallback-turn-0:0:user">
+        <div data-user-message-bubble="true">
+          <div class="text-size-chat whitespace-pre-wrap">Plan a trip to Kyoto in April</div>
+        </div>
+      </div>
+      <div data-content-search-unit-key="fallback-turn-0:1:assistant">
+        <div class="group flex min-w-0 flex-col">
+          <div dir="auto" class="DilRenderer-tB76Jj DilResponseRoot-HfQrEh">
+            <p>Go for the <strong>cherry blossoms</strong> in early April.</p>
+            <pre><button>Copy</button><code class="language-js">const days = 5;</code></pre>
           </div>
           <button aria-label="Switch model">Switch model</button>
         </div>
-      </section>
-      <form data-type="unified-composer">
-        <div id="prompt-textarea" contenteditable="true"></div>
+      </div>
+      <form data-chatgpt-composer>
+        <div data-composer-markdown contenteditable="true" class="ProseMirror"></div>
       </form>
     </main>
   </body>

@@ -42,22 +42,22 @@
   <body>
     <aside>
       <h2>Chats</h2>
-      <a data-testid="create-new-chat-button" href="/">New chat</a>
+      <button aria-label="New chat">New chat</button>
       <a class="current" href="/c/1">Kyoto in April</a>
       <a href="/c/2">Postgres vs MySQL</a>
       <a href="/c/3">Rewriting the parser</a>
     </aside>
     <main>
       <div class="thread">
-        <section data-testid="conversation-turn-1" class="turn-user">
-          <div data-message-author-role="user">
+        <section data-content-search-unit-key="fallback-turn-0:0:user" class="turn-user">
+          <div data-user-message-bubble="true">
             <div class="bubble">Plan a trip to Kyoto in April</div>
           </div>
         </section>
-        <section data-testid="conversation-turn-2">
-          <div data-message-author-role="assistant">
+        <section data-content-search-unit-key="fallback-turn-0:1:assistant">
+          <div class="group flex min-w-0 flex-col">
             <div class="flex w-full flex-col gap-1">
-              <div class="LR5Y_W_content markdown prose">
+              <div class="DilRenderer-tB76Jj DilResponseRoot-HfQrEh prose">
                 <p>Go for the <strong>cherry blossoms</strong> in early April — the first week is
                   usually the peak, and the crowds thin out by the second.</p>
                 <p>Here is a rough budget for five days:</p>
@@ -71,8 +71,8 @@ const total = days * perDay;</code></pre>
         </section>
       </div>
       <footer>
-        <form data-type="unified-composer">
-          <div id="prompt-textarea" contenteditable="true">Ask anything…</div>
+        <form data-chatgpt-composer>
+          <div data-composer-markdown contenteditable="true" id="prompt-textarea">Ask anything…</div>
         </form>
       </footer>
     </main>

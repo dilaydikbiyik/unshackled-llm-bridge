@@ -1,34 +1,99 @@
 {
-  "version": 6,
+  "version": 7,
   "minExtensionVersion": "0.0.1",
   "platforms": {
     "chatgpt": {
-      "composer": ["#prompt-textarea", "form div[contenteditable='true']", "#mobile-composer-prompt"],
-      "sendButton": ["button[data-testid='send-button']"],
-      "messageContainer": ["section[data-testid^='conversation-turn']", "article[data-testid^='conversation-turn']"],
-      "assistantContent": ["[class*='_DilResponseRoot']", ".not-markdown", ".markdown"],
-      "newChatButton": ["a[data-testid='create-new-chat-button']"],
-      "modelLabel": ["button[data-testid='model-switcher-dropdown-button']"],
-      "dropZone": ["form[data-type='unified-composer']", "main"]
+      "composer": [
+        "div[data-composer-markdown]",
+        "#prompt-textarea",
+        "form div[contenteditable='true']",
+        "#mobile-composer-prompt"
+      ],
+      "sendButton": [
+        "button[data-testid='send-button']"
+      ],
+      "messageContainer": [
+        "[data-content-search-unit-key]",
+        "section[data-testid^='conversation-turn']",
+        "article[data-testid^='conversation-turn']"
+      ],
+      "userMessage": [
+        "[data-content-search-unit-key$=':user']",
+        "[data-message-author-role='user']"
+      ],
+      "assistantContent": [
+        "[class*='DilResponseRoot']",
+        ".not-markdown",
+        ".markdown"
+      ],
+      "newChatButton": [
+        "a[data-testid='create-new-chat-button']"
+      ],
+      "modelLabel": [
+        "button[data-testid='model-switcher-dropdown-button']"
+      ],
+      "dropZone": [
+        "form[data-chatgpt-composer]",
+        "form[data-type='unified-composer']",
+        "main"
+      ]
     },
     "claude": {
-      "composer": ["div[contenteditable='true'].ProseMirror", "fieldset div[contenteditable='true']"],
-      "sendButton": ["button[aria-label='Send message']", "button[aria-label='Mesaj gönder']"],
-      "messageContainer": ["div[data-testid='user-message'], .font-claude-response"],
-      "userMessage": ["div[data-testid='user-message']"],
-      "artifactCell": ["div[data-testid='artifact-block']", "a[aria-label*='artifact' i]"],
-      "newChatButton": ["a[href='/new']"],
-      "modelLabel": ["button[data-testid='model-selector-dropdown']"],
-      "dropZone": ["fieldset", "main"]
+      "composer": [
+        "div[contenteditable='true'].ProseMirror",
+        "fieldset div[contenteditable='true']"
+      ],
+      "sendButton": [
+        "button[aria-label='Send message']",
+        "button[aria-label='Mesaj gönder']"
+      ],
+      "messageContainer": [
+        "div[data-testid='user-message'], .font-claude-response"
+      ],
+      "userMessage": [
+        "div[data-testid='user-message']"
+      ],
+      "artifactCell": [
+        "div[data-testid='artifact-block']",
+        "a[aria-label*='artifact' i]"
+      ],
+      "newChatButton": [
+        "a[href='/new']"
+      ],
+      "modelLabel": [
+        "button[data-testid='model-selector-dropdown']"
+      ],
+      "dropZone": [
+        "fieldset",
+        "main"
+      ]
     },
     "gemini": {
-      "composer": ["rich-textarea div.ql-editor[contenteditable='true']", "div.ql-editor[contenteditable='true']"],
-      "sendButton": ["[data-test-id='send-button'] button", "button.send-button"],
-      "messageContainer": ["user-query, model-response"],
-      "userMessage": ["user-query"],
-      "newChatButton": ["[data-test-id='new-chat-button']", "a[href='/app']"],
-      "modelLabel": ["[data-test-id='bard-mode-menu-button']"],
-      "dropZone": ["rich-textarea", "main"]
+      "composer": [
+        "rich-textarea div.ql-editor[contenteditable='true']",
+        "div.ql-editor[contenteditable='true']"
+      ],
+      "sendButton": [
+        "[data-test-id='send-button'] button",
+        "button.send-button"
+      ],
+      "messageContainer": [
+        "user-query, model-response"
+      ],
+      "userMessage": [
+        "user-query"
+      ],
+      "newChatButton": [
+        "[data-test-id='new-chat-button']",
+        "a[href='/app']"
+      ],
+      "modelLabel": [
+        "[data-test-id='bard-mode-menu-button']"
+      ],
+      "dropZone": [
+        "rich-textarea",
+        "main"
+      ]
     }
   }
 }

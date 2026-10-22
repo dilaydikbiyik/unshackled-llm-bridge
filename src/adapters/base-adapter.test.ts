@@ -112,7 +112,20 @@ describe('health check', () => {
 
     expect(health.platform).toBe('chatgpt');
     expect(health.ok).toBe(false);
-    expect(health.brokenSelectors.sort()).toEqual(['dropZone', 'newChatButton']);
+    // Not newChatButton: opening a new chat falls back to the platform's URL,
+    // so a missing button costs nothing and reporting it is crying wolf.
+    expect(health.brokenSelectors.sort()).toEqual(['dropZone']);
+  });
+
+  it('does not report a new-chat button that has a working fallback', async () => {
+    // ChatGPT's October 2026 rebuild left its new-chat control with no stable
+    // handle — only a translated aria-label — and the panel called the whole
+    // platform degraded over a control that cannot actually fail.
+    document.body.innerHTML = '<textarea id="composer"></textarea><div id="drop"></div>';
+    const health = await adapter().healthCheck();
+
+    expect(health.brokenSelectors).not.toContain('newChatButton');
+    expect(health.ok).toBe(true);
   });
 
   it('never reports situational targets, which are absent in normal use', async () => {

@@ -20,6 +20,12 @@ export const SITUATIONAL_TARGETS: ReadonlySet<string> = new Set([
   'sendButton',
   'modelLabel',
   'artifactCell',
+  // Opening a new chat falls back to navigating to the platform's URL, so a
+  // missing button costs nothing. ChatGPT's October 2026 rebuild left its new
+  // chat control with no stable handle at all — only a translated aria-label,
+  // which this project does not use as a primary selector — and reporting the
+  // platform as degraded over a control that cannot fail is crying wolf.
+  'newChatButton',
 ]);
 
 /**

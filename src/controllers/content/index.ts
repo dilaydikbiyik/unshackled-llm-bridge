@@ -324,11 +324,22 @@ async function watchConversation(adapter: PlatformAdapter): Promise<void> {
 
   // The longest-lived listener in the page, and so the one most likely to fire
   // after the extension has been reloaded out from under it.
+  let healthResent = false;
   const stop = adapter.observeMessages(() => {
     if (orphaned) return;
     void guardContext(async () => {
       const conversation = await adapter.readConversation();
       if (conversation.messages.length === 0) return;
+
+      // Health is first measured at document_idle, which on these single-page
+      // apps is before the conversation exists — so it described an empty
+      // shell and was never corrected. The side panel then showed targets as
+      // broken that were fine, and missed ones that were not. Once there is a
+      // conversation on the page, the answer is worth something: say it again.
+      if (!healthResent) {
+        healthResent = true;
+        await reportHealth(adapter);
+      }
 
       // The platform assigns a conversation id at some point after the first
       // message; this is where a fork's origin becomes attachable to it.

@@ -25,7 +25,7 @@ test('forks a ChatGPT conversation into Claude, filling the composer and sending
   const source = await context.newPage();
   await source.goto('https://chatgpt.com/c/e2e-1');
 
-  await source.locator('section[data-testid="conversation-turn-2"]').hover();
+  await source.locator('[data-content-search-unit-key$=":assistant"]').hover();
   await source.locator(`#ulb-fork-button-host #fork`).click();
 
   const dialog = source.locator('#ulb-fork-dialog-host');
@@ -140,7 +140,7 @@ test('falls back to the full package when the attachment does not land', async (
   const source = await context.newPage();
   await source.goto('https://chatgpt.com/c/e2e-silent');
 
-  await source.locator('section[data-testid="conversation-turn-2"]').hover();
+  await source.locator('[data-content-search-unit-key$=":assistant"]').hover();
   await source.locator('#ulb-fork-button-host #fork').click();
 
   const dialog = source.locator('#ulb-fork-dialog-host');

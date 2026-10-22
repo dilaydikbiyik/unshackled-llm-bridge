@@ -124,6 +124,18 @@ export function validateSelectorConfig(raw: unknown): SelectorConfig {
  * querySelector throw, which would take down the whole content script — so a
  * bad candidate is skipped and the next one is tried, as if it matched nothing.
  */
+/**
+ * `matches` with the same guarantee as `safeQueryAll`: a selector that arrived
+ * from remote configuration must never throw inside an adapter.
+ */
+export function safeMatches(element: Element, selector: string): boolean {
+  try {
+    return element.matches(selector);
+  } catch {
+    return false;
+  }
+}
+
 function safeQueryAll(root: ParentNode, selector: string): Element[] {
   try {
     return [...root.querySelectorAll(selector)];

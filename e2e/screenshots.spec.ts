@@ -46,7 +46,7 @@ test('screenshot: forking a conversation', async ({ context }) => {
   await page.setViewportSize(STORE);
   await page.goto('https://chatgpt.com/c/shot-1');
 
-  await page.locator('section[data-testid="conversation-turn-2"]').hover();
+  await page.locator('[data-content-search-unit-key$=":assistant"]').hover();
   await page.locator('#ulb-fork-button-host #fork').click();
 
   const dialog = page.locator('#ulb-fork-dialog-host');
@@ -59,7 +59,7 @@ test('screenshot: the package landing in the target', async ({ context }) => {
   const source = await context.newPage();
   await source.setViewportSize(STORE);
   await source.goto('https://chatgpt.com/c/shot-2');
-  await source.locator('section[data-testid="conversation-turn-2"]').hover();
+  await source.locator('[data-content-search-unit-key$=":assistant"]').hover();
   await source.locator('#ulb-fork-button-host #fork').click();
 
   const dialog = source.locator('#ulb-fork-dialog-host');
