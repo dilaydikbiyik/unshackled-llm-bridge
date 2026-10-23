@@ -18,6 +18,11 @@ export function renderStatus(lang: Lang, healths: AdapterHealth[]): SafeHtml {
       <ul class="platform-list">
         ${knownPlatforms().map((site) => row(lang, site.id, byPlatform.get(site.id)))}
       </ul>
+      ${healths.length === 0
+        ? // Three grey rows and no explanation read as a broken panel rather
+          // than an idle one.
+          html`<p class="hint">${t(lang, 'statusNothingOpen')}</p>`
+        : html``}
       <button id="diag-copy" class="link">${t(lang, 'diagCopy')}</button>
     </section>
   `;

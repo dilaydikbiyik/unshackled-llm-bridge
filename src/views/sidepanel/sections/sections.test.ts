@@ -434,3 +434,53 @@ describe('compare — contrasts', () => {
     expect(root.querySelector('.compare-contrast')).toBeNull();
   });
 });
+
+/**
+ * The panel's first impression. Every section rendered its controls whether or
+ * not it had anything to work with, so a new install looked like a stack of
+ * empty forms — a search box that could only return nothing, three grey status
+ * rows with no explanation. A control that cannot do anything yet should say
+ * what would make it useful instead.
+ */
+describe('panel when there is nothing yet', () => {
+  function render(markup: SafeHtml) {
+    const root = document.createElement('div');
+    setHtml(root, markup);
+    document.body.append(root);
+    return root;
+  }
+
+  it('explains archiving instead of offering a search that cannot work', () => {
+    const root = render(renderArchive(settings({ archiveEnabled: false }), []));
+
+    expect(root.querySelector('#archive-search')).toBeNull();
+    expect(root.textContent).toContain('Archiving is off');
+    expect(root.textContent).toContain('Nothing leaves it');
+  });
+
+  it('offers the search once archiving is on', () => {
+    const root = render(renderArchive(settings({ archiveEnabled: true }), []));
+
+    expect(root.querySelector('#archive-search')).not.toBeNull();
+    expect(root.textContent).toContain('Nothing archived yet');
+  });
+
+  it('says what to do when no chat is open', () => {
+    const root = render(renderStatus('en', []));
+    expect(root.textContent).toContain('No chat is open');
+  });
+
+  it('says nothing of the sort once a platform has reported', () => {
+    const root = render(
+      renderStatus('en', [
+        { platform: 'claude', ok: true, brokenSelectors: [], checkedAt: '2026-10-23T00:00:00Z' },
+      ]),
+    );
+    expect(root.textContent).not.toContain('No chat is open');
+  });
+
+  it('binds without a search box present', () => {
+    const root = render(renderArchive(settings({ archiveEnabled: false }), []));
+    expect(() => bindArchive(root, settings({ archiveEnabled: false }), vi.fn())).not.toThrow();
+  });
+})

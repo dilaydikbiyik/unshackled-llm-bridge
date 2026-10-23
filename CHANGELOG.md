@@ -6,6 +6,14 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Changed
+- **The panel no longer reads as a stack of empty forms.** Every section rendered its controls
+  whether or not it had anything to work with: a search box over an archive the user had not opted
+  into, able only ever to return nothing, and three grey status rows with no word about why. The
+  archive now explains what turning it on would do, and says so plainly about where the data stays;
+  the status list says to open a chat. The feedback that prompted this was that the panel looked
+  hollow — fair, and about the presentation rather than the code behind it.
+
 ### Fixed — ChatGPT rebuilt its conversation DOM (2026-10-23)
 - **The extension was reading zero messages on ChatGPT.** Turns are no longer
   `section[data-testid="conversation-turn-N"]`; they are `[data-content-search-unit-key]` whose

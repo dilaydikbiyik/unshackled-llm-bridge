@@ -57,6 +57,10 @@ export const STRINGS = {
     forkTitle: 'Sohbeti çatalla',
     forkTarget: 'Hedef platform',
     contextFileFailed: 'Bağlam dosyası yüklenemedi; tamamı mesaj kutusuna yazıldı.',
+    archiveOffHint:
+      'Arşivleme kapalı. Açarsan ziyaret ettiğin sohbetler bu tarayıcıda saklanır ve tüm platformlarda arayabilirsin. Hiçbir şey dışarı gitmez.',
+    archiveNothingYet: 'Henüz arşivlenmiş sohbet yok — bir sohbet aç, kendiliğinden eklenir.',
+    statusNothingOpen: 'Açık bir sohbet yok. ChatGPT, Claude, Gemini ya da eklediğin bir siteyi aç; durumu burada görünür.',
     archiveExportFailed: 'Dışa aktarılamadı',
     compareAgreement: 'Ortak zemin: %{percent} — ayrıştıkları yer, birinin yanıldığı yerdir.',
     compareOnlyHere: 'Yalnızca burada',
@@ -157,6 +161,10 @@ export const STRINGS = {
     forkTitle: 'Fork conversation',
     forkTarget: 'Target platform',
     contextFileFailed: 'The context file could not be uploaded; the full package is in the composer instead.',
+    archiveOffHint:
+      'Archiving is off. Turn it on and the conversations you visit are kept in this browser, searchable across platforms. Nothing leaves it.',
+    archiveNothingYet: 'Nothing archived yet — open a conversation and it will appear here.',
+    statusNothingOpen: 'No chat is open. Open ChatGPT, Claude, Gemini or a site you added, and its status appears here.',
     archiveExportFailed: 'Export failed',
     compareAgreement: 'Common ground: {percent}% — where they part is where one of them is wrong.',
     compareOnlyHere: 'Only here',

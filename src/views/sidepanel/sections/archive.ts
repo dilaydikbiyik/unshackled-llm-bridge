@@ -19,10 +19,16 @@ export function renderArchive(settings: Settings, hits: ArchiveHit[]): SafeHtml 
         <input type="checkbox" id="archive-toggle" ${settings.archiveEnabled ? 'checked' : ''} />
         <span>${t(lang, 'archiveToggle')}</span>
       </label>
-      <div class="field" style="margin-top:8px">
-        <input type="search" id="archive-search" placeholder="${t(lang, 'archiveSearchPlaceholder')}" />
-      </div>
-      <ul class="archive-list" id="archive-results">${renderHits(lang, hits)}</ul>
+      ${settings.archiveEnabled
+        ? html`<div class="field" style="margin-top:8px">
+              <input type="search" id="archive-search" placeholder="${t(lang, 'archiveSearchPlaceholder')}" />
+            </div>
+            <ul class="archive-list" id="archive-results">
+              ${hits.length > 0 ? renderHits(lang, hits) : html`<li class="hint">${t(lang, 'archiveNothingYet')}</li>`}
+            </ul>`
+        : // A search box over a store the user has not opted into is furniture:
+          // it can only ever return nothing, and says nothing about why.
+          html`<p class="hint">${t(lang, 'archiveOffHint')}</p>`}
     </section>
   `;
 }
@@ -38,8 +44,11 @@ export function bindArchive(root: ParentNode, settings: Settings, onChanged: () 
     void updateSettings({ archiveEnabled }).then(onChanged);
   });
 
-  const search = el<HTMLInputElement>(root, '#archive-search');
-  const results = el<HTMLUListElement>(root, '#archive-results');
+  // Absent while archiving is off: there is nothing to search, so the box is
+  // not rendered at all rather than sitting there able only to return nothing.
+  const search = root.querySelector<HTMLInputElement>('#archive-search');
+  const results = root.querySelector<HTMLUListElement>('#archive-results');
+  if (!search || !results) return;
   let debounce: ReturnType<typeof setTimeout> | undefined;
 
   search.addEventListener('input', () => {
