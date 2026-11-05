@@ -13,9 +13,12 @@ describe('DOM → markdown', () => {
     expect(md('<h2>Plan</h2><h3>Step one</h3>')).toBe('## Plan\n\n### Step one');
   });
 
-  it('renders ordered and unordered lists as bullet items', () => {
+  it('renders unordered lists as bullets and ordered lists as numbers', () => {
+    // This test used to assert that an ordered list came out as bullets —
+    // the bug written down as the specification. Step-by-step instructions
+    // are the commonest shape of an answer, and their order is the point.
     expect(md('<ul><li>a</li><li>b</li></ul>')).toBe('- a\n- b');
-    expect(md('<ol><li>first</li></ol>')).toBe('- first');
+    expect(md('<ol><li>first</li><li>second</li></ol>')).toBe('1. first\n2. second');
   });
 
   it('keeps line breaks', () => {
@@ -157,3 +160,92 @@ describe('extractMarkdown — blank-looking lines', () => {
     expect(output).toBe('Here it is:\n\n```rust\nlet x = 1;\n```\n\nThat is all.');
   });
 })
+
+/**
+ * What an assistant's answer actually contains in 2026. Run against the
+ * extractor, almost all of it came out wrong: a comparison table became a run
+ * of cell text, a formula came out twice and mangled, numbered steps lost their
+ * order, and a struck-through "var" read as a recommendation for it.
+ */
+describe('extractMarkdown — modern answer content', () => {
+  it('keeps a table as a table', () => {
+    const out = md(
+      '<table><thead><tr><th>Model</th><th>Context</th></tr></thead>' +
+        '<tbody><tr><td>GPT</td><td>128k</td></tr><tr><td>Claude</td><td>200k</td></tr></tbody></table>',
+    );
+    expect(out).toBe('| Model | Context |\n| --- | --- |\n| GPT | 128k |\n| Claude | 200k |');
+  });
+
+  it('pads a ragged row and escapes a pipe inside a cell', () => {
+    const out = md('<table><tr><th>a</th><th>b</th></tr><tr><td>x|y</td></tr></table>');
+    expect(out).toBe('| a | b |\n| --- | --- |\n| x\\|y |  |');
+  });
+
+  it('carries a formula once, as the TeX its author wrote', () => {
+    const out = md(
+      '<p>Energy is <span class="katex"><span class="katex-mathml"><math><semantics><mrow><mi>E</mi>' +
+        '</mrow><annotation encoding="application/x-tex">E=mc^2</annotation></semantics></math></span>' +
+        '<span class="katex-html" aria-hidden="true">E=mc2</span></span>.</p>',
+    );
+    expect(out).toBe('Energy is $E=mc^2$.');
+  });
+
+  it('keeps a display formula on its own line', () => {
+    const out = md(
+      '<span class="katex-display"><span class="katex"><math><semantics><mrow></mrow>' +
+        '<annotation encoding="application/x-tex">\\int_0^1 x\\,dx</annotation></semantics></math></span></span>',
+    );
+    expect(out).toBe('$$\\int_0^1 x\\,dx$$');
+  });
+
+  it('keeps nesting in a list', () => {
+    const out = md('<ul><li>Fruits<ul><li>Apple</li><li>Pear</li></ul></li><li>Veg</li></ul>');
+    expect(out).toBe('- Fruits\n   - Apple\n   - Pear\n- Veg');
+  });
+
+  it('honours an ordered list that does not start at one', () => {
+    expect(md('<ol start="3"><li>c</li><li>d</li></ol>')).toBe('3. c\n4. d');
+  });
+
+  it('marks a quotation as one', () => {
+    expect(md('<blockquote><p>Premature optimization is the root of all evil.</p></blockquote>')).toBe(
+      '> Premature optimization is the root of all evil.',
+    );
+  });
+
+  it('keeps the line through struck-out text', () => {
+    expect(md('<p>Use <code>let</code>, not <del>var</del>.</p>')).toBe('Use `let`, not ~~var~~.');
+  });
+
+  it('keeps a section break', () => {
+    expect(md('<p>Part one</p><hr><p>Part two</p>')).toBe('Part one\n\n---\n\nPart two');
+  });
+});
+
+/**
+ * Seen live on 2026-11-05: ChatGPT ends an answer with questions to pick from.
+ * Their radio buttons are dropped as chrome, and the labels were left glued
+ * together — "30 dakika1 saat2 saat veya daha fazla".
+ */
+describe('extractMarkdown — choices inside an answer', () => {
+  const group = `
+    <div role="radiogroup">
+      <div><label for="a">30 dakika</label><div><button role="radio" id="a" aria-checked="true"></button></div></div>
+      <div><label for="b">1 saat</label><div><button role="radio" id="b" aria-checked="false"></button></div></div>
+      <div><label for="c">2 saat veya daha fazla</label><div><button role="radio" id="c" aria-checked="false"></button></div></div>
+    </div>`;
+
+  it('lists each option on its own line', () => {
+    expect(md(group)).toBe('- [x] 30 dakika\n- [ ] 1 saat\n- [ ] 2 saat veya daha fazla');
+  });
+
+  it('reads an option labelled by aria-label alone', () => {
+    const out = md('<div role="radiogroup"><button role="radio" aria-label="Yes" aria-checked="false"></button></div>');
+    expect(out).toBe('- [ ] Yes');
+  });
+
+  it('keeps the question that precedes the choices', () => {
+    const out = md(`<p>3. Günde kaç dakika ayırabilirsin?</p>${group}`);
+    expect(out.startsWith('3. Günde kaç dakika ayırabilirsin?\n\n- [x] 30 dakika')).toBe(true);
+  });
+});

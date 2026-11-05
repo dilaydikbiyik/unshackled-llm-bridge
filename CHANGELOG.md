@@ -6,6 +6,26 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed — what a 2026 answer actually contains
+Checked against what assistants now put in a reply, the extractor got most of it wrong. Each fix
+was confirmed against a real ChatGPT answer, not only against a fixture.
+- **Tables were flattened into a run of cell text** — "ModelContext GPT128kClaude200k". Every
+  comparison an assistant writes is a table. They now travel as GitHub-flavoured Markdown, with
+  ragged rows padded and pipes inside cells escaped. The live answer checked carried one, and it
+  now arrives intact.
+- **A formula came out twice and mangled.** KaTeX keeps the TeX in a MathML annotation beside two
+  renderings of it, and reading the text took both: `E=mc^2` arrived as `E=mc2E=mc^2`. The
+  annotation is what the author wrote; inline math travels as `$…$`, display math as `$$…$$`.
+- **Numbered steps lost their order.** Ordered lists came out as bullets — and a test asserted
+  exactly that, the bug written down as the specification. Lists now keep their kind, their
+  starting number and their nesting.
+- **Choices inside an answer were glued together.** ChatGPT now ends a reply with questions to pick
+  from; their buttons are chrome, and dropping them left "30 dakika1 saat2 saat veya daha fazla".
+  Groups are read by ARIA role, not by any one site's class names, and travel as a task list with
+  the selected option ticked — so the other assistant also learns what the user chose.
+- Quotations keep their `>`, struck-through text keeps its line (a struck-out `var` had read as a
+  recommendation for it), and section breaks survive.
+
 ### Fixed — the side panel, exercised for the first time in the real extension
 - **The archive only recorded pages that changed.** It saved on mutation alone, so a conversation
   the user opened and did not touch was never archived — its DOM stops changing the moment it has
