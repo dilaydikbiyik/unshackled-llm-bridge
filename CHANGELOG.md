@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed — the side panel, exercised for the first time in the real extension
+- **The archive only recorded pages that changed.** It saved on mutation alone, so a conversation
+  the user opened and did not touch was never archived — its DOM stops changing the moment it has
+  rendered. It is now captured on arrival as well.
+- **Turning archiving on did nothing for tabs already open.** The setting was read once when the
+  page loaded; it is now read each time, so the toggle takes effect without a reload.
+
+### Added
+- **An end-to-end suite for the side panel** (`e2e/panel.spec.ts`), driving the built extension:
+  the archive records a visited conversation, finds it and exports a real file; the portable
+  profile is drawn from that archive; a comparison opens a tab per platform and parks the same
+  prompt for each, unsent. These sections had only been unit-tested, and a fair complaint that the
+  panel looked hollow deserved evidence. Site adding is the exception: its last step is Chrome's own
+  permission prompt, which no automated browser can accept, and is covered by unit tests up to it.
+
 ### Fixed — the fork handle was in the wrong place (2026-11-04)
 - **The handle was positioned in document space**, as `rect.top + scrollY`. Every one of these
   sites scrolls an inner container rather than the window, so `scrollY` is zero however far down

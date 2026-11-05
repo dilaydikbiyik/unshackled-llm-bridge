@@ -14,6 +14,9 @@ const SELECTORS = readFileSync(new URL('../config/selectors.json', import.meta.u
 function pageFor(url: URL): string | null {
   switch (url.host) {
     case 'chatgpt.com':
+      // A plain chatgpt.com/ load is the new-chat page; the panel suite opens
+      // it as a comparison target.
+      if (url.pathname === '/') return 'chatgpt-new.html';
       // The store screenshots use a neutral page with the same structure: a
       // listing should not show another company's interface, and a picture of
       // a bare test fixture tells a user nothing.

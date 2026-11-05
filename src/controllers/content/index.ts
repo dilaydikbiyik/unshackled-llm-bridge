@@ -323,15 +323,12 @@ function reportComparisonAnswer(adapter: PlatformAdapter, comparisonId: string):
  * whatever the setting; archiving is the part that is opt-in.
  */
 async function watchConversation(adapter: PlatformAdapter): Promise<void> {
-  const archiving = (await getSettings()).archiveEnabled;
   let lastSignature = '';
   /** The key this page started under, before the platform gave the chat a URL. */
   let keyAtStart = conversationKey(adapter.platform);
-
-  // The longest-lived listener in the page, and so the one most likely to fire
-  // after the extension has been reloaded out from under it.
   let healthResent = false;
-  const stop = adapter.observeMessages(() => {
+
+  const capture = (): void => {
     if (orphaned) return;
     void guardContext(async () => {
       const conversation = await adapter.readConversation();
@@ -344,7 +341,7 @@ async function watchConversation(adapter: PlatformAdapter): Promise<void> {
       // conversation on the page, the answer is worth something: say it again.
       if (!healthResent) {
         healthResent = true;
-        await reportHealth(adapter);
+        await reportHealth(adapter).catch(() => undefined);
       }
 
       // The platform assigns a conversation id at some point after the first
@@ -360,13 +357,26 @@ async function watchConversation(adapter: PlatformAdapter): Promise<void> {
         keyAtStart = key;
       }
 
-      if (!archiving) return;
+      // Read each time rather than once at load: the setting was captured when
+      // the page opened, so turning archiving on in the side panel did nothing
+      // for any tab already open until the user happened to reload it.
+      if (!(await getSettings()).archiveEnabled) return;
       const signature = `${conversation.id}:${conversation.messages.length}`;
       if (signature === lastSignature) return;
       lastSignature = signature;
       await sendToBackground({ type: 'archive/save', conversation });
     }, abandonPage);
-  });
+  };
+
+  // Once on arrival, then on every change. The observer alone meant a
+  // conversation the user opened and did not touch was never archived: its DOM
+  // stops changing the moment it has rendered, and the archive is meant to hold
+  // what was visited, not only what was typed into.
+  capture();
+
+  // The longest-lived listener in the page, and so the one most likely to fire
+  // after the extension has been reloaded out from under it.
+  const stop = adapter.observeMessages(capture);
   teardowns.push(stop);
 }
 

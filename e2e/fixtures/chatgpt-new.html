@@ -1,0 +1,17 @@
+<!doctype html>
+<!-- A ChatGPT new-chat page: composer, no conversation. Mirrors the 2026-10-23
+     structure, and counts send clicks so a suite can prove nothing was sent. -->
+<html lang="en">
+  <head><meta charset="utf-8" /><title>ChatGPT (new, fixture)</title></head>
+  <body>
+    <button aria-label="New chat">New chat</button>
+    <main>
+      <form data-chatgpt-composer>
+        <div data-composer-markdown contenteditable="true" class="ProseMirror"></div>
+        <button data-testid="send-button" onclick="window.__sendClicks = (window.__sendClicks || 0) + 1">
+          Send
+        </button>
+      </form>
+    </main>
+  </body>
+</html>
