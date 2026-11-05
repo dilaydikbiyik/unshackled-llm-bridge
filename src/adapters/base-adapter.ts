@@ -26,6 +26,10 @@ export const SITUATIONAL_TARGETS: ReadonlySet<string> = new Set([
   // which this project does not use as a primary selector — and reporting the
   // platform as degraded over a control that cannot fail is crying wolf.
   'newChatButton',
+  // Regions inside a turn that are not its answer — a reasoning status line,
+  // the action buttons. They are removed when present; a reply with no
+  // reasoning to report simply has none.
+  'turnChrome',
 ]);
 
 /**

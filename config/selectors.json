@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "minExtensionVersion": "0.0.1",
   "platforms": {
     "chatgpt": {
@@ -48,10 +48,14 @@
         "button[aria-label='Mesaj gönder']"
       ],
       "messageContainer": [
-        "div[data-testid='user-message'], .font-claude-response"
+        "[data-testid='user-message'], [data-testid='assistant-message'], .font-claude-response"
       ],
       "userMessage": [
         "div[data-testid='user-message']"
+      ],
+      "turnChrome": [
+        "[data-cds='TurnStatus']",
+        "[data-testid='message-actions']"
       ],
       "artifactCell": [
         "div[data-testid='artifact-block']",

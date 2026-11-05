@@ -136,7 +136,7 @@ export function safeMatches(element: Element, selector: string): boolean {
   }
 }
 
-function safeQueryAll(root: ParentNode, selector: string): Element[] {
+export function safeQueryAll(root: ParentNode, selector: string): Element[] {
   try {
     return [...root.querySelectorAll(selector)];
   } catch {

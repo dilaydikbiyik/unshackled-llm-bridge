@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed — Claude rebuilt its reply markup (2026-11-05)
+- **Every Claude answer was being dropped again.** Replies are no longer `.font-claude-response`
+  but `[data-testid="assistant-message"]`. Checked on a live conversation: three user messages
+  read, zero answers — a fork from Claude would have carried only the user's side, the same
+  failure this project found in September. Selector config v8.
+- **Two candidate rules blocked each other.** With one rule per markup, whichever came first
+  half-matched the other through its user-message half and the fallback never ran — so the fix
+  for the new markup would have broken the old one. A single rule now names every shape Claude has
+  used, and a match nested inside another is read once.
+- **Claude's reasoning status line was read as part of the answer.** A reply now leads with a line
+  from its reasoning and tool use ("Checking how Microsoft partners…"). Regions of a turn that
+  are not its answer are named in configuration (`turnChrome`) and removed before extraction.
+- Verified live on all three platforms after the fix: Claude 6 turns, alternating, with every
+  answer read; Gemini 18 turns with no interface text leaking; ChatGPT unchanged.
+
 ### Fixed — what a 2026 answer actually contains
 Checked against what assistants now put in a reply, the extractor got most of it wrong. Each fix
 was confirmed against a real ChatGPT answer, not only against a fixture.
