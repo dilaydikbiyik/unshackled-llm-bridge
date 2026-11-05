@@ -6,6 +6,23 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed — the fork handle was in the wrong place (2026-11-04)
+- **The handle was positioned in document space**, as `rect.top + scrollY`. Every one of these
+  sites scrolls an inner container rather than the window, so `scrollY` is zero however far down
+  the conversation is, and a message scrolled up has a negative `rect.top` — the handle was being
+  placed thousands of pixels above the screen. Measured live on a real ChatGPT conversation:
+  `-2682px` and `-2596px` for the two turns, both off-screen. It was only ever in the right place
+  on a conversation scrolled to the very top, which is why the features behind it seemed not to
+  work: they could not be reached. The handle is now placed in viewport coordinates, follows its
+  message while the conversation scrolls, hides for a message scrolled out of view, and stays
+  reachable on an answer taller than the window.
+- **The in-page UI did not mount when the first message to the service worker failed.** Health was
+  reported before anything was mounted, so a cold worker — which is the normal state after a few
+  idle minutes — left the extension looking absent on the page. Seen twice while testing: present
+  on one load, gone on the next. The UI now goes up first, and neither worker call can take it
+  down.
+
+
 ### Changed
 - **The panel no longer reads as a stack of empty forms.** Every section rendered its controls
   whether or not it had anything to work with: a search box over an archive the user had not opted

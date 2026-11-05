@@ -7,6 +7,10 @@ export const FORK_BUTTON_HOST_ID = 'ulb-fork-button-host';
 /** Grace period so moving the pointer from a message onto the button doesn't hide it. */
 export const HIDE_DELAY_MS = 400;
 
+/** Distance from the message's edges, and how far the button reaches inward. */
+const MARGIN = 6;
+const BUTTON_INSET = 84;
+
 export interface ForkButtonOptions {
   /**
    * Injected by the controller. The view must not know how a message node is
@@ -38,7 +42,10 @@ export function mountForkButtons(options: ForkButtonOptions): () => void {
       <style>
         ${BASE_STYLES}
         button {
-          position: absolute; z-index: 2147483646; display: none;
+          /* Fixed, not absolute: these sites scroll an inner container, so the
+             page's own scroll offset is zero and a document-space position
+             lands nowhere. See place(). */
+          position: fixed; z-index: 2147483646; display: none;
           font: 500 12px/1 ui-sans-serif, system-ui, sans-serif;
           padding: 5px 9px; border-radius: 999px; cursor: grab;
           background: #534ab7; color: #fff; border: none;
@@ -57,6 +64,33 @@ export function mountForkButtons(options: ForkButtonOptions): () => void {
   let currentIndex = -1;
   let hideTimer: ReturnType<typeof setTimeout> | undefined;
 
+  /** Kept so the button can follow its message while the page scrolls. */
+  let currentNode: Element | null = null;
+
+  /**
+   * Puts the button on the message, in viewport coordinates.
+   *
+   * It used to be placed in document space, as `rect.top + scrollY`. Every one
+   * of these sites scrolls an inner container rather than the window, so
+   * `scrollY` is zero however far down the conversation is — and the button was
+   * placed by a negative `rect.top` alone, thousands of pixels above the
+   * screen. It was only ever in the right place on a conversation scrolled to
+   * the very top.
+   */
+  const place = (node: Element): void => {
+    const rect = node.getBoundingClientRect();
+    // Scrolled out of view: there is nothing to attach to.
+    if (rect.bottom < 0 || rect.top > innerHeight) {
+      button.style.display = 'none';
+      return;
+    }
+    button.style.display = 'block';
+    // A long answer can start above the viewport; the handle stays reachable
+    // at the top of what is actually on screen.
+    button.style.top = `${String(Math.max(MARGIN, Math.min(rect.top + MARGIN, innerHeight - 40)))}px`;
+    button.style.left = `${String(Math.max(MARGIN, rect.right - BUTTON_INSET))}px`;
+  };
+
   const onPointerOver = (event: Event) => {
     const nodes = options.locateMessages();
     const target = event.target as Node;
@@ -66,10 +100,13 @@ export function mountForkButtons(options: ForkButtonOptions): () => void {
     clearTimeout(hideTimer);
     if (index !== currentIndex) dragPayload = null;
     currentIndex = index;
-    const rect = nodes[index]!.getBoundingClientRect();
-    button.style.display = 'block';
-    button.style.top = `${rect.top + scrollY + 6}px`;
-    button.style.left = `${rect.right + scrollX - 74}px`;
+    currentNode = nodes[index] ?? null;
+    if (currentNode) place(currentNode);
+  };
+
+  /** The message moves under the button as the conversation scrolls. */
+  const onScroll = () => {
+    if (currentNode && button.style.display === 'block') place(currentNode);
   };
 
   const onPointerOut = () => {
@@ -123,10 +160,16 @@ export function mountForkButtons(options: ForkButtonOptions): () => void {
 
   document.addEventListener('pointerover', onPointerOver, true);
   document.addEventListener('pointerleave', onPointerOut, true);
+  // Capture, because the element that scrolls is inside the page, not the
+  // window: a bubbling listener on document never hears it.
+  document.addEventListener('scroll', onScroll, { capture: true, passive: true });
+  window.addEventListener('resize', onScroll, { passive: true });
 
   return () => {
     document.removeEventListener('pointerover', onPointerOver, true);
     document.removeEventListener('pointerleave', onPointerOut, true);
+    document.removeEventListener('scroll', onScroll, true);
+    window.removeEventListener('resize', onScroll);
     clearTimeout(hideTimer);
     shadow.host.remove();
   };

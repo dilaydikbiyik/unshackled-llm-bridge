@@ -615,3 +615,78 @@ describe('fork dialog — delivery shown matches delivery used', () => {
     expect(root.querySelector<HTMLSelectElement>('#delivery')?.value).toBe('attachment');
   });
 });
+
+/**
+ * Where the handle lands.
+ *
+ * It was placed in document space (`rect.top + scrollY`). Every one of these
+ * sites scrolls an inner container rather than the window, so `scrollY` stays
+ * zero however far down the conversation is, and a message scrolled up has a
+ * negative `rect.top` — the handle was put thousands of pixels above the
+ * screen. It was only ever correct on a conversation scrolled to the top.
+ */
+describe('fork affordance — placement', () => {
+  function mountOver(rect: Partial<DOMRect>) {
+    document.getElementById(FORK_BUTTON_HOST_ID)?.remove();
+    document.body.innerHTML = '';
+    const message = document.createElement('div');
+    document.body.append(message);
+    message.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 100, left: 0, right: 800, width: 800, height: 100, x: 0, y: 0, toJSON: () => ({}), ...rect }) as DOMRect;
+
+    const unmount = mountForkButtons({ locateMessages: () => [message], onFork: () => undefined });
+    message.dispatchEvent(new Event('pointerover', { bubbles: true }));
+    const root = document.getElementById(FORK_BUTTON_HOST_ID)!.shadowRoot!;
+    return { button: root.getElementById('fork') as HTMLButtonElement, message, unmount };
+  }
+
+  it('is fixed to the viewport, not to the document', () => {
+    const { button, unmount } = mountOver({});
+    const styles = document.getElementById(FORK_BUTTON_HOST_ID)!.shadowRoot!.textContent ?? '';
+    expect(styles).toContain('position: fixed');
+    expect(button.style.top).toBe('6px');
+    unmount();
+  });
+
+  it('ignores the window scroll offset, which these sites never move', () => {
+    // The old code added scrollY; with an inner scroller it is always 0, and
+    // adding it was the bug's disguise rather than its cause.
+    Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
+    const { button, unmount } = mountOver({ top: 240, bottom: 340 });
+    expect(button.style.top).toBe('246px');
+    unmount();
+  });
+
+  it('hides for a message scrolled above the viewport', () => {
+    const { button, unmount } = mountOver({ top: -2632, bottom: -2550 });
+    expect(button.style.display).toBe('none');
+    unmount();
+  });
+
+  it('hides for a message not yet scrolled into view', () => {
+    const { button, unmount } = mountOver({ top: 5000, bottom: 5100 });
+    expect(button.style.display).toBe('none');
+    unmount();
+  });
+
+  it('keeps the handle on screen for an answer taller than the window', () => {
+    // A long reply starts above the viewport and ends below it; the handle
+    // belongs at the top of what can actually be seen.
+    const { button, unmount } = mountOver({ top: -2546, bottom: 676 });
+    expect(button.style.display).toBe('block');
+    expect(button.style.top).toBe('6px');
+    unmount();
+  });
+
+  it('follows the message when the conversation scrolls', () => {
+    const { button, message, unmount } = mountOver({ top: 400, bottom: 500 });
+    expect(button.style.top).toBe('406px');
+
+    message.getBoundingClientRect = () =>
+      ({ top: 120, bottom: 220, left: 0, right: 800, width: 800, height: 100, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+    document.dispatchEvent(new Event('scroll'));
+
+    expect(button.style.top).toBe('126px');
+    unmount();
+  });
+})

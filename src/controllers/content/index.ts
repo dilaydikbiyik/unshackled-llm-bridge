@@ -69,11 +69,17 @@ async function main(): Promise<void> {
   if (!adapter) return;
 
   await guardContext(async () => {
-    await reportHealth(adapter);
+    // The page's own UI goes up first, and without waiting on the service
+    // worker. Health was reported before anything mounted, so when that first
+    // message failed — a cold worker, most often — the whole in-page UI was
+    // never mounted and the extension looked absent on the page.
     teardowns.push(mountAttachmentCapture(adapter));
     teardowns.push(mountFork(adapter, config, (await getSettings()).language));
     teardowns.push(listenForShortcut(adapter));
     void watchConversation(adapter);
+
+    // Both talk to the worker, and neither is a reason to lose the UI.
+    await reportHealth(adapter).catch(() => undefined);
     await claimPendingInjection(adapter);
   }, abandonPage);
 }
