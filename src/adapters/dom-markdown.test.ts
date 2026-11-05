@@ -249,3 +249,18 @@ describe('extractMarkdown — choices inside an answer', () => {
     expect(out.startsWith('3. Günde kaç dakika ayırabilirsin?\n\n- [x] 30 dakika')).toBe(true);
   });
 });
+
+describe('extractMarkdown — choices with a description', () => {
+  // Seen live: an option with a title and a description in separate blocks
+  // came out as one run-on word — "İş bölümü yapan modellerBir model araştırır".
+  it('separates an option’s title from its description', () => {
+    const out = md(`
+      <div role="radiogroup">
+        <div>
+          <label for="b"><p>B — İş bölümü yapan modeller</p><p>Bir model araştırır, diğeri yazar.</p></label>
+          <button role="radio" id="b" aria-checked="false"></button>
+        </div>
+      </div>`);
+    expect(out).toBe('- [ ] B — İş bölümü yapan modeller: Bir model araştırır, diğeri yazar.');
+  });
+});

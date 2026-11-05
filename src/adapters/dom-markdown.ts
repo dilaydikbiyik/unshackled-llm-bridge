@@ -206,13 +206,21 @@ function choicesToMarkdown(group: Element): string {
   const lines = options
     .map((option) => {
       const id = option.getAttribute('id');
-      const label =
-        (id ? group.querySelector(`label[for="${CSS.escape(id)}"]`)?.textContent : null) ??
-        option.getAttribute('aria-label') ??
-        option.closest('label')?.textContent ??
-        option.parentElement?.parentElement?.textContent ??
-        '';
-      const text = label.replace(/\s+/g, ' ').trim();
+      const labelEl =
+        (id ? group.querySelector(`label[for="${CSS.escape(id)}"]`) : null) ??
+        option.closest('label');
+      // Through the serializer, not textContent: an option often has a title
+      // and a description in separate blocks, and textContent ran them into
+      // one word — "modellerBir model araştırır" — exactly the gluing this
+      // function exists to undo.
+      const raw = labelEl
+        ? serializeChildren(labelEl)
+        : (option.getAttribute('aria-label') ?? option.parentElement?.parentElement?.textContent ?? '');
+      const [title = '', ...detail] = raw
+        .split('\n')
+        .map((line) => line.replace(/\s+/g, ' ').trim())
+        .filter(Boolean);
+      const text = detail.length > 0 ? `${title}: ${detail.join(' ')}` : title;
       if (!text) return null;
       const checked = option.getAttribute('aria-checked') === 'true';
       return `- [${checked ? 'x' : ' '}] ${text}`;
