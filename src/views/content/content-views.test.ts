@@ -169,6 +169,12 @@ describe('fork dialog', () => {
 describe('fork button', () => {
   function setup() {
     document.body.innerHTML = '<article id="m0">first</article><article id="m1">second</article>';
+    // happy-dom has no layout; a message with no size is not visible, and the
+    // handle rightly will not attach to it, so these get one.
+    document.querySelectorAll('article').forEach((article, i) => {
+      article.getBoundingClientRect = () =>
+        ({ top: 100 + i * 200, bottom: 280 + i * 200, left: 300, right: 900, width: 600, height: 180, x: 300, y: 100, toJSON: () => ({}) }) as DOMRect;
+    });
     const onFork = vi.fn();
     const unmount = mountForkButtons({
       locateMessages: () => [...document.querySelectorAll('article')],
@@ -644,7 +650,7 @@ describe('fork affordance — placement', () => {
     const { button, unmount } = mountOver({});
     const styles = document.getElementById(FORK_BUTTON_HOST_ID)!.shadowRoot!.textContent ?? '';
     expect(styles).toContain('position: fixed');
-    expect(button.style.top).toBe('6px');
+    expect(button.style.top).toBe('8px');
     unmount();
   });
 
@@ -653,7 +659,7 @@ describe('fork affordance — placement', () => {
     // adding it was the bug's disguise rather than its cause.
     Object.defineProperty(window, 'scrollY', { value: 0, configurable: true });
     const { button, unmount } = mountOver({ top: 240, bottom: 340 });
-    expect(button.style.top).toBe('246px');
+    expect(button.style.top).toBe('248px');
     unmount();
   });
 
@@ -674,19 +680,141 @@ describe('fork affordance — placement', () => {
     // belongs at the top of what can actually be seen.
     const { button, unmount } = mountOver({ top: -2546, bottom: 676 });
     expect(button.style.display).toBe('block');
-    expect(button.style.top).toBe('6px');
+    expect(button.style.top).toBe('8px');
     unmount();
   });
 
   it('follows the message when the conversation scrolls', () => {
     const { button, message, unmount } = mountOver({ top: 400, bottom: 500 });
-    expect(button.style.top).toBe('406px');
+    expect(button.style.top).toBe('408px');
 
     message.getBoundingClientRect = () =>
       ({ top: 120, bottom: 220, left: 0, right: 800, width: 800, height: 100, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
     document.dispatchEvent(new Event('scroll'));
 
-    expect(button.style.top).toBe('126px');
+    expect(button.style.top).toBe('128px');
     unmount();
   });
 })
+
+/**
+ * Seen on a real ChatGPT conversation (2026-11-20): placed inside the message's
+ * top-right corner, the handle sat on the first line of the answer and hid the
+ * words under it; clamped to the top of the window, it sat on ChatGPT's own
+ * header, over its upgrade button. It belongs beside the message, at the first
+ * point of it that is actually visible.
+ */
+describe('fork affordance — beside the message, never over it', () => {
+  function mountOver(rect: Partial<DOMRect>, width = 1342, layer?: 'sticky' | 'fixed', below = 64) {
+    document.getElementById(FORK_BUTTON_HOST_ID)?.remove();
+    document.body.innerHTML = '';
+    if (layer) {
+      // A header the site pins over the conversation, covering its top band —
+      // with pointer-events off, as ChatGPT's is, so only its box gives it away.
+      const header = document.createElement('header');
+      header.style.position = layer;
+      header.style.pointerEvents = 'none';
+      header.getBoundingClientRect = () =>
+        ({ top: 0, bottom: below, left: 0, right: width, width, height: below, x: 0, y: 0, toJSON: () => ({}) }) as DOMRect;
+      document.body.append(header);
+    }
+    Object.defineProperty(window, 'innerWidth', { value: width, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 814, configurable: true });
+    const message = document.createElement('div');
+    document.body.append(message);
+    message.getBoundingClientRect = () =>
+      ({ top: 200, bottom: 600, left: 457, right: 1225, width: 768, height: 400, x: 457, y: 200, toJSON: () => ({}), ...rect }) as DOMRect;
+    const unmount = mountForkButtons({ locateMessages: () => [message], onFork: () => undefined });
+    message.dispatchEvent(new Event('pointerover', { bubbles: true }));
+    const button = document.getElementById(FORK_BUTTON_HOST_ID)!.shadowRoot!.getElementById('fork') as HTMLButtonElement;
+    return { button, message, unmount };
+  }
+
+  it('goes in the margin to the right of the text when there is room', () => {
+    const { button, unmount } = mountOver({});
+    expect(Number.parseFloat(button.style.left)).toBeGreaterThanOrEqual(1225 + 8);
+    unmount();
+  });
+
+  it('uses the left margin when the right one is too narrow', () => {
+    const { button, unmount } = mountOver({ left: 300, right: 1300 });
+    expect(Number.parseFloat(button.style.left)).toBeLessThan(300);
+    unmount();
+  });
+
+  it('falls back to the corner only when there is no margin on either side', () => {
+    const { button, unmount } = mountOver({ left: 4, right: 1338 });
+    const left = Number.parseFloat(button.style.left);
+    expect(left).toBeGreaterThan(4);
+    expect(left).toBeLessThan(1338);
+    unmount();
+  });
+
+  it('starts below a header laid over the top of the conversation', () => {
+    // The top 64 pixels are the site's sticky header, laid over the conversation.
+    const { button, unmount } = mountOver({ top: -900, bottom: 600 }, 1342, 'sticky', 64);
+
+    expect(Number.parseFloat(button.style.top)).toBeGreaterThanOrEqual(64);
+    unmount();
+  });
+
+  it('hides when the only visible part of the message is under the header', () => {
+    const { button, unmount } = mountOver({ top: -900, bottom: 40 }, 1342, 'fixed', 52);
+
+    expect(button.style.display).toBe('none');
+    unmount();
+  });
+
+  it('still shows for a one-line message shorter than the handle', () => {
+    // A reply of "ok" is eighteen pixels tall. The visibility threshold is for
+    // a message mostly scrolled away; this one was simply short, and got no
+    // handle at all.
+    const { button, unmount } = mountOver({ top: 76, bottom: 94, height: 18 });
+
+    expect(button.style.display).toBe('block');
+    unmount();
+  });
+});
+
+describe('fork affordance — what counts as a top bar', () => {
+  function withLayer(position: string, box: Partial<DOMRect>) {
+    document.getElementById(FORK_BUTTON_HOST_ID)?.remove();
+    document.body.innerHTML = '';
+    Object.defineProperty(window, 'innerWidth', { value: 1342, configurable: true });
+    Object.defineProperty(window, 'innerHeight', { value: 814, configurable: true });
+    const layer = document.createElement('header');
+    layer.style.position = position;
+    layer.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 52, left: 0, right: 1342, width: 1342, height: 52, x: 0, y: 0, toJSON: () => ({}), ...box }) as DOMRect;
+    document.body.append(layer);
+    const message = document.createElement('div');
+    document.body.append(message);
+    message.getBoundingClientRect = () =>
+      ({ top: -500, bottom: 600, left: 457, right: 1225, width: 768, height: 1100, x: 457, y: -500, toJSON: () => ({}) }) as DOMRect;
+    const unmount = mountForkButtons({ locateMessages: () => [message], onFork: () => undefined });
+    message.dispatchEvent(new Event('pointerover', { bubbles: true }));
+    const button = document.getElementById(FORK_BUTTON_HOST_ID)!.shadowRoot!.getElementById('fork') as HTMLButtonElement;
+    return { top: Number.parseFloat(button.style.top), unmount };
+  }
+
+  it('ignores a header that scrolls away with the page', () => {
+    const { top, unmount } = withLayer('static', {});
+    expect(top).toBe(8);
+    unmount();
+  });
+
+  it('ignores a fixed bar that is not at the top of the window', () => {
+    // A fixed composer at the bottom is not a header.
+    const { top, unmount } = withLayer('fixed', { top: 760, bottom: 814 });
+    expect(top).toBe(8);
+    unmount();
+  });
+
+  it('ignores a fixed bar that does not reach the handle’s column', () => {
+    // A sidebar's own sticky title, far to the left of the conversation.
+    const { top, unmount } = withLayer('sticky', { left: 0, right: 300 });
+    expect(top).toBe(8);
+    unmount();
+  });
+});
+

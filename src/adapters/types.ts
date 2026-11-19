@@ -33,7 +33,13 @@ export interface PlatformAdapter {
   readonly capabilities: AdapterCapabilities;
 
   isReady(): Promise<boolean>;
-  readConversation(): Promise<BridgeConversation>;
+  /**
+   * The conversation on the page. With `complete`, an adapter whose site keeps
+   * only part of a long conversation in the DOM goes and reads the rest — which
+   * may scroll the page, so it is asked for only when the user forks, never by
+   * a background watcher.
+   */
+  readConversation(options?: ReadOptions): Promise<BridgeConversation>;
   /** Writes into the composer. Never auto-sends — sending stays a user action. */
   injectText(text: string): Promise<void>;
   uploadFile(blob: Blob, name: string): Promise<void>;
@@ -65,4 +71,10 @@ export class AdapterNotImplementedError extends Error {
     super(`${platform} adapter does not implement ${method} yet`);
     this.name = 'AdapterNotImplementedError';
   }
+}
+
+export interface ReadOptions {
+  complete?: boolean;
+  /** Called when reading the whole conversation will take a moment. */
+  onCollecting?: () => void;
 }

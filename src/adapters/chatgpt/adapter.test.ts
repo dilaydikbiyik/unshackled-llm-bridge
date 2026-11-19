@@ -230,3 +230,90 @@ describe('ChatGptAdapter.readConversation — live markup, October 23', () => {
     expect(answer).not.toContain('Kopyala');
   });
 });
+
+/**
+ * A long conversation the way ChatGPT holds one: the scroller keeps only the
+ * turns near the viewport in the DOM, and recreates them as it scrolls. A fork
+ * read straight from the DOM carried two turns of eight.
+ */
+function virtualizedPage(exchanges: number) {
+  const TURN = 1000;
+  const VIEWPORT = 800;
+  const total = exchanges * 2 * TURN;
+  document.body.innerHTML = '<main><div class="thread-scroll-container"></div></main>';
+  const scroller = document.querySelector<HTMLElement>('.thread-scroll-container')!;
+  let scrollTop = total - VIEWPORT;
+
+  const render = () => {
+    scroller.innerHTML = '';
+    for (let i = 0; i < exchanges * 2; i += 1) {
+      const top = i * TURN;
+      if (top + TURN < scrollTop - 200 || top > scrollTop + VIEWPORT + 200) continue;
+      const turn = Math.floor(i / 2);
+      const user = i % 2 === 0;
+      const el = document.createElement('div');
+      el.setAttribute('data-content-search-unit-key', `fallback-turn-${String(turn)}:${String(i % 2)}:${user ? 'user' : 'assistant'}`);
+      el.innerHTML = user
+        ? `<div data-user-message-bubble="true">question ${String(turn)}</div>`
+        : `<div class="DilResponseRoot-x"><p>answer ${String(turn)}</p></div>`;
+      el.getBoundingClientRect = () => ({ top: top - scrollTop, bottom: top + TURN - scrollTop }) as DOMRect;
+      scroller.append(el);
+    }
+  };
+  Object.defineProperty(scroller, 'scrollTop', {
+    get: () => scrollTop,
+    set: (value: number) => {
+      scrollTop = Math.max(0, Math.min(value, total - VIEWPORT));
+      render();
+    },
+  });
+  Object.defineProperty(scroller, 'scrollHeight', { get: () => total });
+  Object.defineProperty(scroller, 'clientHeight', { get: () => VIEWPORT });
+  scroller.getBoundingClientRect = () => ({ top: 0, bottom: VIEWPORT }) as DOMRect;
+  render();
+  return { scroller, get scrollTop() { return scrollTop; } };
+}
+
+describe('ChatGptAdapter.readConversation — a long, virtualized conversation', () => {
+  it('reads only what is on the page unless the whole conversation is asked for', async () => {
+    virtualizedPage(4);
+    let collecting = false;
+    const conversation = await new ChatGptAdapter(selectors).readConversation({
+      onCollecting: () => (collecting = true),
+    });
+    expect(conversation.messages.length).toBeLessThan(8);
+    expect(collecting).toBe(false);
+  });
+
+  it('reads every turn, in order, when the whole conversation is asked for', async () => {
+    const page = virtualizedPage(4);
+    const before = page.scrollTop;
+    let collecting = false;
+    const conversation = await new ChatGptAdapter(selectors).readConversation({
+      complete: true,
+      onCollecting: () => (collecting = true),
+    });
+
+    expect(collecting).toBe(true);
+    expect(conversation.messages.map((m) => `${m.role}:${m.content}`)).toEqual([
+      'user:question 0', 'assistant:answer 0',
+      'user:question 1', 'assistant:answer 1',
+      'user:question 2', 'assistant:answer 2',
+      'user:question 3', 'assistant:answer 3',
+    ]);
+    expect(conversation.messages.map((m) => m.index)).toEqual([0, 1, 2, 3, 4, 5, 6, 7]);
+    // The user's place is theirs.
+    expect(page.scrollTop).toBe(before);
+  }, 20_000);
+
+  it('does not scroll a conversation that is already all on the page', async () => {
+    document.body.innerHTML = LIVE_FIXTURE_OCT_23;
+    let collecting = false;
+    const conversation = await new ChatGptAdapter(selectors).readConversation({
+      complete: true,
+      onCollecting: () => (collecting = true),
+    });
+    expect(collecting).toBe(false);
+    expect(conversation.messages).toHaveLength(2);
+  });
+});

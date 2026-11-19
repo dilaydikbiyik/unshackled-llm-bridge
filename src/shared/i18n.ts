@@ -118,6 +118,7 @@ export const STRINGS = {
     forkCopied: 'Kopyalandı ✓',
     forkCancel: 'Vazgeç',
 
+    readingWhole: 'Sohbetin tamamı okunuyor… Sayfa birkaç saniye kayacak, sonra kaldığın yere dönecek.',
     injectFailed: 'Otomatik ekleme başarısız oldu. Paketi panoya kopyalayıp yapıştırabilirsin.',
     copyAction: 'Kopyala',
     copied: 'Panoya kopyalandı ✓',
@@ -235,6 +236,7 @@ export const STRINGS = {
     forkCopied: 'Copied ✓',
     forkCancel: 'Cancel',
 
+    readingWhole: 'Reading the whole conversation… The page will scroll for a few seconds, then return.',
     injectFailed: 'Automatic injection failed. You can copy the package and paste it manually.',
     copyAction: 'Copy',
     copied: 'Copied to clipboard ✓',

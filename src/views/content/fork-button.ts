@@ -7,9 +7,12 @@ export const FORK_BUTTON_HOST_ID = 'ulb-fork-button-host';
 /** Grace period so moving the pointer from a message onto the button doesn't hide it. */
 export const HIDE_DELAY_MS = 400;
 
-/** Distance from the message's edges, and how far the button reaches inward. */
-const MARGIN = 6;
-const BUTTON_INSET = 84;
+/** Space between the handle and the message it belongs to. */
+const GAP = 8;
+/** Used until the button has been laid out and can report its own width. */
+const FALLBACK_WIDTH = 96;
+/** Less of a message than this on screen is not worth a handle beside it. */
+const MIN_VISIBLE = 24;
 
 export interface ForkButtonOptions {
   /**
@@ -34,6 +37,55 @@ export interface ForkButtonOptions {
  * every message — one element to keep alive, and nothing added to the
  * platform's own DOM tree.
  */
+/**
+ * Where a site's own top bars are likely to be. Kept broad on purpose: a
+ * candidate only counts if it is actually fixed or sticky and actually pinned
+ * to the top of the window over the handle's column.
+ */
+const OVERLAY_CANDIDATES =
+  'header, [role="banner"], nav, [class*="header" i], [class*="toolbar" i], [class*="sticky" i]';
+
+/**
+ * The bottom edge of whatever the site has pinned over the top of the window
+ * at this column — its header, a toolbar — or 0 when nothing is.
+ *
+ * Measured, not hit-tested. ChatGPT's header is fixed over the conversation
+ * with `pointer-events: none`, so asking the page what is drawn at a point
+ * passes straight through it between its buttons and answers "the
+ * conversation"; the handle then landed on the header strip beside the site's
+ * own controls. A layer's box does not lie about where it is.
+ */
+function overlayFloor(x: number, message: Element): number {
+  let floor = 0;
+  for (const layer of document.querySelectorAll<HTMLElement>(OVERLAY_CANDIDATES)) {
+    // The message itself may be sticky while it is being answered.
+    if (layer === message || layer.contains(message) || message.contains(layer)) continue;
+    const position = getComputedStyle(layer).position;
+    if (position !== 'fixed' && position !== 'sticky') continue;
+    const box = layer.getBoundingClientRect();
+    if (box.width === 0 || box.height === 0) continue;
+    // Pinned to the top of the window, across the handle's column.
+    if (box.top > 1 || x < box.left || x > box.right) continue;
+    floor = Math.max(floor, box.bottom);
+  }
+  return floor;
+}
+
+/**
+ * The highest point beside a message where the handle can sit uncovered: the
+ * top of the visible message, but never above a pinned top bar. Null when the
+ * visible part of the message is too small to put anything beside.
+ */
+function freeTop(rect: DOMRect, x: number, message: Element): number | null {
+  const from = Math.max(rect.top, overlayFloor(x, message), 0);
+  const to = Math.min(rect.bottom, innerHeight);
+  // A message shorter than the threshold is still a message: a one-line "ok"
+  // used to get no handle at all. The threshold is for a message mostly
+  // scrolled out of sight, so a fully visible one always qualifies.
+  if (to - from <= 0 || to - from < Math.min(MIN_VISIBLE, rect.height)) return null;
+  return from + GAP;
+}
+
 export function mountForkButtons(options: ForkButtonOptions): () => void {
   const shadow = createShadowHost(FORK_BUTTON_HOST_ID);
   setHtml(
@@ -79,16 +131,27 @@ export function mountForkButtons(options: ForkButtonOptions): () => void {
    */
   const place = (node: Element): void => {
     const rect = node.getBoundingClientRect();
-    // Scrolled out of view: there is nothing to attach to.
-    if (rect.bottom < 0 || rect.top > innerHeight) {
+    const width = button.offsetWidth || FALLBACK_WIDTH;
+
+    // Beside the message, never on it. Placed inside the message's top-right
+    // corner the handle sat on the first line of text and hid the words under
+    // it. These sites centre the conversation in a column with room on either
+    // side, so the handle goes in that margin; only on a window too narrow for
+    // a margin does it fall back to the corner.
+    let left: number;
+    if (rect.right + GAP + width <= innerWidth - GAP) left = rect.right + GAP;
+    else if (rect.left - GAP - width >= GAP) left = rect.left - GAP - width;
+    else left = Math.max(GAP, rect.right - width - GAP);
+
+    const top = freeTop(rect, left + width / 2, node);
+    if (top === null) {
       button.style.display = 'none';
       return;
     }
+
     button.style.display = 'block';
-    // A long answer can start above the viewport; the handle stays reachable
-    // at the top of what is actually on screen.
-    button.style.top = `${String(Math.max(MARGIN, Math.min(rect.top + MARGIN, innerHeight - 40)))}px`;
-    button.style.left = `${String(Math.max(MARGIN, rect.right - BUTTON_INSET))}px`;
+    button.style.top = `${String(Math.min(top, innerHeight - 40))}px`;
+    button.style.left = `${String(left)}px`;
   };
 
   const onPointerOver = (event: Event) => {

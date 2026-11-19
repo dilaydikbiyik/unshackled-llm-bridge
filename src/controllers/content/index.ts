@@ -26,6 +26,8 @@ import { mountForkButtons } from '@views/content/fork-button';
 import type { DraggedConversation } from '@views/content/drag-out';
 import { openForkDialog } from '@views/content/fork-dialog';
 import { showToast } from '@views/content/toast';
+import { alignCutIndex } from '@domain/conversation/align';
+import type { BridgeConversation } from '@domain/conversation/schema';
 
 /**
  * Content-script entry: detect the platform, wire adapter ⟷ background, mount
@@ -106,10 +108,7 @@ function mountFork(
 function listenForShortcut(adapter: PlatformAdapter): () => void {
   const listener = (message: unknown, sender: chrome.runtime.MessageSender): undefined => {
     if (!isForkCommand(message, sender.id ?? '', chrome.runtime.id)) return undefined;
-    void adapter.readConversation().then((conversation) => {
-      const lastIndex = conversation.messages.at(-1)?.index ?? 0;
-      void openDialogFor(adapter, lastIndex);
-    });
+    void openDialogFor(adapter, 'last');
     return undefined;
   };
   chrome.runtime.onMessage.addListener(listener);
@@ -157,9 +156,30 @@ async function prepareConversationDrag(
   };
 }
 
-async function openDialogFor(adapter: PlatformAdapter, messageIndex: number): Promise<void> {
-  const [conversation, settings, attachments, origin, relayPoints] = await Promise.all([
-    adapter.readConversation(),
+/**
+ * The conversation for a fork — all of it, even where the page keeps only the
+ * turns near the screen — and the pointed-at message's place in it.
+ */
+async function readForFork(
+  adapter: PlatformAdapter,
+  pointed: number | 'last',
+  language: Lang,
+): Promise<{ conversation: BridgeConversation; messageIndex: number }> {
+  const visible = await adapter.readConversation();
+  const conversation = await adapter.readConversation({
+    complete: true,
+    onCollecting: () => showToast(t(language, 'readingWhole')),
+  });
+  const last = conversation.messages.at(-1)?.index ?? 0;
+  const messageIndex =
+    pointed === 'last' ? last : alignCutIndex(visible.messages, conversation.messages, pointed);
+  return { conversation, messageIndex };
+}
+
+async function openDialogFor(adapter: PlatformAdapter, pointed: number | 'last'): Promise<void> {
+  const language = (await getSettings()).language;
+  const { conversation, messageIndex } = await readForFork(adapter, pointed, language);
+  const [settings, attachments, origin, relayPoints] = await Promise.all([
     getSettings(),
     sendToBackground({
       type: 'attachment/list',

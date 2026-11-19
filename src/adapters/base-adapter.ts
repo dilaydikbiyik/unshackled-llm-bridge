@@ -8,6 +8,7 @@ import {
   type AdapterHealth,
   type ModelMode,
   type PlatformAdapter,
+  type ReadOptions,
   type Unsubscribe,
 } from './types';
 
@@ -30,6 +31,10 @@ export const SITUATIONAL_TARGETS: ReadonlySet<string> = new Set([
   // the action buttons. They are removed when present; a reply with no
   // reasoning to report simply has none.
   'turnChrome',
+  // The element a long conversation scrolls in: there is none on a page with
+  // no conversation open, and reading falls back to the nearest scrolling
+  // ancestor when it is missing.
+  'scrollContainer',
 ]);
 
 /**
@@ -98,7 +103,7 @@ export abstract class BaseAdapter implements PlatformAdapter {
     return zone ?? this.composerElement();
   }
 
-  readConversation(): Promise<BridgeConversation> {
+  readConversation(_options?: ReadOptions): Promise<BridgeConversation> {
     throw new AdapterNotImplementedError(this.platform, 'readConversation');
   }
 

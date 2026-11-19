@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Fixed
+- **Forking a long ChatGPT conversation carried only the part on screen.** ChatGPT keeps
+  just the turns near the viewport in the page, so a twelve-turn chat forked as two and the
+  dialog called that the whole conversation. Forking now scrolls through the conversation,
+  reads every turn, and puts the page back where it was, with a notice while it does; the
+  message you forked from keeps its place. Background watchers never scroll. Selector
+  config v9 adds ChatGPT's scroll container.
+- **The fork handle covered the text it belonged to and sat on ChatGPT's header.** It now
+  goes in the margin beside the message, below any pinned top bar, and follows the message
+  as the conversation scrolls.
+- **A one-line message got no fork handle at all.** A threshold meant for messages scrolled
+  mostly out of sight also caught short ones.
+
 ## [1.1.0] — 2026-11-19
 
 ### Added
