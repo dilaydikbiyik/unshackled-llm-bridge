@@ -103,3 +103,58 @@ describe('GeminiAdapter.readConversation — live markup', () => {
     expect(conversation.messages[1]?.content).toBe('Selam! Nasılsın?');
   });
 });
+
+/**
+ * Gemini as seen live (2026-11-20): a long conversation opens with only its
+ * latest turns, and earlier ones are added — and kept — each time the
+ * history is scrolled to the top.
+ */
+describe('GeminiAdapter.readConversation — earlier turns loaded on scroll', () => {
+  function lazyHistory(total: number, batch: number) {
+    document.body.innerHTML = '<infinite-scroller class="chat-history" style="overflow-y:auto"><div id="list"></div></infinite-scroller>';
+    const scroller = document.querySelector<HTMLElement>('infinite-scroller')!;
+    const list = document.getElementById('list')!;
+    let loadedFrom = total - batch;
+    let scrollTop = 5000;
+    const render = () => {
+      list.innerHTML = '';
+      for (let i = loadedFrom; i < total; i += 1) {
+        const el = document.createElement(i % 2 === 0 ? 'user-query' : 'model-response');
+        el.textContent = `${i % 2 === 0 ? 'soru' : 'cevap'} ${String(i)}`;
+        list.append(el);
+      }
+    };
+    Object.defineProperty(scroller, 'scrollTop', {
+      get: () => scrollTop,
+      set: (v: number) => {
+        scrollTop = Math.max(0, v);
+        if (scrollTop === 0 && loadedFrom > 0) {
+          loadedFrom = Math.max(0, loadedFrom - batch);
+          render();
+        }
+      },
+    });
+    Object.defineProperty(scroller, 'scrollHeight', { get: () => 10_000 });
+    Object.defineProperty(scroller, 'clientHeight', { get: () => 800 });
+    render();
+  }
+
+  it('reads only what is drawn unless the whole conversation is asked for', async () => {
+    lazyHistory(12, 4);
+    expect((await new GeminiAdapter(selectors).readConversation()).messages).toHaveLength(4);
+  });
+
+  it('loads the earlier turns until none are left, and reads them in order', async () => {
+    lazyHistory(12, 4);
+    let collecting = false;
+    const conversation = await new GeminiAdapter(selectors).readConversation({
+      complete: true,
+      onCollecting: () => (collecting = true),
+    });
+    expect(collecting).toBe(true);
+    expect(conversation.messages.map((m) => m.content)).toEqual(
+      Array.from({ length: 12 }, (_, i) => `${i % 2 === 0 ? 'soru' : 'cevap'} ${String(i)}`),
+    );
+    expect(conversation.messages[0]?.role).toBe('user');
+  }, 20_000);
+});

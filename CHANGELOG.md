@@ -20,6 +20,10 @@ All notable changes to this project are documented here. The format follows
   remains for sites and turns without a bar. Selector config v10 adds `turnActions`.
 
 ### Fixed
+- **Long Claude and Gemini conversations were forked short too.** Claude virtualizes like
+  ChatGPT — an 18-message conversation kept 4 in the page — and is now read row by row from
+  its own numbering. Gemini keeps turns but draws the earlier ones only at the top — 20 of 42
+  on opening — and now loads them before a fork. Config v11 adds both sites' action bars.
 - **Forking a long ChatGPT conversation carried only the part on screen.** ChatGPT keeps
   just the turns near the viewport in the page, so a twelve-turn chat forked as two and the
   dialog called that the whole conversation. Forking now scrolls through the conversation,

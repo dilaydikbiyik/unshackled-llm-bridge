@@ -120,3 +120,71 @@ describe('ClaudeAdapter.readConversation — both markups at once', () => {
     expect(messages[1]?.content).toBe('one answer');
   });
 });
+
+/**
+ * Claude's transcript as seen live (2026-11-20): each message in a row
+ * numbered by its place (`data-index`) inside an article that says how many
+ * there are ("Message 10 of 18"), and only the rows near the screen in the DOM.
+ */
+function virtualizedTranscript(total: number) {
+  const ROW = 900;
+  const VIEWPORT = 800;
+  const height = total * ROW;
+  document.body.innerHTML = '<main><div class="overflow-y-auto" id="scroller"><div role="feed" id="feed"></div></div></main>';
+  const scroller = document.getElementById('scroller')!;
+  const feed = document.getElementById('feed')!;
+  let scrollTop = height - VIEWPORT;
+  const render = () => {
+    feed.innerHTML = '';
+    for (let i = 0; i < total; i += 1) {
+      const top = i * ROW;
+      if (top + ROW < scrollTop - 100 || top > scrollTop + VIEWPORT + 100) continue;
+      const user = i % 2 === 0;
+      const row = document.createElement('div');
+      row.setAttribute('data-testid', 'transcript-row');
+      row.setAttribute('data-index', String(i));
+      row.innerHTML = `<div role="article" aria-setsize="${String(total)}" aria-posinset="${String(i + 1)}">${
+        user
+          ? `<div data-testid="user-message"><p>soru ${String(i)}</p></div><div data-testid="user-message-actions"><button aria-label="Show message actions">⋯</button></div>`
+          : `<div data-testid="assistant-message"><p>cevap ${String(i)}</p><div data-testid="message-actions"><button aria-label="Copy">c</button></div></div>`
+      }</div>`;
+      const turn = row.querySelector('[data-testid$="-message"]')!;
+      turn.getBoundingClientRect = () => ({ top: top - scrollTop, bottom: top + ROW - scrollTop }) as DOMRect;
+      feed.append(row);
+    }
+  };
+  Object.defineProperty(scroller, 'scrollTop', {
+    get: () => scrollTop,
+    set: (v: number) => {
+      scrollTop = Math.max(0, Math.min(v, height - VIEWPORT));
+      render();
+    },
+  });
+  Object.defineProperty(scroller, 'scrollHeight', { get: () => height });
+  Object.defineProperty(scroller, 'clientHeight', { get: () => VIEWPORT });
+  scroller.style.overflowY = 'auto';
+  scroller.getBoundingClientRect = () => ({ top: 0, bottom: VIEWPORT }) as DOMRect;
+  render();
+}
+
+describe('ClaudeAdapter.readConversation — a long, virtualized transcript', () => {
+  it('reads all of it when asked, in order, without the action bars', async () => {
+    virtualizedTranscript(8);
+    const partial = await new ClaudeAdapter(selectors).readConversation();
+    expect(partial.messages.length).toBeLessThan(8);
+
+    const whole = await new ClaudeAdapter(selectors).readConversation({ complete: true });
+    expect(whole.messages.map((m) => `${m.role}:${m.content}`)).toEqual(
+      Array.from({ length: 8 }, (_, i) => (i % 2 === 0 ? `user:soru ${String(i)}` : `assistant:cevap ${String(i)}`)),
+    );
+  }, 20_000);
+
+  it('finds the action bar of a prompt beside it and of a reply inside it', () => {
+    virtualizedTranscript(4);
+    const adapter = new ClaudeAdapter(selectors);
+    const turns = adapter.locateTurns();
+    const bars = turns.map((t) => adapter.locateActionBar(t)?.getAttribute('data-testid'));
+    expect(bars).toContain('user-message-actions');
+    expect(bars).toContain('message-actions');
+  });
+});

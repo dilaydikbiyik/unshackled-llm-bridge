@@ -2,6 +2,7 @@ import type { BridgeConversation } from '@domain/conversation/schema';
 import { resolveSelector, resolveSelectorAll, type PlatformSelectors } from '@data/config/selector-config';
 import { platformInfo, type PlatformId } from '@domain/platforms';
 import { createFileTransfer, dispatchFileDrop } from './file-drop';
+import { collectVirtualized } from './virtualized';
 import {
   AdapterNotImplementedError,
   type AdapterCapabilities,
@@ -182,6 +183,129 @@ export abstract class BaseAdapter implements PlatformAdapter {
   }
 
   /**
+   * Where a turn sits in the whole conversation — [position, part] — when the
+   * page says so. Sites that virtualize a long conversation keep only the
+   * turns near the screen in the DOM, but label each with its place; that
+   * label is how a missing stretch is noticed and how turns recreated by
+   * scrolling are recognised. Null where the site gives no such label.
+   */
+  protected turnOrder(_turn: Element): [number, number] | null {
+    return null;
+  }
+
+  /**
+   * Set by sites that keep every turn once drawn but only draw the earlier
+   * ones when the conversation is scrolled to the top (Gemini): there is no
+   * label to say what is missing, so a complete read loads until nothing
+   * more arrives.
+   */
+  protected readonly loadsEarlierTurns: boolean = false;
+
+  /** How many turns the conversation has in all, where the site says. */
+  protected turnTotal(): number | null {
+    return null;
+  }
+
+  /**
+   * Reads every turn — scrolling through the conversation for the ones the
+   * page is not holding, when `complete` is asked for and the turn labels
+   * show some are missing. Otherwise reads what is on the page.
+   */
+  protected async readTurns<T>(options: ReadOptions, read: (turn: Element) => T): Promise<T[]> {
+    const present = () => this.outermostTurns();
+    const visible = present();
+    if (options.complete && this.loadsEarlierTurns) {
+      await this.loadEarlierTurns(visible, options);
+      return present().map(read);
+    }
+    const scroller = options.complete ? this.partialConversationScroller(visible) : null;
+    if (!scroller) return visible.map(read);
+
+    options.onCollecting?.();
+    const key = (turn: Element) => (this.turnOrder(turn) ?? [Number.MAX_SAFE_INTEGER, 0]).join(':');
+    return collectVirtualized({
+      scroller,
+      present,
+      keyOf: key,
+      compare: (a, b) => {
+        const [pa = 0, sa = 0] = a.split(':').map(Number);
+        const [pb = 0, sb = 0] = b.split(':').map(Number);
+        return pa - pb || sa - sb;
+      },
+      bottomOf: (turn) =>
+        turn.getBoundingClientRect().bottom - scroller.getBoundingClientRect().top + scroller.scrollTop,
+      topOf: (turn) => turn.getBoundingClientRect().top - scroller.getBoundingClientRect().top,
+      read,
+    });
+  }
+
+  /**
+   * Scrolls to the top until no earlier turns arrive, then puts the turn the
+   * user was looking at back where it was — the content above it has grown,
+   * so the old offset would show something else.
+   */
+  private async loadEarlierTurns(visible: Element[], options: ReadOptions): Promise<void> {
+    const first = visible[0];
+    if (!first) return;
+    const scroller = scrollerOf(first, this.selectors['scrollContainer']);
+    if (!scroller || scroller.scrollTop <= 0) return;
+
+    const box = () => scroller.getBoundingClientRect().top;
+    const anchor = visible.find((t) => t.getBoundingClientRect().bottom > box()) ?? first;
+    const anchorTop = anchor.getBoundingClientRect().top - box();
+    const original = scroller.scrollTop;
+    options.onCollecting?.();
+    try {
+      let count = visible.length;
+      for (let attempt = 0, stable = 0; attempt < 40 && stable < 2; attempt += 1) {
+        scroller.scrollTop = 0;
+        await new Promise((resolve) => setTimeout(resolve, EARLIER_SETTLE_MS));
+        const now = this.outermostTurns().length;
+        stable = now === count ? stable + 1 : 0;
+        count = now;
+      }
+    } finally {
+      scroller.scrollTop = original;
+      if (anchor.isConnected) {
+        scroller.scrollTop += anchor.getBoundingClientRect().top - box() - anchorTop;
+      }
+    }
+  }
+
+  /**
+   * The turns on the page, a match nested inside another match dropped: a
+   * turn rule naming several of a site's shapes can match one turn twice.
+   */
+  protected outermostTurns(): Element[] {
+    const all = this.locateTurns();
+    return all.filter((turn) => !all.some((other) => other !== turn && other.contains(turn)));
+  }
+
+  /**
+   * The scroller, if the page is holding only part of the conversation; null
+   * when what is on the page is all of it. Something is missing when the
+   * first turn is not the conversation's first, when the positions have a
+   * gap, when the site's own count is larger, or when the conversation is not
+   * scrolled to the bottom (later turns may not be drawn).
+   */
+  private partialConversationScroller(visible: Element[]): HTMLElement | null {
+    const orders = visible.map((turn) => this.turnOrder(turn));
+    if (orders.length === 0 || orders.some((o) => o === null)) return null;
+    const positions = orders.map((o) => o![0]);
+
+    const scroller = scrollerOf(visible[0]!, this.selectors['scrollContainer']);
+    if (!scroller) return null;
+
+    const first = Math.min(...positions);
+    const last = Math.max(...positions);
+    const contiguous = new Set(positions).size === last - first + 1;
+    const atBottom = scroller.scrollTop + scroller.clientHeight >= scroller.scrollHeight - 4;
+    const total = this.turnTotal();
+    const short = total !== null && new Set(positions).size < total;
+    return first > 0 || !contiguous || !atBottom || short ? scroller : null;
+  }
+
+  /**
    * Looks for the file's name on the page, outside the composer.
    *
    * The composer itself carries the name — the continuation note says which
@@ -271,4 +395,18 @@ export abstract class BaseAdapter implements PlatformAdapter {
       checkedAt: new Date().toISOString(),
     };
   }
+}
+
+/** How long a site gets to load a batch of earlier turns after reaching the top. */
+export const EARLIER_SETTLE_MS = 900;
+
+/** The configured scroller, else the nearest ancestor that actually scrolls. */
+function scrollerOf(turn: Element, configured: string[] | undefined): HTMLElement | null {
+  const fromConfig = configured ? resolveSelectorAll(document, configured)[0] : undefined;
+  if (fromConfig instanceof HTMLElement) return fromConfig;
+  for (let el = turn.parentElement; el; el = el.parentElement) {
+    const overflow = getComputedStyle(el).overflowY;
+    if ((overflow === 'auto' || overflow === 'scroll') && el.scrollHeight > el.clientHeight) return el;
+  }
+  return null;
 }

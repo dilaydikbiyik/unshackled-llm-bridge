@@ -1,5 +1,5 @@
 {
-  "version": 10,
+  "version": 11,
   "minExtensionVersion": "0.0.1",
   "platforms": {
     "chatgpt": {
@@ -64,7 +64,8 @@
         "[data-testid='message-actions']"
       ],
       "turnActions": [
-        "[data-testid='message-actions']"
+        "[data-testid='message-actions']",
+        "[data-testid='user-message-actions']"
       ],
       "artifactCell": [
         "div[data-testid='artifact-block']",
@@ -95,6 +96,13 @@
       ],
       "userMessage": [
         "user-query"
+      ],
+      "scrollContainer": [
+        "infinite-scroller.chat-history"
+      ],
+      "turnActions": [
+        "message-actions",
+        "user-query .luminous-actions-container"
       ],
       "newChatButton": [
         "[data-test-id='new-chat-button']",
