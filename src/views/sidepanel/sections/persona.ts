@@ -1,8 +1,9 @@
 import { draftProfileText, type MemoryProfile } from '@domain/memory/distil';
-import { t, type Lang } from '@shared/i18n';
+import type { LearnedPreference, PreferenceId } from '@domain/memory/preferences';
+import { t, type Lang, type StringKey } from '@shared/i18n';
 import { sendToBackground } from '@shared/messages';
 import { updateSettings, type Persona, type Settings } from '@shared/settings';
-import { html, type SafeHtml } from '@views/html';
+import { html, setHtml, type SafeHtml } from '@views/html';
 import { el, flash } from '../dom';
 
 /**
@@ -41,6 +42,7 @@ export function renderPersona(settings: Settings): SafeHtml {
         <button id="persona-distil">${t(lang, 'personaDistil')}</button>
         <span class="hint">${t(lang, 'personaDistilHint')}</span>
       </div>
+      <ul class="learned-list" id="persona-learned"></ul>
       <div class="row end">
         ${active && html`<button id="persona-delete">${t(lang, 'personaDelete')}</button>`}
         <button class="primary" id="persona-save">${t(lang, 'personaSave')}</button>
@@ -48,6 +50,73 @@ export function renderPersona(settings: Settings): SafeHtml {
     </section>
   `;
 }
+
+/**
+ * The preferences learned from the user's own messages, each with its evidence.
+ *
+ * Nothing here is a guess the user has to take on trust: every line says how
+ * many conversations, on how many platforms, the user asked for it. Unticking
+ * one keeps it out of the profile — the extension proposes, the user decides.
+ */
+function showLearned(
+  root: ParentNode,
+  lang: Lang,
+  preferences: readonly LearnedPreference[],
+  onChange: (excluded: Set<PreferenceId>) => void,
+): void {
+  const list = root.querySelector<HTMLUListElement>('#persona-learned');
+  if (!list) return;
+  if (preferences.length === 0) {
+    setHtml(list, html`<li class="hint">${t(lang, 'learnedNone')}</li>`);
+    return;
+  }
+
+  setHtml(
+    list,
+    html`
+      <li class="hint">${t(lang, 'learnedIntro')}</li>
+      ${preferences.map(
+        (preference) => html`<li>
+          <label class="check">
+            <input type="checkbox" class="learned-toggle" value="${preference.id}" checked />
+            <span>
+              ${t(lang, PREFERENCE_LABELS[preference.id])}
+              <span class="muted">
+                ${t(lang, 'learnedEvidence')
+                  .replace('{count}', String(preference.conversations))
+                  .replace('{platforms}', String(preference.platforms.length))}
+              </span>
+            </span>
+          </label>
+        </li>`,
+      )}
+    `,
+  );
+
+  list.querySelectorAll<HTMLInputElement>('.learned-toggle').forEach((box) => {
+    box.addEventListener('change', () => {
+      const excluded = new Set(
+        [...list.querySelectorAll<HTMLInputElement>('.learned-toggle')]
+          .filter((toggle) => !toggle.checked)
+          .map((toggle) => toggle.value as PreferenceId),
+      );
+      onChange(excluded);
+    });
+  });
+}
+
+const PREFERENCE_LABELS: Record<PreferenceId, StringKey> = {
+  answerTurkish: 'prefAnswerTurkish',
+  answerEnglish: 'prefAnswerEnglish',
+  shorter: 'prefShorter',
+  moreDetail: 'prefMoreDetail',
+  noBullets: 'prefNoBullets',
+  codeFirst: 'prefCodeFirst',
+  straightToPoint: 'prefStraightToPoint',
+  withExample: 'prefWithExample',
+  useTables: 'prefUseTables',
+  plainLanguage: 'prefPlainLanguage',
+};
 
 export function bindPersona(
   root: ParentNode,
@@ -70,8 +139,15 @@ export function bindPersona(
       }
       const textarea = el<HTMLTextAreaElement>(root, '#persona-text');
       const existing = textarea.value.trim();
-      textarea.value = existing ? `${existing}\n\n${draft}` : draft;
+      // What the user wrote stays; the draft is appended once, and rewritten in
+      // place when they untick a preference, never stacked on itself.
+      const before = existing ? `${existing}\n\n` : '';
+      textarea.value = `${before}${draft}`;
       textarea.focus();
+
+      showLearned(root, lang, profile.preferences, (excluded) => {
+        textarea.value = `${before}${draftProfileText(profile, excluded)}`;
+      });
     });
   });
 

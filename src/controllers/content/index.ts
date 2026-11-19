@@ -1,10 +1,6 @@
 import { createAdapter } from '@adapters/registry';
 import type { PlatformAdapter } from '@adapters/types';
-import {
-  loadSelectorConfig,
-  resolveSelectorAll,
-  type SelectorConfig,
-} from '@data/config/selector-config';
+import { loadSelectorConfig } from '@data/config/selector-config';
 import {
   conversationKey,
   mountAttachmentCapture,
@@ -74,7 +70,7 @@ async function main(): Promise<void> {
     // message failed — a cold worker, most often — the whole in-page UI was
     // never mounted and the extension looked absent on the page.
     teardowns.push(mountAttachmentCapture(adapter));
-    teardowns.push(mountFork(adapter, config, (await getSettings()).language));
+    teardowns.push(mountFork(adapter, (await getSettings()).language));
     teardowns.push(listenForShortcut(adapter));
     void watchConversation(adapter);
 
@@ -91,13 +87,13 @@ async function reportHealth(adapter: PlatformAdapter): Promise<void> {
 
 function mountFork(
   adapter: PlatformAdapter,
-  config: SelectorConfig,
   lang: Lang,
 ): () => void {
-  const selectors = config.platforms[adapter.platform] ?? {};
   return mountForkButtons({
     hint: t(lang, 'forkHint'),
-    locateMessages: () => resolveSelectorAll(document, selectors['messageContainer']),
+    // Asked of the adapter: on a site the user added there are no configured
+    // selectors, and only the generic adapter knows where its turns are.
+    locateMessages: () => adapter.locateTurns(),
     onFork: (messageIndex) => void openDialogFor(adapter, messageIndex),
     prepareDrag: () => prepareConversationDrag(adapter),
   });

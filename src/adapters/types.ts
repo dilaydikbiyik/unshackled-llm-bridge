@@ -46,6 +46,14 @@ export interface PlatformAdapter {
    * knowing the site.
    */
   attachmentVisible(name: string): boolean;
+  /**
+   * The elements that are the conversation's turns, for the in-page UI to
+   * attach to. It belongs to the adapter because finding turns is the adapter's
+   * job: the handle used to look them up with configured selectors itself, and
+   * on a site the user added there are none — the generic adapter could read
+   * the conversation, but the handle had nothing to attach to.
+   */
+  locateTurns(): Element[];
   getModelMode(): Promise<ModelMode>;
   openNewChat(): Promise<void>;
   observeMessages(onChange: () => void): Unsubscribe;

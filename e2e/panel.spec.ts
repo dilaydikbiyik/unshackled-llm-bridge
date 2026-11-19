@@ -1,4 +1,4 @@
-import { expect, test } from './extension';
+import { CUSTOM_SITE, expect, test } from './extension';
 
 /**
  * The side panel, driven in the real extension.
@@ -97,4 +97,76 @@ test('parallel comparison: the same prompt reaches each platform, unsent', async
 
   // And the panel is now holding the comparison, waiting for answers.
   await expect(panel.locator('#compare-results')).toContainText('Which database');
+});
+
+test('learned preferences: an instruction repeated across chats becomes a proposal', async ({
+  context,
+  extensionId,
+}) => {
+  const panel = await context.newPage();
+  await panel.goto(panelUrl(extensionId));
+  await panel.locator('#archive-toggle').check();
+
+  // The user asks for shorter answers in two separate conversations.
+  for (const path of ['/c/pref-1', '/c/pref-2']) {
+    const chat = await context.newPage();
+    await chat.goto(`https://chatgpt.com${path}`);
+    await expect(chat.locator('[data-content-search-unit-key$=":assistant"]')).toBeVisible();
+    await chat.waitForTimeout(800);
+    await chat.close();
+  }
+
+  await panel.reload();
+  await panel.locator('#persona-distil').click();
+
+  // Proposed with its evidence, and written into the draft — not saved.
+  const learned = panel.locator('#persona-learned');
+  await expect(learned).toContainText(/2 (conversations|sohbette)/);
+  await expect(panel.locator('#persona-text')).toHaveValue(/Keep answers short/);
+
+  // Unticked, it leaves the draft.
+  await learned.locator('.learned-toggle[value="shorter"]').uncheck();
+  await expect(panel.locator('#persona-text')).not.toHaveValue(/Keep answers short/);
+});
+
+/**
+ * The whole point of adding a site: the extension then runs on it.
+ *
+ * Content scripts are built as a small loader that imports the real module at
+ * runtime, and that import is only allowed on origins the module is web
+ * accessible to. Those were exactly the three built-in sites — so on every site
+ * a user added, the script was registered, the loader ran, and the import was
+ * refused. Nothing in the suite had ever loaded the extension on a site it was
+ * not built for.
+ */
+test('a site the user adds: the extension actually runs on it', async ({ context, extensionId }) => {
+  const panel = await context.newPage();
+  await panel.goto(panelUrl(extensionId));
+
+  await panel.locator('#site-host').fill(CUSTOM_SITE);
+  await panel.locator('#site-add').click();
+  await expect(panel.locator('.site-list')).toContainText(CUSTOM_SITE);
+
+  // The worker registers the content script for the new site.
+  await panel.waitForTimeout(1000);
+
+  const site = await context.newPage();
+  await site.goto(`https://${CUSTOM_SITE}/c/abc123`);
+
+  // The in-page UI is there — the module loaded, on a site it was never built for.
+  await expect
+    .poll(() => site.evaluate(() => !!document.getElementById('ulb-fork-button-host')), {
+      timeout: 15_000,
+    })
+    .toBe(true);
+
+  // And it does the job: the generic adapter reads a page no selectors were
+  // written for, and the fork carries both sides of the conversation.
+  await site.locator('.msg').nth(1).hover();
+  await site.locator('#ulb-fork-button-host #fork').click();
+  const dialog = site.locator('#ulb-fork-dialog-host');
+  await dialog.locator('#delivery').selectOption('inline');
+  const preview = dialog.locator('#preview');
+  await expect(preview).toHaveValue(/mutex and a semaphore/);
+  await expect(preview).toHaveValue(/admits one holder at a time/);
 });

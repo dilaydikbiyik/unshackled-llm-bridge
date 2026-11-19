@@ -40,6 +40,11 @@ export class GenericAdapter extends BaseAdapter {
     return document.readyState !== 'loading' && findComposer() !== null;
   }
 
+  /** The same turns the conversation is read from, so the handle and the package agree. */
+  override locateTurns(): Element[] {
+    return findTurns();
+  }
+
   override async readConversation(): Promise<BridgeConversation> {
     const turns = findTurns();
     const roles = assignRoles(turns);

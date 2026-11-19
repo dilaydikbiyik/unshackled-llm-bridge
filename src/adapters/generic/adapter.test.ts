@@ -115,3 +115,17 @@ describe('GenericAdapter', () => {
     expect(adapter().capabilities.readConversation).toBe(true);
   });
 });
+
+describe('GenericAdapter.locateTurns', () => {
+  // The in-page handle asks the adapter where the turns are. On a site the user
+  // added there are no configured selectors, so the handle used to find nothing
+  // and never appeared, while the conversation itself read fine.
+  it('finds the same turns the conversation is read from', async () => {
+    const adapter = new GenericAdapter('site:example.ai');
+    const turns = adapter.locateTurns();
+    const conversation = await adapter.readConversation();
+
+    expect(turns).toHaveLength(conversation.messages.length);
+    expect(turns.length).toBeGreaterThan(0);
+  });
+});

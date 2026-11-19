@@ -1,0 +1,28 @@
+<!doctype html>
+<!--
+  A chat UI no adapter was written for: no data-testid, no platform markup.
+  Stands in for whatever site a user adds — Perplexity, a local model's web UI.
+  The extension can only read it through the generic adapter's heuristics.
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Some chat</title>
+    <style>
+      body { font-family: system-ui; margin: 0; }
+      main { display: flex; flex-direction: column; gap: 16px; padding: 24px; }
+      .msg { max-width: 640px; padding: 10px 14px; border-radius: 12px; }
+      footer { padding: 12px 24px; }
+      .composer { min-height: 40px; border: 1px solid #ccc; border-radius: 10px; padding: 10px; }
+    </style>
+  </head>
+  <body>
+    <nav><span>New chat</span> <span>Settings</span></nav>
+    <main>
+      <div class="msg">What is the difference between a mutex and a semaphore?</div>
+      <div class="msg">A mutex has an owner and admits one holder at a time; a semaphore is a
+        counter with no ownership, admitting as many holders as its count allows.</div>
+    </main>
+    <footer><div class="composer" contenteditable="true"></div></footer>
+  </body>
+</html>

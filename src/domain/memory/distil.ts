@@ -1,4 +1,5 @@
 import type { BridgeConversation } from '@domain/conversation/schema';
+import { learnPreferences, type LearnedPreference, type PreferenceId } from '@domain/memory/preferences';
 import { platformLabel, type PlatformId } from '@domain/platforms';
 
 /**
@@ -26,6 +27,8 @@ export interface MemoryProfile {
   conversationCount: number;
   /** ISO dates of the first and last conversation, when there are any. */
   span: { from: string; to: string } | null;
+  /** Instructions about answers the user keeps repeating, with their evidence. */
+  preferences: LearnedPreference[];
 }
 
 /** How many of each kind the profile keeps: enough to be useful, short enough to read. */
@@ -117,17 +120,31 @@ export function distilMemory(conversations: readonly BridgeConversation[]): Memo
       dates.length > 0 && dates[0] && dates.at(-1)
         ? { from: dates[0].slice(0, 10), to: dates.at(-1)!.slice(0, 10) }
         : null,
+    preferences: learnPreferences(conversations),
   };
 }
+
+/** Heads the block of learned preferences, so it can be found and rewritten. */
+export const PREFERENCES_HEADING = 'How I like answers:';
 
 /**
  * The profile as a first draft for the user to edit. Written as statements of
  * fact that can be checked, not as a character sketch: everything here was
  * counted, and anything else is the user's to add in their own words.
  */
-export function draftProfileText(profile: MemoryProfile): string {
+export function draftProfileText(
+  profile: MemoryProfile,
+  excluded: ReadonlySet<PreferenceId> = new Set(),
+): string {
   if (profile.conversationCount === 0) return '';
   const lines: string[] = [];
+
+  // First, because it is what changes the next answer: the rest describes the
+  // person, this tells the assistant what to do. Only the ones the user kept.
+  const preferences = profile.preferences.filter((p) => !excluded.has(p.id));
+  if (preferences.length > 0) {
+    lines.push(PREFERENCES_HEADING, ...preferences.map((p) => `- ${p.steer}`), '');
+  }
 
   if (profile.platforms.length > 0) {
     lines.push(

@@ -28,6 +28,18 @@ if (manifest.version !== pkg.version) {
   fail(`dist/manifest.json is version ${manifest.version}, package.json is ${pkg.version} — rebuild.`);
 }
 
+// A content script that cannot load on the sites a user adds is an extension
+// whose headline feature does nothing — and nothing at runtime says so: Chrome
+// logs "Denying load of …" into a console nobody reads. The bundler decides
+// which origins those modules are open to, so a bundler upgrade could quietly
+// undo scripts/patch-manifest.mjs. Refuse to package that.
+const optionalHosts = manifest.optional_host_permissions ?? [];
+const reachable = new Set((manifest.web_accessible_resources ?? []).flatMap((entry) => entry.matches ?? []));
+const unreachable = optionalHosts.filter((host) => !reachable.has(host));
+if (unreachable.length > 0) {
+  fail(`the content script cannot load on sites users add: ${unreachable.join(', ')} — run npm run build`);
+}
+
 // A source map in the package ships the whole source to every user and bloats
 // the upload; the store does not want it and neither do we.
 const maps = execFileSync('find', [dist, '-name', '*.map']).toString().trim();

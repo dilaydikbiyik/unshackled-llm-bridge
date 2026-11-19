@@ -69,6 +69,23 @@ The profile the side panel can draw from your archive is counted on your device,
 messages, and is shown to you as a draft before anything is saved. It is never sent anywhere by the
 extension; it travels only when you attach it to a transfer that you make.
 
+## Learned preferences
+
+The side panel can notice instructions you keep repeating to assistants — "shorter", "in Turkish",
+"no bullet points" — and propose them for your profile. It reads only **your own** messages in
+the local archive, counts each instruction once per conversation, shows you how many conversations
+and platforms it came from, and adds nothing until you have seen it and kept it. It runs on your
+device; nothing about it is sent anywhere.
+
+## Running on the sites you add
+
+To run on a site you add, the extension's content script has to be loadable on that site, so its
+code is marked web-accessible for the same address patterns you can grant (`https://*/*` and your
+own machine). The consequence, stated plainly: a page under those patterns could request one of
+those files and so tell that the extension is installed. It cannot read your data through them —
+they are the extension's own public code — and on a site you have not added, the extension does not
+run at all.
+
 ## Your data on the AI platforms
 
 This extension reads conversations from and writes text into the AI sites you use — in your own

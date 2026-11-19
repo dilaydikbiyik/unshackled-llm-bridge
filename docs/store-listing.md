@@ -58,6 +58,9 @@ conversation across — the history, the files you uploaded, and the model that 
   is wrong.
 - **A portable profile**, counted from your own archive across every platform, yours to edit and
   attach to any transfer.
+- **It learns how you like answers.** Tell assistants "shorter" or "in Turkish" often enough, on
+  any platform, and the extension proposes it — with the evidence — so the next assistant hears it
+  too. Nothing is added until you keep it.
 - **Summarize long chats** with your own Anthropic API key (optional).
 - **Search your history** across platforms (opt-in, off by default).
 
@@ -90,6 +93,9 @@ taşır: geçmişi, yüklediğin dosyaları ve cevabı üreten modeli.
 - **Cevapları karşılaştır** ve nerede ayrıştıklarını gör — birinin yanıldığı yer orasıdır.
 - **Taşınabilir profil:** tüm platformlardaki kendi arşivinden sayılır, senindir, düzenlersin ve
   istediğin aktarıma eklersin.
+- **Nasıl cevap istediğini öğrenir.** Asistanlara sık sık "daha kısa" ya da "Türkçe cevap ver"
+  diyorsan, hangi platformda olursa olsun eklenti bunu kanıtıyla önerir; böylece sıradaki asistan da
+  duyar. Sen onaylamadan hiçbir şey eklenmez.
 - **Uzun sohbetleri özetle:** kendi Anthropic API anahtarınla (isteğe bağlı).
 - **Geçmişinde ara:** tüm platformlarda (isteğe bağlı, varsayılan kapalı).
 
@@ -118,11 +124,25 @@ Move an AI conversation, with its files and context, between AI chat sites the u
 | Host: `chatgpt.com`, `claude.ai`, `gemini.google.com` | Reads the conversation the user chooses to move and fills the target's message box. |
 | Optional hosts: `https://*/*`, `http://localhost/*`, `http://127.0.0.1/*` | **Requested one site at a time, never in advance.** Granted only when the user adds that site, through Chrome's own prompt, and revoked when they remove it. The localhost entries are what let a model running on the user's own machine be used. |
 
+## Web-accessible resources (a reviewer will see these)
+
+The content script is built as a loader that imports its module at runtime, and Chrome only allows
+that import on origins the module is web-accessible to. `scripts/patch-manifest.mjs` makes the
+content script's own chunks accessible on the optional host patterns — the same patterns a user can
+grant — because without it the extension cannot run on any site the user adds. Nothing broader is
+exposed; the trade-off (detectability on those patterns) is disclosed in `PRIVACY.md`.
+
 ## Remote code
 
 **No.** The extension fetches `config/selectors.json` from its public repository: a JSON file of CSS
 selector strings, validated on arrival and never executed. It cannot introduce behaviour; it only
 tells existing code which page elements to read. All executable code ships in the package.
+
+A reviewer grepping the bundle will find a few other hosts — `docs.expo.dev`, `tinyurl.com`,
+`platform.claude.com`, `docs.anthropic.com`. They are links inside error messages of bundled
+dependencies (the Anthropic SDK and Dexie), never requested. The only hosts the extension contacts
+are the sites the user works on, `raw.githubusercontent.com` for the selector config, and
+`api.anthropic.com` if the user opts into summarization with their own key.
 
 ## Data usage disclosures
 

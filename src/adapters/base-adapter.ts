@@ -1,5 +1,5 @@
 import type { BridgeConversation } from '@domain/conversation/schema';
-import { resolveSelector, type PlatformSelectors } from '@data/config/selector-config';
+import { resolveSelector, resolveSelectorAll, type PlatformSelectors } from '@data/config/selector-config';
 import { platformInfo, type PlatformId } from '@domain/platforms';
 import { createFileTransfer, dispatchFileDrop } from './file-drop';
 import {
@@ -139,6 +139,10 @@ export abstract class BaseAdapter implements PlatformAdapter {
     const target = this.dropElement();
     if (!target) throw new AdapterNotImplementedError(this.platform, 'uploadFile');
     dispatchFileDrop(target, createFileTransfer(blob, name));
+  }
+
+  locateTurns(): Element[] {
+    return resolveSelectorAll(document, this.selectors['messageContainer']);
   }
 
   /**

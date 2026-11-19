@@ -241,6 +241,7 @@ describe('persona — distilled from the archive', () => {
     codeLanguages: ['go'],
     conversationCount: 4,
     span: { from: '2026-03-01', to: '2026-09-01' },
+    preferences: [],
   };
 
   it('fills the editor with a draft instead of saving anything', async () => {
@@ -276,6 +277,7 @@ describe('persona — distilled from the archive', () => {
       codeLanguages: [],
       conversationCount: 0,
       span: null,
+      preferences: [],
     };
     const { root } = mount(empty);
     root.querySelector<HTMLButtonElement>('#persona-distil')!.click();
@@ -484,3 +486,73 @@ describe('panel when there is nothing yet', () => {
     expect(() => bindArchive(root, settings({ archiveEnabled: false }), vi.fn())).not.toThrow();
   });
 })
+
+/**
+ * Preferences learned from the user's own messages. The panel shows each one
+ * with its evidence and lets the user keep it out — nothing reaches the profile
+ * on the extension's say-so.
+ */
+describe('persona — learned preferences', () => {
+  const learned: MemoryProfile = {
+    platforms: [{ platform: 'chatgpt', conversations: 7 }],
+    topics: [],
+    codeLanguages: [],
+    conversationCount: 9,
+    span: null,
+    preferences: [
+      { id: 'shorter', steer: 'Keep answers short and to the point.', conversations: 7, platforms: ['chatgpt', 'claude', 'gemini'] },
+      { id: 'answerTurkish', steer: 'Answer me in Turkish.', conversations: 3, platforms: ['chatgpt'] },
+    ],
+  };
+
+  function mount(profile: MemoryProfile) {
+    const root = document.createElement('div');
+    setHtml(root, renderPersona(settings()));
+    document.body.append(root);
+    bindPersona(root, settings(), vi.fn(), vi.fn(async () => profile));
+    root.querySelector<HTMLButtonElement>('#persona-distil')!.click();
+    return root;
+  }
+
+  it('lists each preference with how often and where it was asked for', async () => {
+    const root = mount(learned);
+    await vi.waitFor(() => expect(root.querySelectorAll('.learned-toggle')).toHaveLength(2));
+
+    const text = root.querySelector('#persona-learned')?.textContent ?? '';
+    expect(text).toContain('Short, to-the-point answers');
+    expect(text).toContain('7 conversations');
+    expect(text).toContain('3 platforms');
+  });
+
+  it('puts the accepted preferences into the draft, first', async () => {
+    const root = mount(learned);
+    await vi.waitFor(() =>
+      expect(root.querySelector<HTMLTextAreaElement>('#persona-text')?.value).toContain('How I like answers:'),
+    );
+    const draft = root.querySelector<HTMLTextAreaElement>('#persona-text')!.value;
+    expect(draft.startsWith('How I like answers:')).toBe(true);
+    expect(draft).toContain('- Keep answers short and to the point.');
+    expect(draft).toContain('- Answer me in Turkish.');
+  });
+
+  it('keeps out what the user unticks, without duplicating the draft', async () => {
+    const root = mount(learned);
+    await vi.waitFor(() => expect(root.querySelectorAll('.learned-toggle')).toHaveLength(2));
+
+    const turkish = root.querySelector<HTMLInputElement>('.learned-toggle[value="answerTurkish"]')!;
+    turkish.checked = false;
+    turkish.dispatchEvent(new Event('change'));
+
+    const draft = root.querySelector<HTMLTextAreaElement>('#persona-text')!.value;
+    expect(draft).not.toContain('Answer me in Turkish.');
+    expect(draft).toContain('Keep answers short');
+    expect(draft.match(/How I like answers:/g)).toHaveLength(1);
+  });
+
+  it('says how preferences appear when there are none yet', async () => {
+    const root = mount({ ...learned, preferences: [] });
+    await vi.waitFor(() =>
+      expect(root.querySelector('#persona-learned')?.textContent).toContain('Nothing repeated yet'),
+    );
+  });
+});

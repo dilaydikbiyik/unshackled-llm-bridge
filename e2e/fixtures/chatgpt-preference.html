@@ -1,0 +1,29 @@
+<!doctype html>
+<!-- Mirrors chatgpt.com conversation markup as verified live on 2026-10-23 (config v7):
+     turns are [data-content-search-unit-key] ending in :user or :assistant, and
+     data-message-author-role is gone entirely. -->
+<html lang="en">
+  <head><meta charset="utf-8" /><title>ChatGPT (fixture)</title></head>
+  <body>
+    <button aria-label="New chat">New chat</button>
+    <main>
+      <div data-content-search-unit-key="fallback-turn-0:0:user">
+        <div data-user-message-bubble="true">
+          <div class="text-size-chat whitespace-pre-wrap">Plan a trip to Kyoto in April, daha kısa yaz lütfen</div>
+        </div>
+      </div>
+      <div data-content-search-unit-key="fallback-turn-0:1:assistant">
+        <div class="group flex min-w-0 flex-col">
+          <div dir="auto" class="DilRenderer-tB76Jj DilResponseRoot-HfQrEh">
+            <p>Go for the <strong>cherry blossoms</strong> in early April.</p>
+            <pre><button>Copy</button><code class="language-js">const days = 5;</code></pre>
+          </div>
+          <button aria-label="Switch model">Switch model</button>
+        </div>
+      </div>
+      <form data-chatgpt-composer>
+        <div data-composer-markdown contenteditable="true" class="ProseMirror"></div>
+      </form>
+    </main>
+  </body>
+</html>

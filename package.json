@@ -1,11 +1,11 @@
 {
   "name": "unshackled-llm-bridge",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
   "type": "module",
   "description": "Privacy-first, local-only browser extension to fork, sync, and bridge AI conversations across ChatGPT, Claude, and Gemini.",
   "scripts": {
-    "build": "tsc --noEmit && vite build",
+    "build": "tsc --noEmit && vite build && node scripts/patch-manifest.mjs",
     "coverage": "vitest run --coverage",
     "dev": "vite",
     "e2e": "npm run build && playwright test",

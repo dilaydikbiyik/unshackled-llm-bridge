@@ -6,6 +6,32 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.1.0] — 2026-11-19
+
+### Added
+- **The extension learns how you like answers.** People correct assistants constantly — "shorter",
+  "in Turkish", "no bullet points", "just the code" — and every provider forgets it at the edge of
+  its own product. The extension reads only the user's own messages in the local archive, notices
+  instructions repeated across conversations (a single request is a request; repeated, it is a
+  preference), and proposes them for the profile with their evidence: how many conversations, on
+  how many platforms. Accepted ones travel with every fork. Turkish and English; contradictory
+  preferences resolve to the one asked for more often; nothing is added until the user keeps it.
+- An end-to-end test that adds a site through the panel and forks from it, on a page no adapter was
+  written for.
+
+### Fixed — sites a user added never worked
+- **The content script could not load on any site the user added.** It is built as a loader that
+  imports its module at runtime, and Chrome only allows that on origins the module is web-accessible
+  to — which the bundler set to the three built-in sites. On every added site, including local
+  models, Chrome refused the import with "Denying load of …" and the extension did nothing. The
+  build now opens those modules to the optional host patterns, and packaging refuses a manifest
+  where it does not. An earlier note in this changelog called the generic adapter "verified against
+  Ollama"; what was verified was its reading logic, loaded into the page by hand. The extension
+  itself had never run on such a site until this release.
+- **The fork handle never appeared on an added site.** It looked turns up with configured
+  selectors, of which an added site has none. It now asks the adapter, so the handle and the
+  package always agree on what the turns are.
+
 ### Fixed — Claude rebuilt its reply markup (2026-11-05)
 - **Every Claude answer was being dropped again.** Replies are no longer `.font-claude-response`
   but `[data-testid="assistant-message"]`. Checked on a live conversation: three user messages
@@ -536,7 +562,8 @@ Architecture hardening, following a critical review of 0.3.1.
 - ChatGPT and Claude adapters with DOM-fixture tests. Claude artifacts are marked in the
   transcript rather than silently dropped.
 
-[Unreleased]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.4.0...v1.0.0
 [0.4.0]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/dilaydikbiyik/unshackled-llm-bridge/compare/v0.3.0...v0.3.1
