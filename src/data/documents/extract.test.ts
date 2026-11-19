@@ -63,6 +63,18 @@ describe('pdf', () => {
     expect(doc!.lines.find((l) => l.text.startsWith('Second'))?.page).toBe(2);
   });
 
+  it('reads a PDF on a runtime without Promise.try (Chrome before 128, Node 22 in CI)', async () => {
+    const P = Promise as PromiseConstructor & { try?: unknown };
+    const original = P.try;
+    delete P.try;
+    try {
+      const doc = await extractDocument(samplePdf(), 'old.pdf', 'application/pdf');
+      expect(doc?.pageCount).toBe(2);
+    } finally {
+      if (original) P.try = original;
+    }
+  });
+
   it('comes back empty for a file that is not a PDF', async () => {
     expect(await extractDocument(buffer(strToU8('nope')), 'x.pdf', 'application/pdf')).toBeNull();
   });

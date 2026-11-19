@@ -170,3 +170,31 @@ test('a site the user adds: the extension actually runs on it', async ({ context
   await expect(preview).toHaveValue(/mutex and a semaphore/);
   await expect(preview).toHaveValue(/admits one holder at a time/);
 });
+
+test('portable memory: a saved profile travels with a fork only when ticked', async ({
+  context,
+  extensionId,
+}) => {
+  const panel = await context.newPage();
+  await panel.goto(panelUrl(extensionId));
+  await panel.locator('#persona-name').fill('İş');
+  await panel.locator('#persona-text').fill('Kısa ve maddeli cevap ver. Türkçe yaz.');
+  await panel.locator('#persona-save').click();
+  await expect(panel.locator('#persona-select option:checked')).toHaveText(/İş/);
+
+  const chat = await context.newPage();
+  await chat.goto('https://chatgpt.com/c/persona-1');
+  await chat.locator('[data-content-search-unit-key$=":assistant"]').hover();
+  await chat.locator('#ulb-fork-button-host #fork').click();
+
+  const dialog = chat.locator('#ulb-fork-dialog-host');
+  await dialog.locator('#delivery').selectOption('inline');
+  const preview = dialog.locator('#preview');
+  await expect(preview).toHaveValue(/Plan a trip to Kyoto/);
+  // Off by default: the profile is the user's to share, per transfer.
+  await expect(dialog.locator('#persona')).not.toBeChecked();
+  await expect(preview).not.toHaveValue(/Kısa ve maddeli/);
+
+  await dialog.locator('#persona').check();
+  await expect(preview).toHaveValue(/<about_me>\nKısa ve maddeli cevap ver\. Türkçe yaz\.\n<\/about_me>/);
+});

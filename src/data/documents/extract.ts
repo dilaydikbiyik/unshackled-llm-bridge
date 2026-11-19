@@ -175,6 +175,7 @@ interface TextItem {
  * runs it on this thread — slower, which for reading text once is fine.
  */
 async function pdfLines(bytes: ArrayBuffer): Promise<{ lines: DocumentLine[] | null; pageCount: number }> {
+  ensurePromiseTry();
   const pdfjs = await import('pdfjs-dist');
   const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs');
   (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = worker;
@@ -223,4 +224,20 @@ export function linesOfPage(items: TextItem[], page: number): DocumentLine[] {
   }
   flush();
   return lines;
+}
+
+/**
+ * pdf.js 5 calls `Promise.try`, which Chrome has had only since version 128
+ * (and Node since 22.10). On anything older, reading a PDF hung until it
+ * timed out. Defined only where it is missing, with the standard's meaning.
+ */
+function ensurePromiseTry(): void {
+  const P = Promise as PromiseConstructor & { try?: unknown };
+  if (typeof P.try === 'function') return;
+  Object.defineProperty(Promise, 'try', {
+    configurable: true,
+    writable: true,
+    value: <T>(fn: (...args: unknown[]) => T | PromiseLike<T>, ...args: unknown[]) =>
+      new Promise<T>((resolve) => resolve(fn(...args))),
+  });
 }

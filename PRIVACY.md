@@ -16,6 +16,7 @@ synced to another device and never uploaded.
 |---|---|---|
 | Conversation packages you transfer | Moving a conversation to another platform | `chrome.storage.session` — cleared when the browser closes |
 | Files you upload to a platform | Replaying them on another platform without re-uploading | IndexedDB |
+| Text read from your documents (PDF, Word, PowerPoint, Excel…) | Carrying the relevant parts of a document as text in a transfer | In memory while the fork dialog is open; never stored. A file you pick in the dialog is read and not kept |
 | Archived conversations | Cross-platform search, only if you turn archiving on | IndexedDB |
 | Your persona profile | Attaching your preferences to transfers | `chrome.storage.local` |
 | Your Anthropic API key, if you provide one | Summarizing long conversations on transfer | `chrome.storage.local` |

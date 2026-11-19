@@ -51,7 +51,12 @@ conversation across — the history, the files you uploaded, and the model that 
   say. Or send it as text, if you prefer.
 - **Drag a conversation out of the page** and drop it on another tab, another window, another
   browser, or an app — it arrives as an ordinary file.
-- **Your uploads travel too**, re-attached on the other side.
+- **Your uploads travel too**, re-attached on the other side — or, for PDF, Word, PowerPoint,
+  Excel, EPUB and text, carried as text: an outline with landmarks (§3 · p.4, slide 2) and only
+  the sections the conversation was about. Fewer tokens, and it reaches assistants that cannot
+  open the file. Pick or drop any document in the fork dialog; it never leaves your computer.
+- **Fork sits in each message's own action bar** on ChatGPT, Claude and Gemini, beside copy and ⋯.
+- **Long conversations are read whole**, even where the site keeps only the part on screen.
 - **Add any AI site**, including a local model running on your own machine. No selectors to write:
   the extension reads a chat page it has never seen by its shape.
 - **Compare answers** from several assistants and see where they part — which is where one of them
@@ -87,7 +92,12 @@ taşır: geçmişi, yüklediğin dosyaları ve cevabı üreten modeli.
   olarak da gönderebilirsin.
 - **Sohbeti sayfadan sürükleyip** başka bir sekmeye, pencereye, tarayıcıya ya da uygulamaya
   bırakabilirsin — karşıya sıradan bir dosya olarak gider.
-- **Yüklediğin dosyalar da gider**, karşı tarafta yeniden eklenir.
+- **Yüklediğin dosyalar da gider**, karşı tarafta yeniden eklenir — PDF, Word, PowerPoint, Excel,
+  EPUB ve metin dosyaları ise metin olarak gidebilir: yer işaretli ana hatlar (§3 · s.4, slayt 2) ve
+  yalnızca sohbetin ilgilendiği bölümler. Daha az token harcar, dosya açamayan asistanlara da ulaşır.
+  Fork penceresine istediğin belgeyi seç ya da sürükle; bilgisayarından çıkmaz.
+- **Fork, her mesajın kendi araç çubuğunda**: ChatGPT, Claude ve Gemini'de kopyala ve ⋯ yanında.
+- **Uzun sohbetler eksiksiz okunur**, site ekranda yalnızca bir kısmını tutsa bile.
 - **Her yapay zekâ sitesini ekleyebilirsin**, kendi makinende çalışan bir model dâhil. Seçici
   yazmaya gerek yok: eklenti hiç görmediği bir sohbet sayfasını şeklinden okur.
 - **Cevapları karşılaştır** ve nerede ayrıştıklarını gör — birinin yanıldığı yer orasıdır.
@@ -137,6 +147,10 @@ exposed; the trade-off (detectability on those patterns) is disclosed in `PRIVAC
 **No.** The extension fetches `config/selectors.json` from its public repository: a JSON file of CSS
 selector strings, validated on arrival and never executed. It cannot introduce behaviour; it only
 tells existing code which page elements to read. All executable code ships in the package.
+
+PDF reading uses pdf.js, bundled and loaded only when a document is read. It runs on the page's
+thread (no worker from a remote origin), uses neither `eval` nor `new Function`, and requests
+nothing; the URLs in it are XML namespaces.
 
 A reviewer grepping the bundle will find a few other hosts — `docs.expo.dev`, `tinyurl.com`,
 `platform.claude.com`, `docs.anthropic.com`. They are links inside error messages of bundled
