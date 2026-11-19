@@ -176,8 +176,12 @@ interface TextItem {
  */
 async function pdfLines(bytes: ArrayBuffer): Promise<{ lines: DocumentLine[] | null; pageCount: number }> {
   ensurePromiseTry();
-  const pdfjs = await import('pdfjs-dist');
-  const worker = await import('pdfjs-dist/build/pdf.worker.min.mjs');
+  // The legacy build: the modern one needs Map.getOrInsertComputed,
+  // Uint8Array.toHex and Math.sumPrecise, which only the newest Chrome has —
+  // on an older Chrome, or a Chromium that lags behind it, a PDF read as
+  // nothing.
+  const pdfjs = await import('pdfjs-dist/legacy/build/pdf.mjs');
+  const worker = await import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
   (globalThis as { pdfjsWorker?: unknown }).pdfjsWorker = worker;
 
   const task = pdfjs.getDocument({

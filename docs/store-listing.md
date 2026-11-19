@@ -148,9 +148,11 @@ exposed; the trade-off (detectability on those patterns) is disclosed in `PRIVAC
 selector strings, validated on arrival and never executed. It cannot introduce behaviour; it only
 tells existing code which page elements to read. All executable code ships in the package.
 
-PDF reading uses pdf.js, bundled and loaded only when a document is read. It runs on the page's
-thread (no worker from a remote origin), uses neither `eval` nor `new Function`, and requests
-nothing; the URLs in it are XML namespaces.
+PDF reading uses pdf.js (its legacy build, so older Chromium versions work), bundled and loaded
+only when a document is read. It runs on the page's thread (no worker from a remote origin) and
+requests nothing; the URLs in it are XML namespaces. A grep finds two `Function(` calls: both are
+core-js fallbacks — one for an engine without `globalThis`, one for Node's `require`, inside a
+`try` — and neither is reached in Chrome, where the extension's CSP would refuse them anyway.
 
 A reviewer grepping the bundle will find a few other hosts — `docs.expo.dev`, `tinyurl.com`,
 `platform.claude.com`, `docs.anthropic.com`. They are links inside error messages of bundled

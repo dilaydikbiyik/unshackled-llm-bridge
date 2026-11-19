@@ -20,8 +20,9 @@ All notable changes to this project are documented here. The format follows
   remains for sites and turns without a bar. Selector config v10 adds `turnActions`.
 
 ### Fixed
-- **Reading a PDF hung on Chrome before 128.** pdf.js 5 calls `Promise.try`; it is now provided
-  where the browser lacks it.
+- **Reading a PDF failed on any but the newest Chrome.** pdf.js 5's modern build needs
+  `Promise.try`, `Map.getOrInsertComputed`, `Uint8Array.toHex` and `Math.sumPrecise`; the legacy
+  build, which provides them, is used instead.
 - **Long Claude and Gemini conversations were forked short too.** Claude virtualizes like
   ChatGPT — an 18-message conversation kept 4 in the page — and is now read row by row from
   its own numbering. Gemini keeps turns but draws the earlier ones only at the top — 20 of 42

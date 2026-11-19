@@ -31,6 +31,10 @@ export default defineManifest({
   version: pkg.version,
   description: '__MSG_appDesc__',
   default_locale: 'tr',
+  // chrome.sidePanel.setPanelBehavior, which opens the panel from the toolbar
+  // button, arrived in Chrome 116. Older Chrome would install the extension
+  // and give it no way to open its own interface.
+  minimum_chrome_version: '116',
   permissions: ['storage', 'sidePanel', 'tabs', 'scripting'],
   host_permissions: PLATFORM_HOSTS,
   // Local model UIs speak http and live on a port; Chrome's patterns ignore
