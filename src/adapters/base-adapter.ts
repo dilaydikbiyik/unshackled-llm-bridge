@@ -35,6 +35,9 @@ export const SITUATIONAL_TARGETS: ReadonlySet<string> = new Set([
   // no conversation open, and reading falls back to the nearest scrolling
   // ancestor when it is missing.
   'scrollContainer',
+  // A turn's action bar appears only once its answer is complete, and a
+  // conversation can be open with none on screen.
+  'turnActions',
 ]);
 
 /**
@@ -148,6 +151,34 @@ export abstract class BaseAdapter implements PlatformAdapter {
 
   locateTurns(): Element[] {
     return resolveSelectorAll(document, this.selectors['messageContainer']);
+  }
+
+  /**
+   * A bar inside the turn, else the first one after it within the turn's own
+   * block. ChatGPT renders a reply's actions beside the reply, not inside it;
+   * the climb stops at the first ancestor that also holds another turn, so a
+   * reply never claims the next turn's bar.
+   */
+  locateActionBar(turn: Element): Element | null {
+    const bars = this.selectors['turnActions'];
+    if (!bars?.length) return null;
+    const inside = resolveSelectorAll(turn, bars);
+    if (inside.length > 0) return inside.at(-1) ?? null;
+
+    let scope = turn.parentElement;
+    for (let depth = 0; scope && depth < 5; depth += 1, scope = scope.parentElement) {
+      const others = this.locateTurnsIn(scope).filter((t) => t !== turn && !t.contains(turn) && !turn.contains(t));
+      if (others.length > 0) return null;
+      const after = resolveSelectorAll(scope, bars).find(
+        (bar) => (turn.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+      );
+      if (after) return after;
+    }
+    return null;
+  }
+
+  protected locateTurnsIn(root: ParentNode): Element[] {
+    return resolveSelectorAll(root, this.selectors['messageContainer']);
   }
 
   /**

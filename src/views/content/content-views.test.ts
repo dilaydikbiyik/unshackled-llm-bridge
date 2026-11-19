@@ -53,6 +53,40 @@ describe('fork dialog', () => {
     return { root, $, requests, onTransfer, close };
   }
 
+  describe('documents', () => {
+    const attachments = [
+      { id: 'pdf1', name: 'rapor.pdf', mime: 'application/pdf', size: 2048, conversationKey: 'k', capturedAt: '' },
+      { id: 'img1', name: 'foto.png', mime: 'image/png', size: 4096, conversationKey: 'k', capturedAt: '' },
+    ] as unknown as ForkDialogOptions['attachments'];
+
+    it('carries readable documents as text by default, and uploads only the rest', async () => {
+      const { $, requests, onTransfer } = open({ attachments, textDocumentIds: new Set(['pdf1']) });
+      await vi.waitFor(() => expect(requests.at(-1)?.documentIds).toEqual(['pdf1']));
+      expect($<HTMLSelectElement>('#documents').value).toBe('text');
+
+      $<HTMLButtonElement>('#transfer').click();
+      await vi.waitFor(() => expect(onTransfer).toHaveBeenCalled());
+      expect((onTransfer.mock.calls[0] as unknown as [{ attachmentIds: string[] }])[0].attachmentIds).toEqual(['img1']);
+    });
+
+    it('uploads the files again when the user picks that', async () => {
+      const { $, requests, onTransfer } = open({ attachments, textDocumentIds: new Set(['pdf1']) });
+      const select = $<HTMLSelectElement>('#documents');
+      select.value = 'file';
+      select.dispatchEvent(new Event('change'));
+      await vi.waitFor(() => expect(requests.at(-1)?.documentIds).toBeUndefined());
+
+      $<HTMLButtonElement>('#transfer').click();
+      await vi.waitFor(() => expect(onTransfer).toHaveBeenCalled());
+      expect((onTransfer.mock.calls[0] as unknown as [{ attachmentIds: string[] }])[0].attachmentIds).toEqual(['pdf1', 'img1']);
+    });
+
+    it('offers no choice when nothing can be read as text', () => {
+      const { root } = open({ attachments, textDocumentIds: new Set() });
+      expect(root.querySelector('#documents')).toBeNull();
+    });
+  });
+
   it('offers only the other platforms and previews the package for the first one', async () => {
     const { $, root } = open();
     expect([...root.querySelectorAll('#target option')].map((o) => o.getAttribute('value'))).toEqual(['claude', 'gemini']);

@@ -21,6 +21,16 @@ export interface ForkDialogOptions {
   conversation: BridgeConversation;
   settings: Settings;
   attachments: CapturedAttachmentMeta[];
+  /**
+   * The attachments that can travel as text. The controller decides — the
+   * view does not know which formats can be read.
+   */
+  textDocumentIds?: ReadonlySet<string>;
+  /**
+   * Reads documents the user picks or drops into the dialog, without their
+   * being uploaded to the conversation. They travel as text only.
+   */
+  addDocuments?: (files: File[]) => Promise<{ id: string; name: string; size: number }[]>;
   /** Injected by the controller — the view never builds packages itself. */
   buildPackage: TransferPackageBuilder;
   /** Precomputed by the controller so the view holds no sizing policy. */
@@ -80,6 +90,9 @@ const STYLES = html`<style>
   .warn { padding: 8px 10px; border-radius: 8px; font-size: 12px; background: #FAEEDA; color: #854F0B; }
   .err { background: #FCEBEB; color: #A32D2D; }
   .muted { opacity: 0.7; font-size: 12px; }
+  .add-doc { display: inline-flex; gap: 6px; align-items: center; cursor: pointer; font-size: 12px; font-weight: 500; }
+  .add-doc input { display: none; }
+  .panel.dropping { outline: 2px dashed #534ab7; outline-offset: -6px; }
   .row { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }
   button {
     font: inherit; padding: 7px 13px; border-radius: 8px; cursor: pointer;
@@ -129,6 +142,12 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
     mode: 'full' as TransferMode,
     includePersona: false,
     attachmentIds: attachments.map((a) => a.id),
+    // As text by default: an outline and the sections the conversation was
+    // about cost a fraction of the whole file, and reach targets that cannot
+    // open the file at all.
+    documentsAsText: (options.textDocumentIds?.size ?? 0) > 0,
+    /** Picked in the dialog: there is no stored file to upload, only text. */
+    pickedIds: [] as string[],
     text: '',
     contextFile: undefined as { name: string; text: string } | undefined,
   };
@@ -202,8 +221,28 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
                   <span>${a.name} <span class="muted">(${formatSize(a.size)})</span></span>
                 </label>`,
               )}
+              ${(options.textDocumentIds?.size ?? 0) > 0 &&
+              html`<div class="field" id="documents-field">
+                <label for="documents">${t(lang, 'forkDocuments')}</label>
+                <select id="documents">
+                  <option value="text">${t(lang, 'forkDocumentsText')}</option>
+                  <option value="file">${t(lang, 'forkDocumentsFile')}</option>
+                </select>
+                <span class="muted">${t(lang, 'forkDocumentsHint')}</span>
+              </div>`}
             </div>`}
           </div>
+
+          ${options.addDocuments &&
+          html`<div class="field">
+            <div id="picked"></div>
+            <label class="add-doc">
+              <input type="file" id="add-docs" multiple
+                accept=".pdf,.docx,.pptx,.xlsx,.odt,.odp,.ods,.epub,.rtf,.html,.htm,.ipynb,.txt,.md,.csv,.tsv,.json,text/*" />
+              <span>＋ ${t(lang, 'forkAddDocuments')}</span>
+            </label>
+            <span class="muted">${t(lang, 'forkAddDocumentsHint')}</span>
+          </div>`}
 
           <div class="field">
             <label for="preview">${t(lang, 'forkPreview')}</label>
@@ -246,6 +285,42 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
     $<HTMLSelectElement>('scope').value = state.scope;
   }
 
+  /** The chosen attachments that travel as text rather than as files. */
+  function documentIds(): string[] {
+    const stored = state.documentsAsText
+      ? state.attachmentIds.filter((id) => options.textDocumentIds?.has(id))
+      : [];
+    return [...stored, ...state.pickedIds];
+  }
+
+  /** Documents the user brings to the dialog itself, by picker or by drop. */
+  async function addPicked(files: File[]): Promise<void> {
+    if (!options.addDocuments || files.length === 0) return;
+    const added = await options.addDocuments(files);
+    const list = shadow.getElementById('picked');
+    for (const doc of added) {
+      state.pickedIds.push(doc.id);
+      const row = document.createElement('label');
+      row.className = 'check';
+      const box = document.createElement('input');
+      box.type = 'checkbox';
+      box.checked = true;
+      box.className = 'picked';
+      box.value = doc.id;
+      box.addEventListener('change', () => {
+        state.pickedIds = [...shadow.querySelectorAll<HTMLInputElement>('.picked')]
+          .filter((b) => b.checked)
+          .map((b) => b.value);
+        void rebuild();
+      });
+      const name = document.createElement('span');
+      name.textContent = `${doc.name} (${formatSize(doc.size)}) — ${t(lang, 'forkPickedAsText')}`;
+      row.append(box, name);
+      list?.append(row);
+    }
+    void rebuild();
+  }
+
   async function rebuild(): Promise<void> {
     refreshScopes();
     transferButton.disabled = true;
@@ -260,6 +335,7 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
       scope: state.scope,
       delivery: state.delivery,
       ...(state.includePersona && persona ? { personaText: persona.text } : {}),
+      ...(documentIds().length > 0 ? { documentIds: documentIds() } : {}),
     });
 
     state.text = built.text;
@@ -327,7 +403,38 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
       state.attachmentIds = [...shadow.querySelectorAll<HTMLInputElement>('.att')]
         .filter((b) => b.checked)
         .map((b) => b.value);
+      // Only a document carried as text changes the package; rebuilding for
+      // a plain file would throw away edits made in the preview.
+      if (state.documentsAsText && options.textDocumentIds?.has(box.value)) void rebuild();
     });
+  });
+  shadow.getElementById('add-docs')?.addEventListener('change', (event) => {
+    const input = event.target as HTMLInputElement;
+    void addPicked([...(input.files ?? [])]);
+    input.value = '';
+  });
+  // Dropped on the dialog, a file is for the dialog: kept from the page,
+  // which would otherwise upload it into the conversation.
+  const panel = shadow.querySelector<HTMLElement>('.panel');
+  if (panel && options.addDocuments) {
+    panel.addEventListener('dragover', (event) => {
+      if (!event.dataTransfer?.types.includes('Files')) return;
+      event.preventDefault();
+      event.stopPropagation();
+      panel.classList.add('dropping');
+    });
+    panel.addEventListener('dragleave', () => panel.classList.remove('dropping'));
+    panel.addEventListener('drop', (event) => {
+      if (!event.dataTransfer?.files.length) return;
+      event.preventDefault();
+      event.stopPropagation();
+      panel.classList.remove('dropping');
+      void addPicked([...event.dataTransfer.files]);
+    });
+  }
+  shadow.getElementById('documents')?.addEventListener('change', (event) => {
+    state.documentsAsText = (event.target as HTMLSelectElement).value === 'text';
+    void rebuild();
   });
   preview.addEventListener('input', () => {
     state.text = preview.value;
@@ -347,7 +454,8 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
       scope: state.scope,
       ...(state.returning && options.origin ? { returnUrl: options.origin.url } : {}),
       ...(state.contextFile ? { contextFile: state.contextFile } : {}),
-      attachmentIds: state.attachmentIds,
+      // A document carried as text is not uploaded as well.
+      attachmentIds: state.attachmentIds.filter((id) => !documentIds().includes(id)),
     });
   });
   /**

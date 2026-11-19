@@ -8,12 +8,15 @@ import { collectVirtualized, MAX_STEPS } from './virtualized';
  * turn has its own height, and the earliest turns only arrive after the top has
  * been reached once — loaded in a batch, the way an infinite scroll upward does.
  */
-function fakePage(heights: number[], options: { lazyTop?: boolean; window?: number } = {}) {
+function fakePage(heights: number[], options: { lazyTop?: boolean; window?: number; remeasure?: number } = {}) {
   const viewport = 800;
   const reach = options.window ?? 400;
   const tops: number[] = [];
-  heights.reduce((y, h, i) => ((tops[i] = y), y + h), 0);
-  const total = heights.reduce((a, b) => a + b, 0);
+  let total = 0;
+  const layout = () => {
+    total = heights.reduce((y, h, i) => ((tops[i] = y), y + h), 0);
+  };
+  layout();
   let loadedFrom = options.lazyTop ? Math.min(2, heights.length - 1) : 0;
   let scrollTop = Math.max(0, total - viewport);
   const scrolls: number[] = [];
@@ -23,10 +26,19 @@ function fakePage(heights: number[], options: { lazyTop?: boolean; window?: numb
       return scrollTop;
     },
     set scrollTop(value: number) {
+      // Reaching the top draws the first turn for real: its height had been an
+      // estimate, and everything below it moves by the difference.
+      if (value <= 0 && options.remeasure) {
+        heights[0] = heights[0]! + options.remeasure;
+        options.remeasure = 0;
+        layout();
+      }
       scrollTop = Math.max(0, Math.min(value, total - viewport));
       scrolls.push(scrollTop);
     },
-    scrollHeight: total,
+    get scrollHeight() {
+      return total;
+    },
     clientHeight: viewport,
   };
 
@@ -60,6 +72,7 @@ function fakePage(heights: number[], options: { lazyTop?: boolean; window?: numb
         const i = Number((el as HTMLElement).dataset['turn']);
         return tops[i]! + heights[i]!;
       },
+      topOf: (el: Element) => tops[Number((el as HTMLElement).dataset['turn'])]! - scrollTop,
       read: (el: Element) => `turn ${(el as HTMLElement).dataset['turn']!}`,
       sleep: async () => undefined,
     },
@@ -85,6 +98,20 @@ describe('collectVirtualized', () => {
     const before = fake.scrollTop;
     await collectVirtualized(fake.page);
     expect(fake.scrollTop).toBe(before);
+  });
+
+  it('puts the user back on the same turn when the page re-measures turns above it', async () => {
+    // Seen live: started at 11,874px, ended at 3,189 — a different answer on
+    // screen — because the page had re-estimated the heights of turns above.
+    const fake = fakePage([60, 3200, 80, 2400, 70, 4100], { remeasure: 3000 });
+    const onScreen = () => fake.page.present().find((el) => fake.page.bottomOf(el) - fake.scrollTop > 0)!;
+    const turn = (onScreen() as HTMLElement).dataset['turn'];
+    const top = fake.page.topOf(onScreen());
+
+    await collectVirtualized(fake.page);
+
+    const back = fake.page.present().find((el) => (el as HTMLElement).dataset['turn'] === turn)!;
+    expect(fake.page.topOf(back)).toBeCloseTo(top, 0);
   });
 
   it('puts the user back even if reading a turn fails part-way', async () => {

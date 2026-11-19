@@ -1,5 +1,5 @@
 {
-  "version": 9,
+  "version": 10,
   "minExtensionVersion": "0.0.1",
   "platforms": {
     "chatgpt": {
@@ -28,6 +28,9 @@
       ],
       "scrollContainer": [
         ".thread-scroll-container"
+      ],
+      "turnActions": [
+        ".turn-action-controls"
       ],
       "newChatButton": [
         "a[data-testid='create-new-chat-button']"
@@ -58,6 +61,9 @@
       ],
       "turnChrome": [
         "[data-cds='TurnStatus']",
+        "[data-testid='message-actions']"
+      ],
+      "turnActions": [
         "[data-testid='message-actions']"
       ],
       "artifactCell": [

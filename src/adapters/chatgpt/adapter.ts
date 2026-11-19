@@ -45,6 +45,7 @@ export class ChatGptAdapter extends BaseAdapter {
         compare: compareTurnKeys,
         bottomOf: (turn) =>
           turn.getBoundingClientRect().bottom - scroller.getBoundingClientRect().top + scroller.scrollTop,
+        topOf: (turn) => turn.getBoundingClientRect().top - scroller.getBoundingClientRect().top,
         read: (turn) => this.readTurn(turn),
       });
     } else {

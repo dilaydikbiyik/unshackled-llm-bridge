@@ -29,6 +29,11 @@ export interface ForkButtonOptions {
   prepareDrag?: () => Promise<DraggedConversation | null>;
   /** Tooltip telling the user the affordance can be dragged, not only clicked. */
   hint?: string;
+  /**
+   * True for a turn whose own action bar already carries the fork control;
+   * the floating handle stays out of its way.
+   */
+  hasNative?: (turn: Element) => boolean;
 }
 
 /**
@@ -159,6 +164,12 @@ export function mountForkButtons(options: ForkButtonOptions): () => void {
     const target = event.target as Node;
     const index = nodes.findIndex((node) => node === target || node.contains(target));
     if (index < 0) return;
+    if (options.hasNative?.(nodes[index]!)) {
+      button.style.display = 'none';
+      currentIndex = -1;
+      currentNode = null;
+      return;
+    }
 
     clearTimeout(hideTimer);
     if (index !== currentIndex) dragPayload = null;

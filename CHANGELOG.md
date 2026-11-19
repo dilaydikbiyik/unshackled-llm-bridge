@@ -6,6 +6,19 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+- **Documents travel as text, cut to what the conversation was about.** A PDF, Word,
+  PowerPoint, Excel, OpenDocument, EPUB, HTML, RTF, notebook or plain-text file goes as an
+  outline with landmarks (`§4 · Method · p.3–5`, `slide 2`, `sheet Budget`) plus the full
+  text of the sections the conversation touched, instead of being uploaded again. Sections
+  left out are still named, so the target can ask for one. Read on the user's machine —
+  pdf.js runs inside the extension, loaded only when a document is read.
+- **Add a document in the fork dialog.** Pick or drop a file there; it does not have to have
+  been uploaded to the chat, and it is never stored.
+- **Fork in the site's own message actions.** On ChatGPT the control sits in each prompt's and
+  each reply's action bar, after "⋯", styled like the site's own buttons. The floating handle
+  remains for sites and turns without a bar. Selector config v10 adds `turnActions`.
+
 ### Fixed
 - **Forking a long ChatGPT conversation carried only the part on screen.** ChatGPT keeps
   just the turns near the viewport in the page, so a twelve-turn chat forked as two and the
@@ -13,6 +26,9 @@ All notable changes to this project are documented here. The format follows
   reads every turn, and puts the page back where it was, with a notice while it does; the
   message you forked from keeps its place. Background watchers never scroll. Selector
   config v9 adds ChatGPT's scroll container.
+- **After reading a long conversation, the page came back somewhere else.** ChatGPT
+  re-estimates the height of turns it has not drawn, so restoring the old pixel offset
+  showed a different answer. The page now returns to the turn you were looking at.
 - **The fork handle covered the text it belonged to and sat on ChatGPT's header.** It now
   goes in the margin beside the message, below any pinned top bar, and follows the message
   as the conversation scrolls.

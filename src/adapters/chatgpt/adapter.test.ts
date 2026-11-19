@@ -317,3 +317,46 @@ describe('ChatGptAdapter.readConversation — a long, virtualized conversation',
     expect(conversation.messages).toHaveLength(2);
   });
 });
+
+/**
+ * ChatGPT's action bars as seen live (2026-11-20): a prompt's bar (copy,
+ * share, edit) is inside its turn; a reply's bar (copy, rate, read aloud,
+ * share, "⋯") is beside the reply, in the block that holds it.
+ */
+const ACTION_BARS = `
+<main>
+  <div class="stack">
+    <div data-content-search-unit-key="fallback-turn-0:0:user">
+      <div data-user-message-bubble="true">soru</div>
+      <div class="turn-action-controls" id="bar-user"><button aria-label="Mesajı kopyala">c</button></div>
+    </div>
+    <div class="group flex flex-col">
+      <div><div><div data-content-search-unit-key="fallback-turn-0:2:assistant">
+        <div class="DilResponseRoot-x"><p>cevap</p></div>
+      </div></div></div>
+      <div class="turn-action-controls" id="bar-answer"><button aria-label="Kopyala">c</button><button aria-label="Diğer işlemler" aria-haspopup="menu">⋯</button></div>
+    </div>
+    <div class="group flex flex-col">
+      <div data-content-search-unit-key="fallback-turn-1:2:assistant"><div class="DilResponseRoot-x"><p>yazılıyor</p></div></div>
+    </div>
+  </div>
+</main>`;
+
+describe('ChatGptAdapter.locateActionBar', () => {
+  beforeEach(() => {
+    document.body.innerHTML = ACTION_BARS;
+  });
+
+  it('finds a prompt’s bar inside it and a reply’s bar beside it', () => {
+    const adapter = new ChatGptAdapter(selectors);
+    const [user, answer] = adapter.locateTurns();
+    expect(adapter.locateActionBar(user!)?.id).toBe('bar-user');
+    expect(adapter.locateActionBar(answer!)?.id).toBe('bar-answer');
+  });
+
+  it('never gives a reply still being written the bar of another turn', () => {
+    const adapter = new ChatGptAdapter(selectors);
+    const streaming = adapter.locateTurns()[2]!;
+    expect(adapter.locateActionBar(streaming)).toBeNull();
+  });
+});

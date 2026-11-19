@@ -60,6 +60,13 @@ export interface PlatformAdapter {
    * the conversation, but the handle had nothing to attach to.
    */
   locateTurns(): Element[];
+  /**
+   * The site's own action bar for a turn — the row with copy, share and "⋯" —
+   * so the fork control can sit among them like one of the site's own.
+   * Null where the site has none or it cannot be found; the floating handle
+   * covers those.
+   */
+  locateActionBar(turn: Element): Element | null;
   getModelMode(): Promise<ModelMode>;
   openNewChat(): Promise<void>;
   observeMessages(onChange: () => void): Unsubscribe;

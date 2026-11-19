@@ -8,6 +8,7 @@ import type {
   TransferScope,
 } from '@domain/transfer';
 import {
+  estimateTokens,
   sliceTokens,
   sliceUpTo,
   SUMMARY_INPUT_BUDGET,
@@ -15,6 +16,11 @@ import {
   TRANSFER_TOKEN_BUDGET,
 } from '@domain/wrap/limits';
 import { continuationNote, wrapForTarget } from '@domain/wrap/templates';
+import {
+  prepareDocuments,
+  renderDocuments,
+  type ExtractedDocument,
+} from '@domain/documents/landmarks';
 import type { Lang } from '@shared/i18n';
 import { sendToBackground, type SummarizeResponse } from '@shared/messages';
 
@@ -37,6 +43,8 @@ export interface ForkContext {
   relayedThrough?: (target: PlatformId) => number | undefined;
   /** Injected so the build logic is testable without the extension runtime. */
   summarize?: Summarizer;
+  /** Reads uploaded documents as text; a document that has none is left out. */
+  loadDocuments?: (ids: string[]) => Promise<ExtractedDocument[]>;
 }
 
 /**
@@ -54,10 +62,14 @@ export function createTransferPackageBuilder(context: ForkContext): TransferPack
     scope,
     delivery,
     personaText,
+    documentIds,
   }: TransferRequest): Promise<TransferPackage> => {
     // Resolved per request: the dialog lets the user switch scope without the
     // controller rebuilding the builder.
     const slice = messagesInScope(conversation, cutIndex, scope, relayedThrough?.(target));
+    const documents = await documentsFor(documentIds, slice);
+    const withDocuments = (text: string) => (documents ? `${text}\n\n${documents}` : text);
+    const documentTokens = documents ? estimateTokens(documents) : 0;
     const base = {
       sourcePlatform: conversation.sourcePlatform,
       attachmentNames: conversation.attachments.map((a) => a.name),
@@ -72,12 +84,18 @@ export function createTransferPackageBuilder(context: ForkContext): TransferPack
       const transcript = forSummary.map((m) => `${m.role}: ${m.content}`).join('\n\n');
       const result = await summarize(transcript, language);
       if (result.ok) {
-        const text = wrapForTarget({ ...base, messages: [], summary: result.summary }, target);
+        const text = withDocuments(
+          wrapForTarget({ ...base, messages: [], summary: result.summary }, target),
+        );
         return { text, estimatedTokens: Math.ceil(text.length / 4) };
       }
       // Degrade to a full transfer rather than losing the fork entirely.
-      const text = wrapForTarget({ ...base, messages: slice }, target);
-      return { text, estimatedTokens: sliceTokens(slice), summaryError: result.error };
+      const text = withDocuments(wrapForTarget({ ...base, messages: slice }, target));
+      return {
+        text,
+        estimatedTokens: sliceTokens(slice) + documentTokens,
+        summaryError: result.error,
+      };
     }
 
     const prepared =
@@ -90,8 +108,8 @@ export function createTransferPackageBuilder(context: ForkContext): TransferPack
       trimmedCount: prepared.trimmedCount,
       truncatedCount: prepared.truncatedCount,
     };
-    const text = wrapForTarget(wrapped, target);
-    const estimatedTokens = sliceTokens(prepared.messages);
+    const text = withDocuments(wrapForTarget(wrapped, target));
+    const estimatedTokens = sliceTokens(prepared.messages) + documentTokens;
 
     if (delivery === 'attachment') {
       const name = contextFileName(conversation.sourcePlatform);
@@ -103,6 +121,21 @@ export function createTransferPackageBuilder(context: ForkContext): TransferPack
     }
     return { text, estimatedTokens };
   };
+
+  /**
+   * The documents, cut to what this part of the conversation is about. Read
+   * once per document and kept: the dialog rebuilds on every change.
+   */
+  async function documentsFor(
+    ids: string[] | undefined,
+    slice: ChatMessage[],
+  ): Promise<string | null> {
+    if (!ids?.length || !context.loadDocuments) return null;
+    const docs = await context.loadDocuments(ids);
+    if (docs.length === 0) return null;
+    const about = slice.map((m) => m.content).join('\n');
+    return renderDocuments(prepareDocuments(docs, about));
+  }
 }
 
 /** Stable, readable, and safe as a filename on every platform. */

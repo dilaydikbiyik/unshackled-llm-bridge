@@ -23,10 +23,14 @@ import { markRelayed, readRelayPoints } from './relay';
 import { loadRegisteredSites } from '@shared/sites';
 import { getSettings } from '@shared/settings';
 import { mountForkButtons } from '@views/content/fork-button';
+import { mountNativeForks } from '@views/content/native-fork';
 import type { DraggedConversation } from '@views/content/drag-out';
 import { openForkDialog } from '@views/content/fork-dialog';
 import { showToast } from '@views/content/toast';
 import { alignCutIndex } from '@domain/conversation/align';
+import type { ExtractedDocument } from '@domain/documents/landmarks';
+import { canExtractText, extractDocument } from '@data/documents/extract';
+import { base64ToBytes } from '@shared/base64';
 import type { BridgeConversation } from '@domain/conversation/schema';
 
 /**
@@ -91,14 +95,30 @@ function mountFork(
   adapter: PlatformAdapter,
   lang: Lang,
 ): () => void {
-  return mountForkButtons({
+  const onFork = (messageIndex: number) => void openDialogFor(adapter, messageIndex);
+  const prepareDrag = () => prepareConversationDrag(adapter);
+  // In the site's own action bar where it has one; floating everywhere else.
+  const native = mountNativeForks({
+    locateMessages: () => adapter.locateTurns(),
+    locateActionBar: (turn) => adapter.locateActionBar(turn),
+    onFork,
+    prepareDrag,
+    label: 'Fork',
+    hint: t(lang, 'forkHint'),
+  });
+  const floating = mountForkButtons({
     hint: t(lang, 'forkHint'),
     // Asked of the adapter: on a site the user added there are no configured
     // selectors, and only the generic adapter knows where its turns are.
     locateMessages: () => adapter.locateTurns(),
-    onFork: (messageIndex) => void openDialogFor(adapter, messageIndex),
-    prepareDrag: () => prepareConversationDrag(adapter),
+    onFork,
+    prepareDrag,
+    hasNative: native.has,
   });
+  return () => {
+    floating();
+    native.unmount();
+  };
 }
 
 /**
@@ -179,6 +199,7 @@ async function readForFork(
 async function openDialogFor(adapter: PlatformAdapter, pointed: number | 'last'): Promise<void> {
   const language = (await getSettings()).language;
   const { conversation, messageIndex } = await readForFork(adapter, pointed, language);
+  const documents = documentLoader();
   const [settings, attachments, origin, relayPoints] = await Promise.all([
     getSettings(),
     sendToBackground({
@@ -193,12 +214,17 @@ async function openDialogFor(adapter: PlatformAdapter, pointed: number | 'last')
     conversation,
     settings,
     attachments,
+    textDocumentIds: new Set(
+      attachments.filter((a) => canExtractText(a.name, a.mime)).map((a) => a.id),
+    ),
     buildPackage: createTransferPackageBuilder({
       conversation,
       cutIndex: messageIndex,
       language: settings.language,
       relayedThrough: (target) => relayPoints.get(target),
+      loadDocuments: documents.load,
     }),
+    addDocuments: documents.add,
     // The warning is sized for the default scope, the whole conversation.
     showLengthWarning: exceedsTransferBudget(conversation, messageIndex, 'whole'),
     ...(origin
@@ -423,3 +449,48 @@ async function waitUntilReady(adapter: PlatformAdapter, timeoutMs = 20_000): Pro
 }
 
 void main();
+
+/**
+ * Reads uploaded documents as text from the local sandbox, each once: the
+ * dialog rebuilds its package on every change, and a PDF is not re-parsed for
+ * each. Nothing leaves the machine.
+ */
+function documentLoader(): {
+  load: (ids: string[]) => Promise<ExtractedDocument[]>;
+  add: (files: File[]) => Promise<{ id: string; name: string; size: number }[]>;
+} {
+  const cache = new Map<string, Promise<ExtractedDocument | null>>();
+  let picked = 0;
+  const read = async (id: string): Promise<ExtractedDocument | null> => {
+    const payload = await sendToBackground({ type: 'attachment/get', id });
+    if (!payload) return null;
+    const bytes = base64ToBytes(payload.dataBase64).slice().buffer;
+    return extractDocument(bytes, payload.meta.name, payload.meta.mime).catch(() => null);
+  };
+  const load = async (ids: string[]): Promise<ExtractedDocument[]> => {
+    const docs = await Promise.all(
+      ids.map((id) => {
+        if (!cache.has(id)) cache.set(id, read(id));
+        return cache.get(id)!;
+      }),
+    );
+    return docs.filter((d): d is ExtractedDocument => d !== null);
+  };
+  // Picked in the dialog: read straight from the File, never stored.
+  const add = async (files: File[]) => {
+    const readable = files.filter((f) => canExtractText(f.name, f.type));
+    return readable.map((file) => {
+      picked += 1;
+      const id = `picked:${String(picked)}`;
+      cache.set(
+        id,
+        file
+          .arrayBuffer()
+          .then((bytes) => extractDocument(bytes, file.name, file.type))
+          .catch(() => null),
+      );
+      return { id, name: file.name, size: file.size };
+    });
+  };
+  return { load, add };
+}

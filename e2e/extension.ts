@@ -21,6 +21,7 @@ function pageFor(url: URL): string | null {
       if (url.pathname === '/') return 'chatgpt-new.html';
       // A user who keeps asking for shorter answers, for the learned-preference test.
       if (url.pathname.startsWith('/c/pref-')) return 'chatgpt-preference.html';
+      if (url.pathname.startsWith('/c/actions-')) return 'chatgpt-actions.html';
       // The store screenshots use a neutral page with the same structure: a
       // listing should not show another company's interface, and a picture of
       // a bare test fixture tells a user nothing.

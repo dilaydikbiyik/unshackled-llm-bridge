@@ -50,6 +50,11 @@ export interface TransferRequest {
   scope: TransferScope;
   delivery: TransferDelivery;
   personaText?: string;
+  /**
+   * Uploaded documents to carry as text — an outline with landmarks and the
+   * sections the conversation touched — instead of re-uploading the files.
+   */
+  documentIds?: string[];
 }
 
 /**

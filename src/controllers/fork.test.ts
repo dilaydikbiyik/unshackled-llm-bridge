@@ -335,3 +335,40 @@ describe('summary input is bounded', () => {
     expect(sent[0]).toContain('msg3');
   });
 })
+
+describe('transfer package builder — documents carried as text', () => {
+  const doc = {
+    name: 'rapor.pdf',
+    pageCount: 2,
+    lines: [
+      { text: 'Yöntem', page: 1, heading: true },
+      { text: 'Etiketleme üç sınıftan oluşur.', page: 1 },
+      { text: 'Sonuç', page: 2, heading: true },
+      { text: 'Uyum orta düzeydedir.', page: 2 },
+    ],
+  };
+
+  it('puts the documents into the context file, and counts their tokens', async () => {
+    const loadDocuments = vi.fn(async () => [doc]);
+    const build = createTransferPackageBuilder({ conversation: conversation(2), cutIndex: 1, language: 'en', loadDocuments });
+    const without = await build({ target: 'claude', mode: 'full', scope: 'whole', delivery: 'attachment' });
+    const withDocs = await build({ target: 'claude', mode: 'full', scope: 'whole', delivery: 'attachment', documentIds: ['a1'] });
+
+    expect(loadDocuments).toHaveBeenCalledWith(['a1']);
+    expect(withDocs.contextFile?.text).toContain('### rapor.pdf');
+    expect(withDocs.contextFile?.text).toContain('Etiketleme üç sınıftan oluşur.');
+    expect(withDocs.estimatedTokens).toBeGreaterThan(without.estimatedTokens);
+  });
+
+  it('puts them into the composer text when delivering inline', async () => {
+    const build = createTransferPackageBuilder({ conversation: conversation(2), cutIndex: 1, language: 'en', loadDocuments: async () => [doc] });
+    const result = await build({ target: 'gemini', mode: 'full', scope: 'whole', delivery: 'inline', documentIds: ['a1'] });
+    expect(result.text).toContain('## Documents from the conversation');
+  });
+
+  it('adds nothing when no document could be read', async () => {
+    const build = createTransferPackageBuilder({ conversation: conversation(2), cutIndex: 1, language: 'en', loadDocuments: async () => [] });
+    const result = await build({ target: 'gemini', mode: 'full', scope: 'whole', delivery: 'inline', documentIds: ['img'] });
+    expect(result.text).not.toContain('Documents');
+  });
+});

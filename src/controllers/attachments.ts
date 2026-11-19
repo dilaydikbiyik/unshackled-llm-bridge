@@ -34,6 +34,9 @@ export function mountAttachmentCapture(adapter: PlatformAdapter): () => void {
 
   const onDrop = (event: DragEvent) => {
     if (!event.isTrusted) return;
+    // A file dropped on the extension's own dialog is meant for the dialog,
+    // not as an upload to this conversation.
+    if (event.composedPath().some((node) => node instanceof Element && node.id.startsWith('ulb-'))) return;
     for (const file of event.dataTransfer?.files ?? []) void captureFile(adapter.platform, file);
   };
 

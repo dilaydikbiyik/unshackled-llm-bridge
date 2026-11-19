@@ -28,6 +28,13 @@ export interface VirtualizedPage<T> {
   compare: (a: string, b: string) => number;
   /** How far down the scroller a turn ends, in scroller coordinates. */
   bottomOf: (turn: Element) => number;
+  /**
+   * Where a turn starts relative to the top of the visible conversation. Used
+   * to put the user back by what they were looking at, not by a pixel offset:
+   * the page re-estimates the height of turns it has not drawn, so the same
+   * scrollTop shows a different part of the conversation after the walk.
+   */
+  topOf?: (turn: Element) => number;
   /** Reads a turn while it exists — it may not by the next step. */
   read: (turn: Element) => T;
   sleep?: (ms: number) => Promise<void>;
@@ -44,6 +51,7 @@ export async function collectVirtualized<T>(page: VirtualizedPage<T>): Promise<T
   const sleep = page.sleep ?? ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const { scroller } = page;
   const original = scroller.scrollTop;
+  const anchor = anchorOf(page);
   const read = new Map<string, T>();
 
   const harvest = (): number => {
@@ -93,7 +101,48 @@ export async function collectVirtualized<T>(page: VirtualizedPage<T>): Promise<T
     // The user's place in the conversation is theirs; it is put back whatever
     // happened during the walk.
     scroller.scrollTop = original;
+    if (anchor) await returnTo(page, anchor, sleep);
   }
 
   return [...read.entries()].sort(([a], [b]) => page.compare(a, b)).map(([, value]) => value);
+}
+
+interface Anchor {
+  key: string;
+  top: number;
+}
+
+/** The turn at the top of what the user is looking at, and where it sits. */
+function anchorOf<T>(page: VirtualizedPage<T>): Anchor | null {
+  const { topOf } = page;
+  if (!topOf) return null;
+  let best: Anchor | null = null;
+  for (const turn of page.present()) {
+    const top = topOf(turn);
+    const bottom = page.bottomOf(turn) - page.scroller.scrollTop;
+    // The first turn still on screen: its bottom is below the top edge.
+    if (bottom <= 0) continue;
+    if (!best || top < best.top) best = { key: page.keyOf(turn), top };
+  }
+  return best;
+}
+
+/**
+ * Brings the anchor turn back to where it was. The first jump lands near it;
+ * once the page has redrawn and re-measured, a correction or two puts it in
+ * place. If it is not drawn at all, the pixel position stands.
+ */
+async function returnTo<T>(
+  page: VirtualizedPage<T>,
+  anchor: Anchor,
+  sleep: (ms: number) => Promise<void>,
+): Promise<void> {
+  for (let attempt = 0; attempt < 4; attempt += 1) {
+    await sleep(SETTLE_MS);
+    const turn = page.present().find((candidate) => page.keyOf(candidate) === anchor.key);
+    if (!turn || !page.topOf) return;
+    const drift = page.topOf(turn) - anchor.top;
+    if (Math.abs(drift) < 2) return;
+    page.scroller.scrollTop += drift;
+  }
 }
