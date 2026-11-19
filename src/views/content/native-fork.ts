@@ -20,6 +20,9 @@ export const NATIVE_FORK_CLASS = 'ulb-native-fork';
 /** Attributes the site's buttons are styled by. Copied, never invented. */
 const STYLE_ATTRIBUTES = ['class', 'data-color', 'data-variant', 'data-size', 'data-icon-size', 'data-uniform'];
 
+/** Icons in message action bars are 16–20px; anything larger is not one. */
+const MAX_ICON_PX = 24;
+
 /** How often, at most, the page is re-decorated while it is changing. */
 const DECORATE_INTERVAL_MS = 300;
 
@@ -63,9 +66,14 @@ export function mountNativeForks(options: NativeForkOptions): NativeForks {
     button.setAttribute('aria-label', options.label);
     button.title = options.hint ?? options.label;
     button.draggable = true;
-    // The site's own icons are 16–20px and take their colour from the text.
-    const size = template?.querySelector('svg')?.getAttribute('width') ?? '16';
-    button.append(forkIcon(size));
+    // As large as the site's own icons, and in their colour (the text colour).
+    // The bar's main icon size: its largest icon, since a "⋯" or a menu
+    // trigger is often drawn smaller than the icons beside it (ChatGPT draws
+    // copy at 20px and "⋯" at 16px). Capped, so a stray large control in the
+    // bar cannot blow the icon up.
+    const siblings = [...bar.querySelectorAll('button')].filter((b) => !b.classList.contains(NATIVE_FORK_CLASS));
+    const sizes = siblings.map(iconSize).filter((s) => s <= MAX_ICON_PX);
+    button.append(forkIcon(String(sizes.length > 0 ? Math.max(...sizes) : iconSize(template))));
     if (!template) {
       button.style.cssText =
         'background:none;border:0;padding:4px;border-radius:6px;cursor:pointer;color:inherit;opacity:.75;display:inline-flex';
@@ -91,12 +99,16 @@ export function mountNativeForks(options: NativeForkOptions): NativeForks {
     while (item.parentElement && item.parentElement !== bar && item.parentElement.children.length === 1) {
       item = item.parentElement;
     }
+    // Each wrapper between that outermost one and the button, rebuilt around
+    // the fork button: Gemini nests its "⋯" two deep.
     let node: Element = button;
-    if (item !== last) {
-      const shell = document.createElement(item.tagName);
-      shell.className = item.className;
-      shell.append(button);
+    for (let wrapper = last.parentElement; wrapper && item !== last; wrapper = wrapper.parentElement) {
+      const shell = document.createElement(wrapper.tagName);
+      shell.className = wrapper.className;
+      shell.setAttribute('data-ulb-shell', '');
+      shell.append(node);
       node = shell;
+      if (wrapper === item) break;
     }
     item.after(node);
   }
@@ -154,12 +166,36 @@ export function mountNativeForks(options: NativeForkOptions): NativeForks {
       observer.disconnect();
       clearTimeout(timer);
       document.querySelectorAll(`.${NATIVE_FORK_CLASS}`).forEach((el) => {
-        const shell = el.parentElement;
-        el.remove();
-        if (shell && shell.childElementCount === 0 && shell.classList.length > 0) shell.remove();
+        // The button and the wrappers built for it, which hold nothing else.
+        let outer: Element = el;
+        while (outer.parentElement && outer.parentElement.childElementCount === 1 && outer.parentElement.hasAttribute('data-ulb-shell')) {
+          outer = outer.parentElement;
+        }
+        outer.remove();
       });
     },
   };
+}
+
+/**
+ * The size the site draws its icons at. Measured where possible: Claude sizes
+ * its icons in CSS and gives the SVG no width, so reading the attribute fell
+ * back to a default and the fork icon came out larger than its neighbours.
+ */
+function iconSize(template: Element | undefined): number {
+  if (!template) return 18;
+  const svg = template.querySelector('svg');
+  const drawn = svg?.getBoundingClientRect().width ?? 0;
+  if (drawn > 0) return Math.round(drawn);
+  const declared = Number(svg?.getAttribute('width'));
+  if (declared > 0) return declared;
+  // An icon drawn some other way (a mask, an icon font) is the largest box
+  // inside the button that is smaller than the button.
+  const outer = template.getBoundingClientRect().width;
+  const inner = [...template.querySelectorAll('*')]
+    .map((el) => el.getBoundingClientRect().width)
+    .filter((w) => w > 0 && w < outer);
+  return inner.length > 0 ? Math.round(Math.max(...inner)) : 18;
 }
 
 /** A branching arrow: one line splitting in two, drawn in the text colour. */
@@ -171,7 +207,8 @@ function forkIcon(size: string): SVGSVGElement {
   svg.setAttribute('viewBox', '0 0 24 24');
   svg.setAttribute('fill', 'none');
   svg.setAttribute('stroke', 'currentColor');
-  svg.setAttribute('stroke-width', '2');
+  // Thinner than the default 2: the sites' own line icons are drawn light.
+  svg.setAttribute('stroke-width', '1.75');
   svg.setAttribute('stroke-linecap', 'round');
   svg.setAttribute('stroke-linejoin', 'round');
   svg.setAttribute('aria-hidden', 'true');

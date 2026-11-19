@@ -39,3 +39,41 @@ test('brings Fork back when the site re-renders a reply’s bar', async ({ conte
   });
   await expect(page.locator('.ulb-native-fork')).toHaveCount(2);
 });
+
+test('Claude: Fork joins the reply’s actions and the prompt’s, and forks the whole chat', async ({ context }) => {
+  const page = await context.newPage();
+  await page.goto('https://claude.ai/chat/actions-1');
+  await expect(page.locator('.ulb-native-fork')).toHaveCount(2);
+  const reply = await page.locator("[data-testid='message-actions'] button").evaluateAll((b) =>
+    b.map((x) => x.getAttribute('aria-label')),
+  );
+  expect(reply).toEqual(['Copy', 'Retry', 'Fork']);
+  await expect(page.locator("[data-testid='user-message-actions'] .ulb-native-fork")).toHaveCount(1);
+
+  await page.locator("[data-testid='message-actions'] .ulb-native-fork").click();
+  const dialog = page.locator('#ulb-fork-dialog-host');
+  await expect(dialog.locator('#scope-whole')).toHaveText(/\(2\)/);
+  await dialog.locator('#delivery').selectOption('inline');
+  // The action bar is chrome: it must not leak into what is carried.
+  await expect(dialog.locator('#preview')).toHaveValue(/Postgres/);
+  await expect(dialog.locator('#preview')).not.toHaveValue(/Retry|Fork/);
+});
+
+test('Gemini: Fork joins both bars, wrapped like the site’s own buttons', async ({ context }) => {
+  const page = await context.newPage();
+  await page.goto('https://gemini.google.com/app/actions-1');
+  await expect(page.locator('.ulb-native-fork')).toHaveCount(2);
+  // After "⋯", in the same wrappers the "⋯" has.
+  const wrappers = await page.locator('message-actions .ulb-native-fork').evaluate((b) => [
+    b.parentElement?.tagName.toLowerCase(),
+    b.parentElement?.parentElement?.className,
+  ]);
+  expect(wrappers).toEqual(['gem-icon-button', 'more-menu-button-container']);
+  await expect(page.locator('user-query .luminous-actions-container .ulb-native-fork')).toHaveCount(1);
+
+  await page.locator('message-actions .ulb-native-fork').click();
+  const dialog = page.locator('#ulb-fork-dialog-host');
+  await expect(dialog.locator('#scope-whole')).toHaveText(/\(2\)/);
+  await dialog.locator('#delivery').selectOption('inline');
+  await expect(dialog.locator('#preview')).toHaveValue(/avgdl/);
+});

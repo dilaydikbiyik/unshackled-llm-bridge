@@ -28,9 +28,10 @@ function pageFor(url: URL): string | null {
       return process.env['ULB_SHOWCASE'] ? 'showcase.html' : 'chatgpt-conversation.html';
     case 'claude.ai':
       if (url.pathname === '/silent') return 'claude-silent.html';
+      if (url.pathname.startsWith('/chat/actions-')) return 'claude-actions.html';
       return url.pathname.startsWith('/chat/') ? 'claude-conversation.html' : 'claude-new.html';
     case 'gemini.google.com':
-      return 'gemini-new.html';
+      return url.pathname.startsWith('/app/actions-') ? 'gemini-actions.html' : 'gemini-new.html';
     default:
       return null;
   }

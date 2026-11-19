@@ -33,6 +33,36 @@ describe('fork in the site’s own action bar', () => {
     forks.unmount();
   });
 
+  it('takes the size the site actually draws its icons at, not only what the markup declares', () => {
+    document.body.innerHTML = `<div class="turn"><div class="bar"><button class="b"><span class="icon"></span></button></div></div>`;
+    const button = document.querySelector<HTMLElement>('.b')!;
+    button.getBoundingClientRect = () => ({ width: 24 }) as DOMRect;
+    document.querySelector<HTMLElement>('.icon')!.getBoundingClientRect = () => ({ width: 16 }) as DOMRect;
+    const forks = mountNativeForks({
+      locateMessages: () => [...document.querySelectorAll('.turn')],
+      locateActionBar: (turn) => turn.querySelector('.bar'),
+      onFork: () => undefined,
+      label: 'Fork',
+    });
+    expect(document.querySelector(`.${NATIVE_FORK_CLASS} svg`)?.getAttribute('width')).toBe('16');
+    forks.unmount();
+  });
+
+  it('matches the bar’s main icons, not a smaller "⋯"', () => {
+    document.body.innerHTML = `<div class="turn"><div class="bar"><button class="copy"><svg></svg></button><button class="more"><svg></svg></button></div></div>`;
+    const [copy, more] = [...document.querySelectorAll('svg')];
+    copy!.getBoundingClientRect = () => ({ width: 20 }) as DOMRect;
+    more!.getBoundingClientRect = () => ({ width: 16 }) as DOMRect;
+    const forks = mountNativeForks({
+      locateMessages: () => [...document.querySelectorAll('.turn')],
+      locateActionBar: (turn) => turn.querySelector('.bar'),
+      onFork: () => undefined,
+      label: 'Fork',
+    });
+    expect(document.querySelector(`.${NATIVE_FORK_CLASS} svg`)?.getAttribute('width')).toBe('20');
+    forks.unmount();
+  });
+
   it('is wrapped the way the site wraps its buttons', () => {
     const { forks } = page();
     const second = document.querySelector('#t1 .bar')!;

@@ -1,0 +1,22 @@
+<!doctype html>
+<!-- Mirrors gemini.google.com as verified live on 2026-11-20 (config v11): a prompt's
+     actions inside <user-query>, a reply's in <message-actions>, the history in an
+     <infinite-scroller>. -->
+<html lang="tr">
+  <head><meta charset="utf-8" /><title>Gemini actions (fixture)</title></head>
+  <body>
+    <infinite-scroller class="chat-history">
+      <div class="conversation-container" id="c1">
+        <user-query>
+          <span class="user-query-container"><p>avgdl nedir?</p></span>
+          <div class="luminous-actions-container"><gem-icon-button><button class="mat-icon-btn" aria-label="İstemi kopyala"><svg width="20" height="20"></svg></button></gem-icon-button><gem-icon-button><button class="mat-icon-btn" aria-label="Düzenle"><svg width="20" height="20"></svg></button></gem-icon-button></div>
+        </user-query>
+        <model-response>
+          <div class="markdown"><p>BM25'te <strong>avgdl</strong>, belgelerin ortalama uzunluğudur.</p></div>
+          <message-actions><div class="actions-container-v2"><gem-icon-button><button class="mat-icon-btn" aria-label="Kopyala"><svg width="20" height="20"></svg></button></gem-icon-button><div class="more-menu-button-container"><gem-icon-button><button class="mat-icon-btn" aria-label="Daha fazla seçenek göster"><svg width="20" height="20"></svg></button></gem-icon-button></div></div></message-actions>
+        </model-response>
+      </div>
+    </infinite-scroller>
+    <rich-textarea><div class="ql-editor" contenteditable="true"></div></rich-textarea>
+  </body>
+</html>

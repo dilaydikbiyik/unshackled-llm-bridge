@@ -1,0 +1,30 @@
+<!doctype html>
+<!-- Mirrors claude.ai as verified live on 2026-11-20 (config v11): each message in a
+     numbered transcript row; a reply's actions inside the reply, a prompt's actions
+     beside the prompt. -->
+<html lang="en">
+  <head><meta charset="utf-8" /><title>Claude actions (fixture)</title></head>
+  <body>
+    <main>
+      <div role="feed" aria-label="Chat messages">
+        <div data-testid="transcript-row" data-index="0">
+          <div role="article" aria-setsize="2" aria-posinset="1">
+            <div class="group/message-row">
+              <div data-testid="user-message"><p>Which database for a small SaaS?</p></div>
+              <div data-testid="user-message-actions" class="flex items-center"><button class="icon-btn" aria-label="Show message actions"><svg width="16" height="16"></svg></button></div>
+            </div>
+          </div>
+        </div>
+        <div data-testid="transcript-row" data-index="1">
+          <div role="article" aria-setsize="2" aria-posinset="2">
+            <div data-testid="assistant-message" data-is-streaming="false">
+              <p>Start with <em>Postgres</em>; it scales further than you will need.</p>
+              <div data-testid="message-actions"><button class="icon-btn" aria-label="Copy"><svg width="16" height="16"></svg></button><button class="icon-btn" aria-label="Retry"><svg width="16" height="16"></svg></button></div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <fieldset><div contenteditable="true" class="ProseMirror"></div></fieldset>
+    </main>
+  </body>
+</html>

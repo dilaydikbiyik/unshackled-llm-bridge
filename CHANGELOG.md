@@ -15,8 +15,9 @@ All notable changes to this project are documented here. The format follows
   pdf.js runs inside the extension, loaded only when a document is read.
 - **Add a document in the fork dialog.** Pick or drop a file there; it does not have to have
   been uploaded to the chat, and it is never stored.
-- **Fork in the site's own message actions.** On ChatGPT the control sits in each prompt's and
-  each reply's action bar, after "⋯", styled like the site's own buttons. The floating handle
+- **Fork in the site's own message actions.** On ChatGPT, Claude and Gemini the control sits in
+  each prompt's and each reply's action bar, after "⋯", in the same wrappers and with the
+  site's own button classes; its icon takes the size the site actually draws its icons at. The floating handle
   remains for sites and turns without a bar. Selector config v10 adds `turnActions`.
 
 ### Fixed
