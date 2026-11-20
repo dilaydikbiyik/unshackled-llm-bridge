@@ -8,16 +8,52 @@ artırır mı? Cevap, sonda istediğimiz dilde gelir.*
 
 - **Çince evrensel bir kazanç değil.** Çince metni az token'la yazan tokenizer'lar, Çince verilerle
   eğitilmiş modellerin tokenizer'ları (Qwen, DeepSeek). GPT'de İngilizce daha az token harcıyor.
-- **Türkçeden İngilizceye geçmek, ChatGPT/GPT tarafında yaklaşık %20 tasarruf sağlıyor.** Çinceye
-  geçmek GPT'de %16, Llama'da %14 tasarruf sağlıyor; yani İngilizce ya aynı ya daha iyi.
+- **Türkçeden İngilizceye geçmek, GPT'de yaklaşık %30 tasarruf sağlıyor.** Çinceye geçmek GPT'de
+  yalnızca %13, Llama'da %9 tasarruf sağlıyor. Bu, 1.012 cümlelik standart FLORES-200 derlemiyle
+  ölçüldü. İngilizce, DeepSeek dışındaki her tokenizer'da en ucuz dil.
 - **Doğruluk açısından İngilizce hâlâ en güvenli dil.** En güçlü modellerde Çince, İngilizcenin
   1–5 puan gerisinde. Çeviri ayrıca anlam kaybı riski ekliyor.
 - **Sonuç:** Eklentiye "Çinceye çevir" eklemek mantıklı değil. İsteğe bağlı bir
-  "İngilizce kompakt bağlam" mantıklı olabilir ama kazancı sınırlı (~%15–25) ve yalnızca
+  "İngilizce kompakt bağlam" mantıklı olabilir ama kazancı sınırlı (~%20–30) ve yalnızca
   *aktarılan geçmişe* uygulanmalı. Belgeleri ilgili bölümlerle taşımak (yapıldı) ya da özet modu
   çok daha büyük tasarruf sağlıyor.
 
-## Ölçüm
+## Ana ölçüm: FLORES-200 (1.012 cümle, 10 dil, 6 tokenizer)
+
+FLORES-200, dil adaletini ölçen çalışmaların standart paralel derlemi (Petrov ve ark. de bunu
+kullandı). Profesyonel çevirmenlerin çevirdiği aynı 1.012 cümle her dilde mevcut; konu olarak haber
+ve Vikipedi metinleri. Aşağıdaki tablo devtest bölümünü kullanıyor.
+
+**İngilizceye göre katsayı** (1,00 = İngilizce kadar; büyük sayı daha pahalı):
+
+| Tokenizer | EN | ZH | ES | FR | DE | **TR** | JA | KO | RU | AR |
+|---|---|---|---|---|---|---|---|---|---|---|
+| GPT-4o/5 (o200k) | 1,00 | 1,25 | 1,31 | 1,37 | 1,31 | **1,43** | 1,65 | 1,47 | 1,42 | 1,39 |
+| GPT-4 (cl100k) | 1,00 | 1,87 | 1,54 | 1,61 | 1,59 | **1,92** | 2,27 | 2,37 | 2,46 | 3,03 |
+| Qwen 2.5 | 1,00 | 1,00 | 1,52 | 1,58 | 1,56 | **1,62** | 1,40 | 1,63 | 1,75 | 1,63 |
+| Llama 3 | 1,00 | 1,28 | 1,54 | 1,60 | 1,58 | **1,40** | 1,51 | 1,49 | 1,62 | 1,65 |
+| Gemma 3 (≈ Gemini) | 1,00 | 1,08 | 1,30 | 1,41 | 1,33 | **1,37** | 1,21 | 1,37 | 1,37 | 1,47 |
+| DeepSeek V3 | 1,00 | 0,94 | 1,50 | 1,55 | 1,51 | **2,04** | 1,42 | 1,64 | 1,58 | 1,62 |
+
+**Türkçeden geçince kazanç** (eksi = tasarruf):
+
+| Tokenizer | → İngilizce | → Çince | → İspanyolca | → Japonca |
+|---|---|---|---|---|
+| GPT-4o/5 | **−%30** | −%13 | −%8 | +%16 |
+| Llama 3 | **−%29** | −%9 | +%10 | +%8 |
+| Gemma 3 (≈ Gemini) | **−%27** | −%21 | −%5 | −%11 |
+| Qwen 2.5 | −%38 | −%38 | −%6 | −%14 |
+| DeepSeek V3 | −%51 | **−%54** | −%27 | −%30 |
+
+**Nasıl okunmalı:**
+- İngilizce her tokenizer'da en ucuz ya da en ucuza çok yakın. Çince yalnızca Çin modellerinde
+  İngilizceyle başa baş.
+- Türkçe GPT'de İngilizcenin 1,43 katı, DeepSeek'te 2,04 katı. Türkçenin en pahalı olduğu yer
+  DeepSeek'in tokenizer'ı.
+- Japonca ve Korece, Türkçeden ucuz değil.
+- Haber metniyle yapılan bu ölçüm, sohbet metniyle yaptığım küçük ölçümle aynı yönde (aşağıda).
+
+## Ek ölçüm: sohbet metni
 
 **Yöntem.** Dört metin hazırladım: bir hakem modeli açıklaması, bir React hata sorusu, bir gezi
 planı isteği ve bir yöntem özeti. Toplam yaklaşık 2.000 Türkçe karakter. Bunları 9 dile çevirdim ve
@@ -81,6 +117,9 @@ literatür bulgularıyla aynı yönde (aşağıda).
 
 ## Eklenti için öneri
 
+> **Uygulandı (20 Kasım 2026):** "Kompakt bağlam" seçeneği ve dile duyarlı token tahmini eklendi.
+> Ayrıntılar aşağıda ve CHANGELOG'da.
+
 1. **"Çinceye çevir" yapılmasın.** Kullandığın platformlarda kazanç ya yok ya İngilizceden küçük;
    doğruluk da düşüyor.
 2. **İsteğe bağlı "Kompakt bağlam (İngilizce)" yapılabilir:**
@@ -88,16 +127,27 @@ literatür bulgularıyla aynı yönde (aşağıda).
      sayılar olduğu gibi kalır.
    - Çeviri Chrome'un cihaz içi çeviri API'siyle yapılır, internete hiçbir şey gitmez.
    - Pakete "Bana Türkçe cevap ver" talimatı eklenir.
-   - Kazanç GPT'de ~%20, yerel DeepSeek'te ~%45.
+   - Kazanç GPT'de %20–30, yerel DeepSeek'te %45–50.
    - Varsayılan kapalı olmalı ve yanında "çeviri anlam kaybına yol açabilir" uyarısı bulunmalı.
 3. **Daha büyük kazanç başka yerde:** belgeleri ana hatlar + ilgili bölümlerle taşımak (eklendi),
    kırpma ve özet modları. Bunlar %50–90 tasarruf sağlayabiliyor; dil değiştirmek en iyi durumda
-   ~%25.
+   ~%30.
 4. **Cevap token'ları:** Cevabı Türkçe istediğin sürece modelin ürettiği metin Türkçe kalır. Çeviri
    yalnızca girdiyi küçültür; uzun cevaplarda toplam tasarruf daha da azdır.
 
+## Token tahmini
+
+Paket boyutunu gösteren tahmin eskiden "karakter ÷ 4" idi. FLORES-200'de o200k ile karşılaştırınca
+İngilizceyi %23 fazla, Türkçeyi %11 eksik, Çince/Japonca/Korece'yi %58–67 eksik saydığı görüldü;
+yani diyalog Türkçe bir sohbeti İngilizce çevirisinden *küçük* gösteriyordu. Yeni tahmin kelime
+sayısı, ASCII harf, ASCII dışı Latin harf (ğ, ş, é), Kiril, Arap, CJK karakterleri, noktalama ve
+noktalama dizileri üzerinden en küçük kareler ile kuruldu (FLORES-200 devtest, 10 dil, bu projenin
+kodu). Görülmemiş veride sapma: FLORES dev'de her dilde ±%5 (İngilizce +%3,6, Türkçe −%3,0),
+sohbet metninde Türkçe −%1,6, İngilizce +%1,8, kodda +%2–15.
+
 ## Kaynaklar
 
+- FLORES-200 paralel derlemi (NLLB Team, Meta) — https://github.com/facebookresearch/flores/tree/main/flores200
 - Petrov ve ark., *Language Model Tokenizers Introduce Unfairness Between Languages*, NeurIPS 2023 —
   https://proceedings.neurips.cc/paper_files/paper/2023/hash/74bb24dca8334adce292883b4b651eda-Abstract.html
   (ölçüm aracı: https://github.com/AleksandarPetrov/tokenization-fairness)

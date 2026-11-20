@@ -13,7 +13,34 @@ function messages(count: number, size: number): ChatMessage[] {
 
 describe('transfer length guard', () => {
   it('scales the estimate with text length', () => {
-    expect(estimateTokens('x'.repeat(400))).toBe(100);
+    expect(estimateTokens('word '.repeat(200))).toBeGreaterThan(estimateTokens('word '.repeat(100)) * 1.9);
+  });
+
+  // Measured with o200k: a Turkish paragraph and its English translation are
+  // 87 and 71 tokens; the Chinese 77. Characters ÷ 4 had them at 83, 88 and 27.
+  const turkish =
+    'Hakem modelin her cevaba puan verecek ve gerekçesini açıklayacak. Ama burada önemli bir nokta var: hakemin verdiği puanın doğru olduğunu varsayamayız. Bu yüzden aynı cevapları insan olarak sen de değerlendirmelisin. Pilot sonunda özellikle şu soruyu cevapla: Bir iddiayı üç sınıftan birine tutarlı biçimde yerleştirebiliyor musun?';
+  const english =
+    "The judge model will score each answer and explain its reasoning. But there is an important point here: we cannot assume the judge's score is correct. That is why you should also evaluate the same answers yourself as a human. At the end of the pilot, answer this question in particular: can you consistently place a claim into one of the three classes?";
+  const chinese =
+    '评审模型将为每个回答打分并解释理由。但这里有一个重要的问题:我们不能假设评审给出的分数是正确的。因此,你也应该以人的身份评估同样的回答。在试点结束时,请特别回答这个问题:你能否始终如一地将一个论断归入三个类别之一?';
+
+  it('counts Turkish as costlier than its English translation, as tokenizers do', () => {
+    expect(estimateTokens(turkish)).toBeGreaterThan(estimateTokens(english));
+  });
+
+  it('lands within 15% of the real count for Turkish, English and Chinese', () => {
+    for (const [text, real] of [
+      [turkish, 87],
+      [english, 71],
+      [chinese, 77],
+    ] as const) {
+      expect(Math.abs(estimateTokens(text) - real) / real).toBeLessThan(0.15);
+    }
+  });
+
+  it('counts a run of punctuation as about one token, not one per character', () => {
+    expect(estimateTokens('});')).toBeLessThanOrEqual(2);
   });
 
   it('leaves a slice untouched when it already fits', () => {

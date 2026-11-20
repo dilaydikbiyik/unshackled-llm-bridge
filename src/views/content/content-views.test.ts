@@ -53,6 +53,44 @@ describe('fork dialog', () => {
     return { root, $, requests, onTransfer, close };
   }
 
+  describe('compact context', () => {
+    it('is not offered unless the controller offers it', () => {
+      const { root } = open();
+      expect(root.querySelector('#compact')).toBeNull();
+    });
+
+    it('is off by default, asks for compact when ticked, and shows the saving', async () => {
+      const requests: TransferRequest[] = [];
+      const { $ } = open({
+        compact: { languageLabel: 'Türkçe' },
+        buildPackage: async (request) => {
+          requests.push(request);
+          return request.compact
+            ? { text: 'compact', estimatedTokens: 700, uncompactedTokens: 1000 }
+            : { text: 'full', estimatedTokens: 1000 };
+        },
+      });
+      expect($<HTMLInputElement>('#compact').checked).toBe(false);
+      const box = $<HTMLInputElement>('#compact');
+      box.checked = true;
+      box.dispatchEvent(new Event('change'));
+      await vi.waitFor(() => expect(requests.at(-1)?.compact).toBe(true));
+      await vi.waitFor(() => expect($('#tokens').textContent).toMatch(/700.*1,000.*30/));
+    });
+
+    it('says so when the translation could not be made', async () => {
+      const { $ } = open({
+        compact: { languageLabel: 'Türkçe' },
+        buildPackage: async (request) =>
+          request.compact ? { text: 'full', estimatedTokens: 1000, compactFailed: true } : { text: 'full', estimatedTokens: 1000 },
+      });
+      const box = $<HTMLInputElement>('#compact');
+      box.checked = true;
+      box.dispatchEvent(new Event('change'));
+      await vi.waitFor(() => expect($('#notice').querySelector('.err')).not.toBeNull());
+    });
+  });
+
   describe('documents', () => {
     const attachments = [
       { id: 'pdf1', name: 'rapor.pdf', mime: 'application/pdf', size: 2048, conversationKey: 'k', capturedAt: '' },

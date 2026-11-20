@@ -31,6 +31,12 @@ export interface ForkDialogOptions {
    * being uploaded to the conversation. They travel as text only.
    */
   addDocuments?: (files: File[]) => Promise<{ id: string; name: string; size: number }[]>;
+  /**
+   * Offered when the conversation is in a language other than English and the
+   * browser can translate it on the device: the conversation's language, as
+   * a name to show.
+   */
+  compact?: { languageLabel: string };
   /** Injected by the controller — the view never builds packages itself. */
   buildPackage: TransferPackageBuilder;
   /** Precomputed by the controller so the view holds no sizing policy. */
@@ -148,6 +154,8 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
     documentsAsText: (options.textDocumentIds?.size ?? 0) > 0,
     /** Picked in the dialog: there is no stored file to upload, only text. */
     pickedIds: [] as string[],
+    // Off by default: translation can lose nuance, so it is the user's call.
+    compact: false,
     text: '',
     contextFile: undefined as { name: string; text: string } | undefined,
   };
@@ -207,6 +215,14 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
           <div id="notice"></div>
 
           <div class="checks">
+            ${options.compact &&
+            html`<label class="check">
+              <input type="checkbox" id="compact" />
+              <span>
+                ${t(lang, 'forkCompact')}
+                <span class="muted">— ${t(lang, 'forkCompactHint').replace('{lang}', options.compact.languageLabel)}</span>
+              </span>
+            </label>`}
             ${persona &&
             html`<label class="check">
               <input type="checkbox" id="persona" />
@@ -326,7 +342,9 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
     transferButton.disabled = true;
     setHtml(
       notice,
-      html`${state.mode === 'summary' && html`<div class="warn">${t(lang, 'forkSummaryLoading')}</div>`}`,
+      html`${state.mode === 'summary' && html`<div class="warn">${t(lang, 'forkSummaryLoading')}</div>`}${
+        state.compact && state.mode !== 'summary' && html`<div class="warn">${t(lang, 'forkCompactLoading')}</div>`
+      }`,
     );
 
     const built = await options.buildPackage({
@@ -336,12 +354,18 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
       delivery: state.delivery,
       ...(state.includePersona && persona ? { personaText: persona.text } : {}),
       ...(documentIds().length > 0 ? { documentIds: documentIds() } : {}),
+      ...(state.compact ? { compact: true } : {}),
     });
 
     state.text = built.text;
     state.contextFile = built.contextFile;
     preview.value = built.text;
-    tokens.textContent = `~${built.estimatedTokens.toLocaleString()} tokens`;
+    tokens.textContent =
+      built.uncompactedTokens && built.uncompactedTokens > built.estimatedTokens
+        ? `~${built.estimatedTokens.toLocaleString()} tokens (${t(lang, 'forkCompactSaved')
+            .replace('{before}', built.uncompactedTokens.toLocaleString())
+            .replace('{percent}', String(Math.round(100 * (1 - built.estimatedTokens / built.uncompactedTokens))))})`
+        : `~${built.estimatedTokens.toLocaleString()} tokens`;
     // The composer shows one sentence, so say where the rest of it went.
     $('delivery-hint').textContent = built.contextFile
       ? t(lang, 'forkDeliveryFile').replace(
@@ -353,6 +377,9 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
     const notes: SafeHtml[] = [];
     if (built.summaryError) {
       notes.push(html`<div class="warn err">${t(lang, 'forkSummaryError')}</div>`);
+    }
+    if (built.compactFailed) {
+      notes.push(html`<div class="warn err">${t(lang, 'forkCompactFailed')}</div>`);
     }
     if (state.mode === 'full' && options.showLengthWarning) {
       notes.push(html`<div class="warn">${t(lang, 'forkLengthWarning')}</div>`);
@@ -392,6 +419,10 @@ export function openForkDialog(options: ForkDialogOptions): () => void {
   });
   $<HTMLSelectElement>('mode').addEventListener('change', (event) => {
     state.mode = (event.target as HTMLSelectElement).value as TransferMode;
+    void rebuild();
+  });
+  shadow.getElementById('compact')?.addEventListener('change', (event) => {
+    state.compact = (event.target as HTMLInputElement).checked;
     void rebuild();
   });
   shadow.getElementById('persona')?.addEventListener('change', (event) => {

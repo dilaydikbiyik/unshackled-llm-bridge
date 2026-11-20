@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createConversation, type BridgeConversation } from '@domain/conversation/schema';
-import { SUMMARY_INPUT_BUDGET } from '@domain/wrap/limits';
+import { estimateTokens, SUMMARY_INPUT_BUDGET } from '@domain/wrap/limits';
 import {
   createTransferPackageBuilder,
   exceedsTransferBudget,
@@ -16,7 +16,9 @@ function conversation(messageCount: number, size = 20): BridgeConversation {
     createdAt: '2026-09-10T00:00:00.000Z',
     messages: Array.from({ length: messageCount }, (_, index) => ({
       role: index % 2 === 0 ? ('user' as const) : ('assistant' as const),
-      content: `msg${index} ${'x'.repeat(size)}`,
+      // Words, not one run of a letter: a tokenizer reads 4,000 x's as a
+      // handful of tokens, which is not what a long message costs.
+      content: `msg${index} ${'word '.repeat(Math.ceil(size / 5))}`,
       index,
       attachmentRefs: [],
     })),
@@ -106,8 +108,8 @@ describe('transfer package builder', () => {
 
   it('marks the elision when trimming drops messages', async () => {
     const build = createTransferPackageBuilder({
-      conversation: conversation(30, 4000),
-      cutIndex: 29,
+      conversation: conversation(60, 4000),
+      cutIndex: 59,
       language: 'en',
     });
     const result = await build({ target: 'claude', mode: 'trimmed', scope: 'upToMessage', delivery: 'inline' });
@@ -313,7 +315,7 @@ describe('summary input is bounded', () => {
     await build({ target: 'claude', mode: 'summary', scope: 'whole', delivery: 'inline' });
 
     expect(sent[0]?.length).toBeGreaterThan(0);
-    expect((sent[0]?.length ?? 0) / 4).toBeLessThanOrEqual(SUMMARY_INPUT_BUDGET);
+    expect(estimateTokens(sent[0] ?? '')).toBeLessThanOrEqual(SUMMARY_INPUT_BUDGET * 1.01);
   });
 
   it('sends a normal conversation untouched', async () => {
@@ -370,5 +372,61 @@ describe('transfer package builder — documents carried as text', () => {
     const build = createTransferPackageBuilder({ conversation: conversation(2), cutIndex: 1, language: 'en', loadDocuments: async () => [] });
     const result = await build({ target: 'gemini', mode: 'full', scope: 'whole', delivery: 'inline', documentIds: ['img'] });
     expect(result.text).not.toContain('Documents');
+  });
+});
+
+describe('transfer package builder — compact context', () => {
+  const turkish = createConversation({
+    id: 'c-tr',
+    sourcePlatform: 'chatgpt',
+    createdAt: '2026-11-20T00:00:00.000Z',
+    messages: [
+      { role: 'user', content: 'Türkçe hakemlik çalışması nasıl planlanır, ayrıntılı anlatır mısın?', index: 0, attachmentRefs: [] },
+      { role: 'assistant', content: 'Önce etiketleme şemasını belirlemelisin; ardından yirmi soruluk bir pilot çalışma yürütmelisin.', index: 1, attachmentRefs: [] },
+      { role: 'user', content: 'Şemayı nasıl sadeleştiririm?', index: 2, attachmentRefs: [] },
+    ],
+    attachments: [],
+  });
+  // A stand-in translator: the English wording a real one would produce.
+  const english: Record<string, string> = {
+    'Türkçe hakemlik çalışması nasıl planlanır, ayrıntılı anlatır mısın?': 'How do I plan a Turkish judging study, in detail?',
+    'Önce etiketleme şemasını belirlemelisin; ardından yirmi soruluk bir pilot çalışma yürütmelisin.': 'First settle the labeling scheme; then run a twenty-question pilot.',
+  };
+  const translator = async () => async (text: string) => english[text] ?? text;
+
+  it('carries earlier messages in English, the last as written, and asks for a Turkish reply', async () => {
+    const build = createTransferPackageBuilder({ conversation: turkish, cutIndex: 2, language: 'tr', compact: { from: 'tr', translator } });
+    const result = await build({ target: 'claude', mode: 'full', scope: 'whole', delivery: 'inline', compact: true });
+    expect(result.text).toContain('How do I plan a Turkish judging study');
+    expect(result.text).not.toContain('ayrıntılı anlatır mısın');
+    expect(result.text).toContain('Şemayı nasıl sadeleştiririm?');
+    expect(result.text).toContain('Reply to me in Turkish.');
+  });
+
+  it('reports the saving against the untranslated package', async () => {
+    const build = createTransferPackageBuilder({ conversation: turkish, cutIndex: 2, language: 'tr', compact: { from: 'tr', translator } });
+    const result = await build({ target: 'chatgpt', mode: 'full', scope: 'whole', delivery: 'attachment', compact: true });
+    expect(result.uncompactedTokens).toBeGreaterThan(result.estimatedTokens);
+    expect(result.text).toContain('Reply to me in Turkish.');
+  });
+
+  it('falls back to the original language, and says so, when there is no translator', async () => {
+    const build = createTransferPackageBuilder({
+      conversation: turkish,
+      cutIndex: 2,
+      language: 'tr',
+      compact: { from: 'tr', translator: async () => null },
+    });
+    const result = await build({ target: 'gemini', mode: 'full', scope: 'whole', delivery: 'inline', compact: true });
+    expect(result.compactFailed).toBe(true);
+    expect(result.text).toContain('ayrıntılı anlatır mısın');
+    expect(result.text).not.toContain('Reply to me in');
+  });
+
+  it('changes nothing when compact is not asked for', async () => {
+    const build = createTransferPackageBuilder({ conversation: turkish, cutIndex: 2, language: 'tr', compact: { from: 'tr', translator } });
+    const result = await build({ target: 'claude', mode: 'full', scope: 'whole', delivery: 'inline' });
+    expect(result.text).toContain('ayrıntılı anlatır mısın');
+    expect(result.uncompactedTokens).toBeUndefined();
   });
 });

@@ -17,6 +17,10 @@ export interface TransferPackage {
   contextFile?: { name: string; text: string };
   /** Set when summarization was requested but failed; the view shows a notice. */
   summaryError?: string;
+  /** Set when compact context was asked for but could not be translated. */
+  compactFailed?: boolean;
+  /** With compact context: what the same package costs untranslated. */
+  uncompactedTokens?: number;
 }
 
 /**
@@ -55,6 +59,11 @@ export interface TransferRequest {
    * sections the conversation touched — instead of re-uploading the files.
    */
   documentIds?: string[];
+  /**
+   * Earlier messages carried in English, the reply asked for in the user's
+   * language: about 30% fewer tokens for a Turkish conversation on GPT.
+   */
+  compact?: boolean;
 }
 
 /**

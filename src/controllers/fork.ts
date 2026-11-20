@@ -16,6 +16,7 @@ import {
   TRANSFER_TOKEN_BUDGET,
 } from '@domain/wrap/limits';
 import { continuationNote, wrapForTarget } from '@domain/wrap/templates';
+import { compactMessages, translationNote } from '@domain/language/compact';
 import {
   prepareDocuments,
   renderDocuments,
@@ -43,6 +44,15 @@ export interface ForkContext {
   relayedThrough?: (target: PlatformId) => number | undefined;
   /** Injected so the build logic is testable without the extension runtime. */
   summarize?: Summarizer;
+  /**
+   * Compact context: the conversation's language, and a way to get a
+   * translator to English for it — created on first use, since creating one
+   * may download a model and Chrome allows that only after a user gesture.
+   */
+  compact?: {
+    from: string;
+    translator: () => Promise<((text: string) => Promise<string>) | null>;
+  };
   /** Reads uploaded documents as text; a document that has none is left out. */
   loadDocuments?: (ids: string[]) => Promise<ExtractedDocument[]>;
 }
@@ -63,10 +73,15 @@ export function createTransferPackageBuilder(context: ForkContext): TransferPack
     delivery,
     personaText,
     documentIds,
+    compact,
   }: TransferRequest): Promise<TransferPackage> => {
     // Resolved per request: the dialog lets the user switch scope without the
     // controller rebuilding the builder.
-    const slice = messagesInScope(conversation, cutIndex, scope, relayedThrough?.(target));
+    const original = messagesInScope(conversation, cutIndex, scope, relayedThrough?.(target));
+    // Translated before trimming, so the budget is measured on what is sent.
+    // A summary is written fresh, so there is nothing to translate there.
+    const compacted = compact && mode !== 'summary' ? await compactSlice(original) : null;
+    const slice = compacted ?? original;
     const documents = await documentsFor(documentIds, slice);
     const withDocuments = (text: string) => (documents ? `${text}\n\n${documents}` : text);
     const documentTokens = documents ? estimateTokens(documents) : 0;
@@ -75,7 +90,15 @@ export function createTransferPackageBuilder(context: ForkContext): TransferPack
       attachmentNames: conversation.attachments.map((a) => a.name),
       ...(conversation.model ? { model: conversation.model } : {}),
       ...(personaText ? { personaText } : {}),
+      ...(compacted && context.compact ? { translationNote: translationNote(context.compact.from) } : {}),
     };
+    const compactInfo = compact
+      ? compacted
+        ? { uncompactedTokens: sliceTokens(mode === 'trimmed' ? trimToBudget(original).messages : original) + documentTokens }
+        : mode === 'summary'
+          ? {}
+          : { compactFailed: true }
+      : {};
 
     if (mode === 'summary') {
       // Trimmed first: the conversations worth summarizing are the ones large
@@ -87,7 +110,7 @@ export function createTransferPackageBuilder(context: ForkContext): TransferPack
         const text = withDocuments(
           wrapForTarget({ ...base, messages: [], summary: result.summary }, target),
         );
-        return { text, estimatedTokens: Math.ceil(text.length / 4) };
+        return { text, estimatedTokens: estimateTokens(text) };
       }
       // Degrade to a full transfer rather than losing the fork entirely.
       const text = withDocuments(wrapForTarget({ ...base, messages: slice }, target));
@@ -117,10 +140,23 @@ export function createTransferPackageBuilder(context: ForkContext): TransferPack
         text: continuationNote(wrapped, name),
         estimatedTokens,
         contextFile: { name, text },
+        ...compactInfo,
       };
     }
-    return { text, estimatedTokens };
+    return { text, estimatedTokens, ...compactInfo };
   };
+
+  /** The slice with its earlier messages in English, or null if that is not possible. */
+  async function compactSlice(slice: ChatMessage[]): Promise<ChatMessage[] | null> {
+    if (!context.compact || context.compact.from === 'en') return null;
+    const translate = await context.compact.translator();
+    if (!translate) return null;
+    try {
+      return await compactMessages(slice, translate);
+    } catch {
+      return null;
+    }
+  }
 
   /**
    * The documents, cut to what this part of the conversation is about. Read

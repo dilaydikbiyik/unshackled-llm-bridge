@@ -1,8 +1,112 @@
 import type { BridgeConversation, ChatMessage } from '@domain/conversation/schema';
 
-/** Rough heuristic: ~4 characters per token. Good enough for a UI warning. */
+/**
+ * Token count, estimated from what kind of characters the text is made of.
+ *
+ * It used to be characters ÷ 4, which is roughly right for English prose and
+ * wrong for everything else: measured against GPT-4o/5's tokenizer (o200k) on
+ * the FLORES-200 parallel corpus, it overcounted English by 23%, undercounted
+ * Turkish by 11% and Chinese, Japanese and Korean by 58–67%. So the dialog
+ * claimed a Turkish chat was smaller than its English translation — the
+ * opposite of the truth — and a CJK chat sailed past the length warning.
+ *
+ * The weights below were fitted by least squares on FLORES-200 devtest in ten
+ * languages plus this project's own source code, and checked on data the fit
+ * never saw: within 5% for every language on FLORES dev (English +3.6%,
+ * Turkish −3.0%), within 2% for English and Turkish chat text, and 2–15% over
+ * on code. A word costs a little; an ASCII letter about a fifth of a token; a
+ * letter outside ASCII (ğ, ş, é) much more, because tokenizers split around
+ * it; a CJK character most of a token; a run of punctuation about one token.
+ */
 export function estimateTokens(text: string): number {
-  return Math.ceil(text.length / 4);
+  let words = 0;
+  let ascii = 0;
+  let latin = 0;
+  let cyrillic = 0;
+  let arabic = 0;
+  let cjk = 0;
+  let punct = 0;
+  let punctRuns = 0;
+  let previous: 'space' | 'word' | 'punct' = 'space';
+  for (let i = 0; i < text.length; i += 1) {
+    const code = text.charCodeAt(i);
+    // A surrogate pair is one character outside the BMP: emoji, rare CJK.
+    if (code >= 0xd800 && code <= 0xdbff) {
+      i += 1;
+      cjk += 1;
+      if (previous !== 'word') words += 1;
+      previous = 'word';
+      continue;
+    }
+    const kind = classify(code);
+    if (kind === SPACE) {
+      previous = 'space';
+      continue;
+    }
+    if (kind === PUNCT) {
+      punct += 1;
+      if (previous !== 'punct') punctRuns += 1;
+      previous = 'punct';
+      continue;
+    }
+    if (previous !== 'word') words += 1;
+    previous = 'word';
+    if (kind === ASCII) ascii += 1;
+    else if (kind === CYRILLIC) cyrillic += 1;
+    else if (kind === ARABIC) arabic += 1;
+    else if (kind === CJK) cjk += 1;
+    else latin += 1;
+  }
+  const estimate =
+    0.2145 * words +
+    0.179 * ascii +
+    0.88 * latin +
+    0.2416 * cyrillic +
+    0.3173 * arabic +
+    0.7447 * cjk +
+    0.1124 * punct +
+    1.1593 * punctRuns;
+  return Math.ceil(estimate);
+}
+
+const SPACE = 0;
+const ASCII = 1;
+const OTHER_LETTER = 2;
+const CYRILLIC = 3;
+const ARABIC = 4;
+const CJK = 5;
+const PUNCT = 6;
+
+function classify(code: number): number {
+  if (code <= 0x20 || code === 0xa0 || (code >= 0x2000 && code <= 0x200b) || code === 0x3000) return SPACE;
+  if ((code >= 0x30 && code <= 0x39) || (code >= 0x41 && code <= 0x5a) || (code >= 0x61 && code <= 0x7a)) {
+    return ASCII;
+  }
+  if (code < 0x80) return PUNCT;
+  if (code >= 0x0400 && code <= 0x052f) return CYRILLIC;
+  if ((code >= 0x0600 && code <= 0x06ff) || (code >= 0x0750 && code <= 0x077f)) return ARABIC;
+  if (
+    (code >= 0x1100 && code <= 0x11ff) ||
+    (code >= 0x3040 && code <= 0x30ff) ||
+    (code >= 0x3400 && code <= 0x4dbf) ||
+    (code >= 0x4e00 && code <= 0x9fff) ||
+    (code >= 0xac00 && code <= 0xd7af) ||
+    (code >= 0xf900 && code <= 0xfaff)
+  ) {
+    return CJK;
+  }
+  // General and CJK punctuation, symbols, and Latin-1 signs (×, «, ©).
+  if (
+    (code >= 0x80 && code <= 0xbf) ||
+    code === 0xd7 ||
+    code === 0xf7 ||
+    (code >= 0x2010 && code <= 0x2bff) ||
+    (code >= 0x3001 && code <= 0x303f) ||
+    (code >= 0xff00 && code <= 0xff20)
+  ) {
+    return PUNCT;
+  }
+  return OTHER_LETTER;
 }
 
 /** Above this, the fork dialog suggests trimming or summarizing. */
@@ -63,11 +167,13 @@ export function trimToBudget(
   // What cannot be dropped is shortened, and says so where the text was cut.
   let truncatedCount = 0;
   if (sliceTokens(kept) > budgetTokens) {
-    const allowanceChars = Math.max(
-      MIN_KEPT_CHARS,
-      Math.floor((budgetTokens * 4) / Math.max(kept.length, 1)),
-    );
+    // The cut mark is text too, and is paid for out of each message's share.
+    const allowanceTokens = budgetTokens / Math.max(kept.length, 1) - estimateTokens(TRUNCATION_MARK);
     for (const [index, message] of kept.entries()) {
+      // Converted to characters at this message's own density: a token of
+      // Chinese is a character or so, a token of English four.
+      const perToken = message.content.length / Math.max(estimateTokens(message.content), 1);
+      const allowanceChars = Math.max(MIN_KEPT_CHARS, Math.floor(allowanceTokens * perToken));
       if (message.content.length <= allowanceChars) continue;
       kept[index] = { ...message, content: shorten(message.content, allowanceChars) };
       truncatedCount += 1;

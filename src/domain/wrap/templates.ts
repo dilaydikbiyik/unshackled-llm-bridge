@@ -22,6 +22,11 @@ export interface WrapInput {
   summary?: string;
   /** Names of the files travelling with the package, for the brief. */
   attachmentNames?: string[];
+  /**
+   * Set when earlier messages were translated to English to save tokens: the
+   * sentence saying so, and asking for the reply in the user's language.
+   */
+  translationNote?: string;
 }
 
 export function wrapForTarget(input: WrapInput, target: PlatformId): string {
@@ -53,6 +58,7 @@ export function wrapForTarget(input: WrapInput, target: PlatformId): string {
       '<context>',
       `The following is a conversation I had with ${source}${model}. ` +
         'I am continuing it here. Read it, then answer my next message in this context.',
+      ...(input.translationNote ? [input.translationNote] : []),
       '</context>',
     );
     if (brief.length) parts.push('<handoff>', ...brief, '</handoff>');
@@ -74,6 +80,7 @@ export function wrapForTarget(input: WrapInput, target: PlatformId): string {
   parts.push(
     '## Previous conversation context',
     `This conversation started with ${source}${model}. I am continuing it here.`,
+    ...(input.translationNote ? [input.translationNote] : []),
     '',
   );
   if (brief.length) parts.push('### Where this stands', ...brief.map((line) => `- ${line}`), '');
@@ -109,5 +116,7 @@ export function continuationNote(input: WrapInput, fileName: string): string {
       'then pick up where it left off.',
   ];
   if (digest.openRequest) lines.push('', `Where we left off: ${digest.openRequest}`);
+  // Said here as well as in the file: the composer is read first.
+  if (input.translationNote) lines.push('', input.translationNote);
   return lines.join('\n');
 }

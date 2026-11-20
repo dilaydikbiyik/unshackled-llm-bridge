@@ -30,6 +30,7 @@ import { showToast } from '@views/content/toast';
 import { alignCutIndex } from '@domain/conversation/align';
 import type { ExtractedDocument } from '@domain/documents/landmarks';
 import { canExtractText, extractDocument } from '@data/documents/extract';
+import { createTranslation, detectLanguage, translationAvailability } from '@data/language/on-device';
 import { base64ToBytes } from '@shared/base64';
 import type { BridgeConversation } from '@domain/conversation/schema';
 
@@ -97,9 +98,12 @@ function mountFork(
 ): () => void {
   const onFork = (messageIndex: number) => void openDialogFor(adapter, messageIndex);
   const prepareDrag = () => prepareConversationDrag(adapter);
+  // Both affordances ask for the turns on every pointer move and every page
+  // change; one query per 100ms answers them all.
+  const turns = recent(() => adapter.locateTurns(), 100);
   // In the site's own action bar where it has one; floating everywhere else.
   const native = mountNativeForks({
-    locateMessages: () => adapter.locateTurns(),
+    locateMessages: turns,
     locateActionBar: (turn) => adapter.locateActionBar(turn),
     onFork,
     prepareDrag,
@@ -110,7 +114,7 @@ function mountFork(
     hint: t(lang, 'forkHint'),
     // Asked of the adapter: on a site the user added there are no configured
     // selectors, and only the generic adapter knows where its turns are.
-    locateMessages: () => adapter.locateTurns(),
+    locateMessages: turns,
     onFork,
     prepareDrag,
     hasNative: native.has,
@@ -200,6 +204,7 @@ async function openDialogFor(adapter: PlatformAdapter, pointed: number | 'last')
   const language = (await getSettings()).language;
   const { conversation, messageIndex } = await readForFork(adapter, pointed, language);
   const documents = documentLoader();
+  const compact = await compactOffer(conversation, language);
   const [settings, attachments, origin, relayPoints] = await Promise.all([
     getSettings(),
     sendToBackground({
@@ -223,7 +228,9 @@ async function openDialogFor(adapter: PlatformAdapter, pointed: number | 'last')
       language: settings.language,
       relayedThrough: (target) => relayPoints.get(target),
       loadDocuments: documents.load,
+      ...(compact ? { compact: compact.context } : {}),
     }),
+    ...(compact ? { compact: { languageLabel: compact.label } } : {}),
     addDocuments: documents.add,
     // The warning is sized for the default scope, the whole conversation.
     showLengthWarning: exceedsTransferBudget(conversation, messageIndex, 'whole'),
@@ -493,4 +500,57 @@ function documentLoader(): {
     });
   };
   return { load, add };
+}
+
+/**
+ * Compact context is offered for a conversation in a language other than
+ * English, when this browser can translate that language on the device. The
+ * translator is created on first use: that may download a model, which
+ * Chrome allows only right after the user ticks the option.
+ */
+async function compactOffer(
+  conversation: BridgeConversation,
+  uiLanguage: Lang,
+): Promise<{ label: string; context: { from: string; translator: () => Promise<((text: string) => Promise<string>) | null> } } | null> {
+  const sample = conversation.messages
+    .filter((m) => m.role === 'user')
+    .map((m) => m.content)
+    .join('\n');
+  const from = await detectLanguage(sample);
+  if (!from || from === 'en') return null;
+  if ((await translationAvailability(from, 'en')) === 'unavailable') return null;
+  let translator: Promise<((text: string) => Promise<string>) | null> | null = null;
+  const label = (() => {
+    try {
+      return new Intl.DisplayNames([uiLanguage], { type: 'language' }).of(from) ?? from;
+    } catch {
+      return from;
+    }
+  })();
+  return {
+    label,
+    context: {
+      from,
+      // A failed attempt is not kept: ticking the option again retries it.
+      translator: async () => {
+        const made = await (translator ??= createTranslation(from, 'en'));
+        if (!made) translator = null;
+        return made;
+      },
+    },
+  };
+}
+
+/** The value of `read`, reused for `ms` before it is read again. */
+function recent<T>(read: () => T, ms: number): () => T {
+  let value: T;
+  let at = Number.NEGATIVE_INFINITY;
+  return () => {
+    const now = performance.now();
+    if (now - at > ms) {
+      value = read();
+      at = now;
+    }
+    return value;
+  };
 }

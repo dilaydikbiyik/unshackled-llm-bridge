@@ -7,6 +7,16 @@ All notable changes to this project are documented here. The format follows
 ## [Unreleased]
 
 ### Added
+- **Compact context.** An option in the fork dialog carries the earlier messages of a
+  non-English conversation in English and asks for the reply in the user's language — about 30%
+  fewer tokens for Turkish on GPT, measured on FLORES-200. Translated on the device by Chrome's
+  built-in translator; code, inline code, links and the last message stay as written. Off by
+  default, offered only where the browser can translate the conversation's language.
+- **Token estimates that hold across languages.** Characters ÷ 4 overcounted English by 23% and
+  undercounted Turkish by 11% and Chinese, Japanese and Korean by about 60%. The estimate now
+  weighs words, letter classes and punctuation runs, fitted on FLORES-200 and this codebase: within
+  5% for ten languages on held-out text, 2–15% on code. Trimming converts its budget at each
+  message's own density.
 - **Documents travel as text, cut to what the conversation was about.** A PDF, Word,
   PowerPoint, Excel, OpenDocument, EPUB, HTML, RTF, notebook or plain-text file goes as an
   outline with landmarks (`§4 · Method · p.3–5`, `slide 2`, `sheet Budget`) plus the full
