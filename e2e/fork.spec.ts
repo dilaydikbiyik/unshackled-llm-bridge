@@ -158,3 +158,28 @@ test('falls back to the full package when the attachment does not land', async (
   await expect(composer).toContainText('cherry blossoms', { timeout: 15_000 });
   expect(await target.evaluate(() => (window as { __sendClicks?: number }).__sendClicks ?? 0)).toBe(0);
 });
+
+/**
+ * Seen live on 1.2.0: after one fork, the next fork from the same chat listed
+ * chatgpt-conversation.md — the transcript the first one wrote — as the
+ * user's own file, re-uploaded it, and read it as an 82-section document.
+ */
+test('a second fork does not carry the transcript the first one wrote', async ({ context }) => {
+  const source = await context.newPage();
+  await source.goto('https://chatgpt.com/c/e2e-twice');
+  await source.locator('[data-content-search-unit-key$=":assistant"]').hover();
+  await source.locator('#ulb-fork-button-host #fork').click();
+
+  const dialog = source.locator('#ulb-fork-dialog-host');
+  await expect(dialog.locator('#preview')).toHaveValue(/chatgpt-conversation\.md/);
+  const [target] = await Promise.all([context.waitForEvent('page'), dialog.locator('#transfer').click()]);
+  await arrive(target, 'https://claude.ai/new');
+  await expect(target.locator('div.ProseMirror[contenteditable="true"]')).toContainText('chatgpt-conversation.md');
+
+  await source.bringToFront();
+  await source.locator('[data-content-search-unit-key$=":assistant"]').hover();
+  await source.locator('#ulb-fork-button-host #fork').click();
+  await expect(dialog.locator('#preview')).toHaveValue(/chatgpt-conversation\.md/);
+  await expect(dialog.locator('.att')).toHaveCount(0);
+  await expect(dialog.locator('#documents')).toHaveCount(0);
+});

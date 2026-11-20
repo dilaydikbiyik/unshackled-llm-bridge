@@ -311,6 +311,15 @@ describe('generated transcripts are not the user’s files', () => {
 
     expect(listed.map((meta) => meta.id)).toEqual(['a1']);
   });
+
+  it('also leaves out a transcript stored before the mark was kept', async () => {
+    // Seen live: chatgpt-conversation.md from an earlier fork, stored without
+    // the mark, came back as a "document" of 82 sections.
+    const unmarked = { ...userFile, id: 'a3', name: 'chatgpt-conversation.md', mime: 'text/markdown' };
+    const { call } = setup({ repo: { listAttachments: vi.fn(async () => [userFile, unmarked]) } });
+    const listed = await call({ type: 'attachment/list', conversationKey: 'k' });
+    expect(listed.map((meta) => meta.id)).toEqual(['a1']);
+  });
 });
 
 /**

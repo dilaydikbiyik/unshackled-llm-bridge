@@ -8,7 +8,7 @@ import { platformIds, platformInfo, type PlatformId } from '@domain/platforms';
 import { base64ToBytes, bytesToBase64 } from '@shared/base64';
 import { readComparisons, writeComparisons } from '@shared/comparisons';
 import type { AdapterHealth } from '@shared/health';
-import type { ComparisonState, HandlerMap, PendingInjection } from '@shared/messages';
+import type { CapturedAttachmentMeta, ComparisonState, HandlerMap, PendingInjection } from '@shared/messages';
 import type { Settings } from '@shared/settings';
 import type { KeyValueStore } from '@shared/storage';
 
@@ -144,7 +144,7 @@ export function createHandlers(deps: BackgroundDeps): HandlerMap {
     // earlier fork lives in the same store, and offering it back would make
     // each fork carry every previous fork's transcript with it.
     'attachment/list': async ({ conversationKey }) =>
-      (await deps.repo.listAttachments(conversationKey)).filter((meta) => !meta.generated),
+      (await deps.repo.listAttachments(conversationKey)).filter((meta) => !isGenerated(meta)),
 
     'attachment/rekey': async ({ from, to }) => ({
       moved: await deps.repo.rekeyAttachments(from, to),
@@ -226,4 +226,14 @@ export function createHandlers(deps: BackgroundDeps): HandlerMap {
       }
     },
   };
+}
+
+/**
+ * A transcript this extension wrote. Marked as such since 1.2.0; before that
+ * the mark was lost on the way into storage, so a file named the way a
+ * transcript is named — `chatgpt-conversation.md` from a ChatGPT fork — is
+ * taken to be one as well.
+ */
+function isGenerated(meta: CapturedAttachmentMeta): boolean {
+  return meta.generated === true || (meta.mime === 'text/markdown' && meta.name === `${meta.sourcePlatform}-conversation.md`);
 }

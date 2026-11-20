@@ -47,6 +47,10 @@ export async function saveAttachment(
     sourcePlatform: meta.sourcePlatform,
     conversationKey: meta.conversationKey,
     createdAt: meta.capturedAt,
+    // Kept, or the filter that keeps a fork's transcript out of the next
+    // fork has nothing to filter on: it was dropped here, and each fork
+    // carried the one before it — re-uploaded, and read as a document.
+    ...(meta.generated ? { generated: true } : {}),
     blob: new Blob([bytes.slice().buffer], { type: meta.mime }),
   };
   await getDb().attachments.add(record);
@@ -88,6 +92,7 @@ function toMeta(record: {
   sourcePlatform: PlatformId;
   conversationKey: string;
   createdAt: string;
+  generated?: boolean;
 }): CapturedAttachmentMeta {
   return {
     id: record.id,
@@ -98,6 +103,7 @@ function toMeta(record: {
     sourcePlatform: record.sourcePlatform,
     conversationKey: record.conversationKey,
     capturedAt: record.createdAt,
+    ...(record.generated ? { generated: true } : {}),
   };
 }
 

@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.2.1] — 2026-11-20
+
+### Fixed
+- **Each fork carried the transcript of the fork before it.** The mark that tells a transcript the
+  extension wrote from a file the user uploaded was dropped on the way into storage, so the
+  filter meant to leave it out had nothing to go on: the previous transcript was offered as an
+  attachment, re-uploaded to the target, and — since 1.2.0 — read as an 82-section "document".
+  The mark is now stored, and a transcript stored before this fix is recognised by its name.
+  An earlier fix had tested the filter against a mock store that kept the mark; the test now runs
+  against the real one.
+
 ## [1.2.0] — 2026-11-20
 
 ### Added

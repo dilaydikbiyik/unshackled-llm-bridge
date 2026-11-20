@@ -21,6 +21,8 @@ export interface AttachmentRecord {
   /** `${platform}:${pathname}` — the conversation the file was captured in. */
   conversationKey: string;
   createdAt: string;
+  /** Produced by the extension (a fork's transcript), not uploaded by the user. */
+  generated?: boolean;
   blob: Blob;
 }
 

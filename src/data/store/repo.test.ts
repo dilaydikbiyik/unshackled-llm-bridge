@@ -232,3 +232,19 @@ describe('files catch up with the conversation', () => {
     expect(await listAttachments('chatgpt:/c/abc')).toHaveLength(1);
   });
 })
+
+describe('a transcript the extension wrote', () => {
+  it('stays marked as generated once stored', async () => {
+    // The mark used to be dropped on the way in, so the filter that keeps a
+    // fork's transcript out of the next fork had nothing to go on.
+    const meta = await saveAttachment({ ...input('chatgpt:/c/g', 'chatgpt-conversation.md'), generated: true }, new Uint8Array([9]));
+    expect(meta.generated).toBe(true);
+    const [listed] = await listAttachments('chatgpt:/c/g');
+    expect(listed?.generated).toBe(true);
+  });
+
+  it('leaves a user’s own file unmarked', async () => {
+    const meta = await saveAttachment(input('chatgpt:/c/u'), new Uint8Array([1]));
+    expect(meta.generated).toBeUndefined();
+  });
+});
