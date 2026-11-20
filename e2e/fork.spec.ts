@@ -172,6 +172,9 @@ test('a second fork does not carry the transcript the first one wrote', async ({
   await arrive(target, 'https://claude.ai/new');
   await expect(target.locator('div.ProseMirror[contenteditable="true"]')).toContainText('chatgpt-conversation.md');
 
+  // Closed rather than brought to the back: on CI's display bringToFront left
+  // the target in front, and the second fork's pointer went to a background tab.
+  await target.close();
   await source.bringToFront();
   await forkFrom(source.locator('[data-content-search-unit-key$=":assistant"]'));
   await expect(dialog.locator('#preview')).toHaveValue(/chatgpt-conversation\.md/);
