@@ -62,6 +62,15 @@ describe('transfer length guard', () => {
     expect(result.messages.at(-1)?.index).toBe(9);
   });
 
+  it('trims a very long conversation quickly', () => {
+    // 2,000 messages, about a megabyte: measured once each, not once per drop.
+    const slice = messages(2000, 500);
+    const started = performance.now();
+    const result = trimToBudget(slice, 2000);
+    expect(performance.now() - started).toBeLessThan(1000);
+    expect(sliceTokens(result.messages)).toBeLessThanOrEqual(2000);
+  });
+
   it('never trims below two messages, even under an impossible budget', () => {
     const result = trimToBudget(messages(6, 4000), 1);
     expect(result.messages).toHaveLength(2);

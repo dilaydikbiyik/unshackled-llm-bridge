@@ -8,8 +8,8 @@ All notable changes to this project are documented here. The format follows
 
 ### Added
 - **Compact context.** An option in the fork dialog carries the earlier messages of a
-  non-English conversation in English and asks for the reply in the user's language — about 30%
-  fewer tokens for Turkish on GPT, measured on FLORES-200. Translated on the device by Chrome's
+  non-English conversation in English and asks for the reply in the user's language — 30% fewer
+  tokens for Turkish prose on GPT (FLORES-200), 15% on a real chat full of code and tables. Translated on the device by Chrome's
   built-in translator; code, inline code, links and the last message stay as written. Off by
   default, offered only where the browser can translate the conversation's language.
 - **Token estimates that hold across languages.** Characters ÷ 4 overcounted English by 23% and

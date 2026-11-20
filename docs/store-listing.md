@@ -57,7 +57,7 @@ conversation across — the history, the files you uploaded, and the model that 
   open the file. Pick or drop any document in the fork dialog; it never leaves your computer.
 - **Fork sits in each message's own action bar** on ChatGPT, Claude and Gemini, beside copy and ⋯.
 - **Compact context:** carry a Turkish (or other non-English) chat's history in English and get the
-  reply in your language — about 30% fewer tokens, translated on your device by Chrome.
+  reply in your language — 15–30% fewer tokens, translated on your device by Chrome.
 - **Long conversations are read whole**, even where the site keeps only the part on screen.
 - **Add any AI site**, including a local model running on your own machine. No selectors to write:
   the extension reads a chat page it has never seen by its shape.
@@ -99,7 +99,7 @@ taşır: geçmişi, yüklediğin dosyaları ve cevabı üreten modeli.
   yalnızca sohbetin ilgilendiği bölümler. Daha az token harcar, dosya açamayan asistanlara da ulaşır.
   Fork penceresine istediğin belgeyi seç ya da sürükle; bilgisayarından çıkmaz.
 - **Fork, her mesajın kendi araç çubuğunda**: ChatGPT, Claude ve Gemini'de kopyala ve ⋯ yanında.
-- **Kompakt bağlam:** sohbet geçmişini İngilizce taşı, cevabı Türkçe al — yaklaşık %30 daha az
+- **Kompakt bağlam:** sohbet geçmişini İngilizce taşı, cevabı Türkçe al — %15–30 daha az
   token; çeviriyi Chrome cihazında yapar.
 - **Uzun sohbetler eksiksiz okunur**, site ekranda yalnızca bir kısmını tutsa bile.
 - **Her yapay zekâ sitesini ekleyebilirsin**, kendi makinende çalışan bir model dâhil. Seçici

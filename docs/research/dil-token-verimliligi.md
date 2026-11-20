@@ -119,6 +119,11 @@ literatür bulgularıyla aynı yönde (aşağıda).
 
 > **Uygulandı (20 Kasım 2026):** "Kompakt bağlam" seçeneği ve dile duyarlı token tahmini eklendi.
 > Ayrıntılar aşağıda ve CHANGELOG'da.
+>
+> **Canlı ölçüm (Chrome 157, gerçek ChatGPT sohbeti, 12 mesaj, kod ve tablolu):** paket 22.328 →
+> 18.906 token, **−%15**. Düz metindeki %30'dan düşük, çünkü kod, tablo ve son mesaj çevrilmiyor.
+> Görülen riskler: çevirmen bir paragraftan bir cümleyi atladı (artık satır satır çevriliyor ve
+> yarıdan kısa dönen satır orijinal kalıyor); Türkçe cinsiyetsiz "elinde" → "he has" oldu.
 
 1. **"Çinceye çevir" yapılmasın.** Kullandığın platformlarda kazanç ya yok ya İngilizceden küçük;
    doğruluk da düşüyor.

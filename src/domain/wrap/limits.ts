@@ -155,9 +155,16 @@ export function trimToBudget(
   budgetTokens = TRANSFER_TOKEN_BUDGET,
 ): PreparedSlice {
   const kept = [...messages];
+  // Each message is measured once and the total kept current: re-measuring
+  // the whole slice after every drop made trimming quadratic, and a
+  // 200-message conversation took seconds to fork.
+  const costs = kept.map((m) => estimateTokens(m.content));
+  let total = costs.reduce((a, b) => a + b, 0);
   let trimmedCount = 0;
-  while (kept.length > 2 && sliceTokens(kept) > budgetTokens) {
+  while (kept.length > 2 && total > budgetTokens) {
+    total -= costs[1] ?? 0;
     kept.splice(1, 1);
+    costs.splice(1, 1);
     trimmedCount += 1;
   }
 
@@ -166,7 +173,7 @@ export function trimToBudget(
   // margin at all, while the package reported that nothing had been trimmed.
   // What cannot be dropped is shortened, and says so where the text was cut.
   let truncatedCount = 0;
-  if (sliceTokens(kept) > budgetTokens) {
+  if (total > budgetTokens) {
     // The cut mark is text too, and is paid for out of each message's share.
     const allowanceTokens = budgetTokens / Math.max(kept.length, 1) - estimateTokens(TRUNCATION_MARK);
     for (const [index, message] of kept.entries()) {
