@@ -119,7 +119,7 @@ export const STRINGS = {
     forkCancel: 'Vazgeç',
 
     forkCompact: 'Kompakt bağlam',
-    forkCompactHint: 'önceki mesajlar İngilizceye çevrilir, cevap {lang} istenir. ~%30 daha az token; çeviri bilgisayarında yapılır, nüans kaybolabilir. Son mesajın ve kodlar olduğu gibi kalır.',
+    forkCompactHint: 'önceki mesajlar İngilizceye çevrilir, cevap {lang} istenir. %15–30 daha az token; çeviri bilgisayarında yapılır, nüans kaybolabilir. Son mesajın ve kodlar olduğu gibi kalır.',
     forkCompactLoading: 'Çevriliyor… İlk kullanımda Chrome çeviri modelini indirir.',
     forkCompactFailed: 'Çeviri yapılamadı; sohbet kendi dilinde aktarılıyor.',
     forkCompactSaved: 'çevrilmeden ~{before}, −%{percent}',
@@ -249,7 +249,7 @@ export const STRINGS = {
     forkCancel: 'Cancel',
 
     forkCompact: 'Compact context',
-    forkCompactHint: 'earlier messages are translated to English and the reply is asked for in {lang}. ~30% fewer tokens; translated on your computer, nuance may be lost. Your last message and code stay as written.',
+    forkCompactHint: 'earlier messages are translated to English and the reply is asked for in {lang}. 15–30% fewer tokens; translated on your computer, nuance may be lost. Your last message and code stay as written.',
     forkCompactLoading: 'Translating… The first time, Chrome downloads its translation model.',
     forkCompactFailed: 'Could not translate; the conversation goes in its own language.',
     forkCompactSaved: '~{before} untranslated, −{percent}%',

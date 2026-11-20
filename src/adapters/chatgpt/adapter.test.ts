@@ -360,3 +360,47 @@ describe('ChatGptAdapter.locateActionBar', () => {
     expect(adapter.locateActionBar(streaming)).toBeNull();
   });
 });
+
+/**
+ * The block as it really is (2026-11-20, second look): prompt and reply in
+ * one stack, and the reply's bar beside that stack — so the reply's nearest
+ * ancestor holding its bar also holds the prompt before it.
+ */
+const SHARED_BLOCK = `
+<main>
+  <div class="group flex flex-col" id="exchange-1">
+    <div class="stack">
+      <div data-content-search-unit-key="fallback-turn-1:0:user">
+        <div data-user-message-bubble="true">soru 1</div>
+        <div class="turn-action-controls" id="bar-q1"><button aria-label="Mesajı kopyala">c</button></div>
+      </div>
+      <div class="block"><div data-content-search-unit-key="fallback-turn-1:2:assistant"><div class="DilResponseRoot-x"><p>cevap 1</p></div></div></div>
+    </div>
+    <div class="turn-action-controls" id="bar-a1"><button aria-label="Kopyala">c</button><button aria-label="Diğer işlemler">⋯</button></div>
+  </div>
+  <div class="group flex flex-col" id="exchange-2">
+    <div class="stack">
+      <div data-content-search-unit-key="fallback-turn-2:0:user">
+        <div data-user-message-bubble="true">soru 2</div>
+        <div class="turn-action-controls" id="bar-q2"><button aria-label="Mesajı kopyala">c</button></div>
+      </div>
+      <div class="block"><div data-content-search-unit-key="fallback-turn-2:2:assistant"><div class="DilResponseRoot-x"><p>yazılıyor</p></div></div></div>
+    </div>
+  </div>
+</main>`;
+
+describe('ChatGptAdapter.locateActionBar — prompt and reply in one block', () => {
+  beforeEach(() => {
+    document.body.innerHTML = SHARED_BLOCK;
+  });
+
+  it('gives each turn its own bar', () => {
+    const adapter = new ChatGptAdapter(selectors);
+    expect(adapter.locateTurns().map((t) => adapter.locateActionBar(t)?.id ?? null)).toEqual([
+      'bar-q1',
+      'bar-a1',
+      'bar-q2',
+      null,
+    ]);
+  });
+});

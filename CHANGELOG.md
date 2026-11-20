@@ -31,6 +31,13 @@ All notable changes to this project are documented here. The format follows
   remains for sites and turns without a bar. Selector config v10 adds `turnActions`.
 
 ### Fixed
+- **Fork was missing from ChatGPT replies' action bars.** Live, a prompt and its reply share
+  one block and the reply's bar sits beside it; the lookup stopped at the first ancestor holding
+  any other turn. A bar now belongs to a turn when no other turn stands between them.
+- **Compact context could silently drop a sentence.** Chrome's translator, given a paragraph,
+  left one out. Text now goes line by line (table rows cell by cell), and a line whose
+  translation comes back under half its length is kept in the original. The dialog's claim is
+  now "15–30% fewer tokens", as measured on a real conversation (22,328 → 18,906, −15%).
 - **Reading a PDF failed on any but the newest Chrome.** pdf.js 5's modern build needs
   `Promise.try`, `Map.getOrInsertComputed`, `Uint8Array.toHex` and `Math.sumPrecise`; the legacy
   build, which provides them, is used instead.

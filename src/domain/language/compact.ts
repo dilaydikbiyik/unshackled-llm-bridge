@@ -45,16 +45,46 @@ export async function translateMessage(
 ): Promise<string> {
   const parts = await Promise.all(
     segment(content).map(async (part) => {
-      if (!part.translate || !/\p{L}/u.test(part.text)) return part.text;
-      // Translators trim; the spacing around a kept piece of code is part of
-      // the sentence and is put back.
-      const lead = /^\s*/.exec(part.text)![0];
-      const trail = /\s*$/.exec(part.text)![0];
-      const core = part.text.slice(lead.length, part.text.length - trail.length);
-      return `${lead}${await translate(core)}${trail}`;
+      if (!part.translate) return part.text;
+      // Line by line: given a long block, Chrome's translator was seen to
+      // drop a whole sentence ("Etiketler: istatistik maddeleri [Kesin] veya
+      // [Olası]." vanished from a paragraph). Shorter input keeps it honest,
+      // and keeps Markdown line structure — lists, headings, tables — intact.
+      const lines = await Promise.all(part.text.split('\n').map((line) => translatePiece(line, translate)));
+      return lines.join('\n');
     }),
   );
   return parts.join('');
+}
+
+/**
+ * Below this share of the original's length, a translation is taken to have
+ * lost something and the original is kept. English runs about as long as
+ * Turkish, German or Spanish in characters (FLORES-200: 0.97, 0.86, 0.84);
+ * half is far outside that.
+ */
+export const MIN_LENGTH_RATIO = 0.5;
+
+async function translatePiece(text: string, translate: (text: string) => Promise<string>): Promise<string> {
+  if (!/\p{L}/u.test(text)) return text;
+  // A table row is translated cell by cell, so the pipes that make it a row
+  // are never handed to the translator.
+  if (/^\s*\|.*\|\s*$/.test(text)) {
+    const cells = await Promise.all(text.split('|').map((cell) => translatePiece(cell, translate)));
+    return cells.join('|');
+  }
+  // Translators trim; the spacing around a kept piece of code is part of the
+  // sentence and is put back. So is a list or heading marker.
+  const lead = /^\s*(?:[-*+]\s+|\d+[.)]\s+|#{1,6}\s+|>\s*)?/.exec(text)![0];
+  const trail = /\s*$/.exec(text)![0];
+  const core = text.slice(lead.length, text.length - trail.length);
+  if (!/\p{L}/u.test(core)) return text;
+  const translated = (await translate(core)).trim();
+  // Scripts differ in density: compare only within alphabetic scripts, where
+  // length is comparable; a CJK source is always taken as translated.
+  const comparable = !/[\u3040-\u30ff\u3400-\u9fff\uac00-\ud7af]/.test(core);
+  if (!translated || (comparable && translated.length < core.length * MIN_LENGTH_RATIO)) return text;
+  return `${lead}${translated}${trail}`;
 }
 
 /**

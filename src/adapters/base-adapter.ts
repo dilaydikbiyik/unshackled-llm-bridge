@@ -155,10 +155,12 @@ export abstract class BaseAdapter implements PlatformAdapter {
   }
 
   /**
-   * A bar inside the turn, else the first one after it within the turn's own
-   * block. ChatGPT renders a reply's actions beside the reply, not inside it;
-   * the climb stops at the first ancestor that also holds another turn, so a
-   * reply never claims the next turn's bar.
+   * A bar inside the turn, else the nearest one after it — climbing from the
+   * turn until a bar follows it — provided no other turn stands between the
+   * two. ChatGPT renders a reply's actions beside the reply, in a block that
+   * also holds the prompt before it; an earlier rule stopped at the first
+   * ancestor holding any other turn and so never reached the reply's bar.
+   * What makes a bar someone else's is a turn between it and this one.
    */
   locateActionBar(turn: Element): Element | null {
     const bars = this.selectors['turnActions'];
@@ -166,14 +168,15 @@ export abstract class BaseAdapter implements PlatformAdapter {
     const inside = resolveSelectorAll(turn, bars);
     if (inside.length > 0) return inside.at(-1) ?? null;
 
+    const follows = (a: Node, b: Node) => (a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0;
     let scope = turn.parentElement;
-    for (let depth = 0; scope && depth < 5; depth += 1, scope = scope.parentElement) {
-      const others = this.locateTurnsIn(scope).filter((t) => t !== turn && !t.contains(turn) && !turn.contains(t));
-      if (others.length > 0) return null;
-      const after = resolveSelectorAll(scope, bars).find(
-        (bar) => (turn.compareDocumentPosition(bar) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0,
+    for (let depth = 0; scope && depth < 6; depth += 1, scope = scope.parentElement) {
+      const bar = resolveSelectorAll(scope, bars).find((candidate) => follows(turn, candidate));
+      if (!bar) continue;
+      const between = this.locateTurnsIn(scope).some(
+        (other) => other !== turn && !other.contains(turn) && follows(turn, other) && follows(other, bar),
       );
-      if (after) return after;
+      return between ? null : bar;
     }
     return null;
   }

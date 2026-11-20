@@ -18,6 +18,28 @@ describe('translateMessage', () => {
     expect(out).toBe('BUNU DENE `x = 1` LÜTFEN\n```py\nprint("selam")\n```\nTAMAM');
   });
 
+  it('keeps a line whose translation lost most of it, rather than send less than was said', async () => {
+    // As seen live: a sentence dropped from the middle of a paragraph.
+    const lossy = async (text: string) => (text.startsWith('Etiketler') ? 'Labels.' : `EN ${text}`);
+    const out = await translateMessage('Planlama işin kendisi oldu.\nEtiketler: istatistik maddeleri [Kesin] veya [Olası].', lossy);
+    expect(out).toBe('EN Planlama işin kendisi oldu.\nEtiketler: istatistik maddeleri [Kesin] veya [Olası].');
+  });
+
+  it('translates line by line, keeping list and heading markers', async () => {
+    const seen: string[] = [];
+    const record = async (text: string) => (seen.push(text), text.toUpperCase());
+    const out = await translateMessage('## başlık\n- birinci madde\n2. ikinci\n\nson', record);
+    expect(out).toBe('## BAŞLIK\n- BIRINCI MADDE\n2. IKINCI\n\nSON');
+    expect(seen).toEqual(['başlık', 'birinci madde', 'ikinci', 'son']);
+  });
+
+  it('translates a table row cell by cell, never handing over its pipes', async () => {
+    const seen: string[] = [];
+    const out = await translateMessage('| Alan | İçerik |\n|---|---|\n| soru | kullanıcı sorusu |', async (text) => (seen.push(text), text.toUpperCase()));
+    expect(out).toBe('| ALAN | İÇERIK |\n|---|---|\n| SORU | KULLANICI SORUSU |');
+    expect(seen.every((s) => !s.includes('|'))).toBe(true);
+  });
+
   it('leaves text with no letters alone', async () => {
     expect(await translateMessage('123 — 456', upper)).toBe('123 — 456');
   });
