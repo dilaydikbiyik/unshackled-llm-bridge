@@ -312,7 +312,7 @@ export function renderDocuments(documents: PreparedDocument[]): string {
       whole
         ? `(${pages}carried in full)`
         : `(${pages}${String(doc.sections.length)} sections; ${String(carried.length)} carried in full, ` +
-            `about ${String(carriedTokens)} of ${String(doc.fullTokens)} tokens)`,
+            `about ${carriedTokens.toLocaleString('en-US')} of ${doc.fullTokens.toLocaleString('en-US')} tokens)`,
       '',
     );
     if (!whole) {

@@ -6,6 +6,8 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.2.0] — 2026-11-20
+
 ### Added
 - **Compact context.** An option in the fork dialog carries the earlier messages of a
   non-English conversation in English and asks for the reply in the user's language — 30% fewer

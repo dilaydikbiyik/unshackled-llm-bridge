@@ -25,7 +25,9 @@ beside their own and mark the place where theirs stands alone.
 
 | Feature | What you get |
 |---|---|
-| **Fork a conversation** | Hover any message, hit `⑂ Fork`, pick a target platform. The history up to that point is repackaged in the structure the target parses best and dropped into its composer. |
+| **Fork a conversation** | Hit Fork in any message's own action bar — beside copy and ⋯ on ChatGPT, Claude and Gemini, or on the floating handle elsewhere — and pick a target platform. The conversation is repackaged in the structure the target parses best and dropped into its composer. Long conversations are read whole, even where the site keeps only the part on screen. |
+| **Documents as text** | PDF, Word, PowerPoint, Excel, OpenDocument, EPUB, HTML, RTF, notebooks and text files travel as an outline with landmarks (`§3 · p.4`, `slide 2`) plus the sections the conversation was about — fewer tokens, and readable by targets that cannot open the file. Upload them to the chat or drop them into the fork dialog; they are read on your machine. |
+| **Compact context** *(optional)* | A non-English conversation's history goes in English and the reply is asked for in your language: 15–30% fewer tokens. Translated on your device by Chrome's built-in translator. See [the measurements](docs/research/dil-token-verimliligi.md). |
 | **File sandbox** | Files you upload are mirrored into local browser storage and replayed on the target platform automatically — no re-uploading the same 50-page PDF everywhere. |
 | **Structural prompt translation** | Claude gets XML-style sectioning, ChatGPT and Gemini get markdown sections. Deterministic, free, no API key needed. |
 | **Summarize on transfer** *(optional)* | With your own Anthropic API key, long conversations are compressed into a dense context brief before transfer. Browser → API directly; no middleman. |

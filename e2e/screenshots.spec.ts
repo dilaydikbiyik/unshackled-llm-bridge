@@ -40,14 +40,25 @@ async function useLanguage(context: Parameters<typeof test>[0] extends never ? n
   }, LANGUAGE);
 }
 
+test('screenshot: Fork among the reply’s own actions', async ({ context }) => {
+  await useLanguage(context);
+  const page = await context.newPage();
+  await page.setViewportSize(STORE);
+  await page.goto('https://chatgpt.com/c/shot-0');
+  const fork = page.locator('.ulb-native-fork');
+  await expect(fork).toBeVisible();
+  await fork.hover();
+  await page.screenshot({ path: `${OUT}/0-fork-in-place.png` });
+});
+
 test('screenshot: forking a conversation', async ({ context }) => {
   await useLanguage(context);
   const page = await context.newPage();
   await page.setViewportSize(STORE);
   await page.goto('https://chatgpt.com/c/shot-1');
 
-  await page.locator('[data-content-search-unit-key$=":assistant"]').hover();
-  await page.locator('#ulb-fork-button-host #fork').click();
+  // Fork is in the reply's own action row, beside copy and "⋯".
+  await page.locator('.ulb-native-fork').click();
 
   const dialog = page.locator('#ulb-fork-dialog-host');
   await expect(dialog.locator('#preview')).not.toHaveValue('');
@@ -59,8 +70,7 @@ test('screenshot: the package landing in the target', async ({ context }) => {
   const source = await context.newPage();
   await source.setViewportSize(STORE);
   await source.goto('https://chatgpt.com/c/shot-2');
-  await source.locator('[data-content-search-unit-key$=":assistant"]').hover();
-  await source.locator('#ulb-fork-button-host #fork').click();
+  await source.locator('.ulb-native-fork').click();
 
   const dialog = source.locator('#ulb-fork-dialog-host');
   await dialog.locator('#delivery').selectOption('inline');
@@ -100,3 +110,55 @@ test('screenshot: the side panel', async ({ context, extensionId }) => {
   });
   await panel.screenshot({ path: `${OUT}/3-side-panel.png` });
 });
+
+test('screenshot: a document carried as text', async ({ context }) => {
+  await useLanguage(context);
+  const page = await context.newPage();
+  await page.setViewportSize(STORE);
+  await page.goto('https://chatgpt.com/c/shot-4');
+  await page.locator('.ulb-native-fork').click();
+
+  const dialog = page.locator('#ulb-fork-dialog-host');
+  await dialog.locator('#delivery').selectOption('inline');
+  await dialog.locator('#add-docs').setInputFiles({
+    name: 'kyoto-guide.md',
+    mimeType: 'text/markdown',
+    buffer: Buffer.from(GUIDE),
+  });
+  const preview = dialog.locator('#preview');
+  await expect(preview).toHaveValue(/### kyoto-guide\.md/);
+  // The dialog scrolled to its preview, and the preview to the outline: what
+  // is carried in full, and what is only named.
+  await page.waitForTimeout(400);
+  await dialog.locator('.panel').evaluate((panel) => panel.scrollTo({ top: panel.scrollHeight }));
+  await preview.evaluate((el: HTMLTextAreaElement) => {
+    const before = el.value.slice(0, el.value.indexOf('## Documents from the conversation'));
+    const lineHeight = Number.parseFloat(getComputedStyle(el).lineHeight) || 18;
+    // Wrapped lines make a line count an underestimate; measure instead.
+    const probe = el.cloneNode() as HTMLTextAreaElement;
+    probe.style.cssText = `position:absolute;visibility:hidden;height:0;width:${String(el.clientWidth)}px`;
+    probe.value = before;
+    el.parentNode!.appendChild(probe);
+    const top = probe.scrollHeight;
+    probe.remove();
+    el.scrollTop = Math.max(0, top - lineHeight);
+  });
+  await page.screenshot({ path: `${OUT}/4-document-as-text.png` });
+});
+
+/** A guide long enough to be cut down, on the trip the conversation is about. */
+const GUIDE = [
+  '# Kyoto travel guide',
+  '## Getting there',
+  'Kansai airport to Kyoto Station takes about 75 minutes on the Haruka express. '.repeat(110),
+  '## Cherry blossoms',
+  'The cherry blossoms in early April peak along the Philosopher’s Path and in Maruyama Park. '.repeat(110),
+  '## Where to stay',
+  'Gion and Higashiyama keep you within walking distance of the temples. '.repeat(110),
+  '## Budget',
+  'A mid-range day costs about 120 EUR for a room, transport and food. '.repeat(110),
+  '## Day trips',
+  'Nara and Osaka are both under an hour away by train. '.repeat(110),
+  '## Etiquette',
+  'Do not touch the geiko; photography is restricted on private lanes in Gion. '.repeat(110),
+].join('\n');

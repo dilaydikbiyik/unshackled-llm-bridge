@@ -174,7 +174,9 @@ answering a flat "no"; a reviewer who reads the code will see those requests.
 
 ## Screenshots
 
-`npm run screenshots` drives the built extension and writes three 1280×800 PNGs to `store-assets/`:
-the fork dialog, the package landing in a target with nothing sent, and the side panel at the width
-a side panel actually has. They render against a neutral chat page rather than a real product's
+`npm run screenshots` drives the built extension and writes five 1280×800 PNGs to
+`store-assets/`, uploaded in this order: Fork in a reply's own action row (`0-fork-in-place`), the
+fork dialog (`1-fork-dialog`), the package landing in a target with nothing sent
+(`2-landed-in-target`), the side panel at the width a side panel actually has (`3-side-panel`), and
+a document carried as an outline with only the relevant sections (`4-document-as-text`). They render against a neutral chat page rather than a real product's
 interface, which keeps another company's UI out of the listing.
