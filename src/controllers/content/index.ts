@@ -204,8 +204,10 @@ async function openDialogFor(adapter: PlatformAdapter, pointed: number | 'last')
   const language = (await getSettings()).language;
   const { conversation, messageIndex } = await readForFork(adapter, pointed, language);
   const documents = documentLoader();
-  const compact = await compactOffer(conversation, language);
-  const [settings, attachments, origin, relayPoints] = await Promise.all([
+  // Asked alongside the rest, so a slow answer from the browser's language
+  // models never holds the dialog back on its own.
+  const [compact, settings, attachments, origin, relayPoints] = await Promise.all([
+    compactOffer(conversation, language),
     getSettings(),
     sendToBackground({
       type: 'attachment/list',

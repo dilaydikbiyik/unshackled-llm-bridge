@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it } from 'vitest';
-import { createTranslation, detectLanguage, translationAvailability } from './on-device';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { createTranslation, detectLanguage, PROBE_TIMEOUT_MS, translationAvailability } from './on-device';
 
 const g = globalThis as Record<string, unknown>;
 afterEach(() => {
@@ -43,5 +43,35 @@ describe('detectLanguage', () => {
   it('recognises Turkish by its letters where there is no detector', async () => {
     expect(await detectLanguage('Şemayı nasıl sadeleştiririm, örnek verir misin?')).toBe('tr');
     expect(await detectLanguage('How do I simplify the scheme?')).toBeNull();
+  });
+});
+
+describe('a browser model that never answers', () => {
+  // Seen in CI: the API exists, its model does not, and the call never
+  // settles — the fork dialog, waiting on it, never opened.
+  const never = () => new Promise<never>(() => undefined);
+
+  it('is taken as unavailable, promptly', async () => {
+    vi.useFakeTimers();
+    try {
+      g['Translator'] = { availability: never, create: never };
+      const answer = translationAvailability('tr', 'en');
+      await vi.advanceTimersByTimeAsync(PROBE_TIMEOUT_MS + 1);
+      expect(await answer).toBe('unavailable');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('leaves language detection to the heuristic', async () => {
+    vi.useFakeTimers();
+    try {
+      g['LanguageDetector'] = { availability: never, create: never };
+      const answer = detectLanguage('Şemayı nasıl sadeleştiririm?');
+      await vi.advanceTimersByTimeAsync(PROBE_TIMEOUT_MS + 1);
+      expect(await answer).toBe('tr');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

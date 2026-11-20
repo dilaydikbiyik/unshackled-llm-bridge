@@ -6,6 +6,17 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.2.2] — 2026-11-20
+
+### Fixed
+- **The fork dialog could fail to open where Chrome's language models are present but not
+  installed.** Offering compact context asks the browser whether it can detect and translate the
+  conversation's language; in CI's Chromium that question never answered ("The language detection
+  model was required but not available"), and the dialog waited on it. Every such question now
+  has a time limit — 1.5 s to ask, 2 min to download a translator, 30 s per translated piece —
+  past which the answer is "no" or the original text, and it is asked alongside the rest of the
+  dialog's setup instead of before it.
+
 ## [1.2.1] — 2026-11-20
 
 ### Fixed
