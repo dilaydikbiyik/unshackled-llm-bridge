@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import { expect, test } from './extension';
+import { expect, forkFrom, test } from './extension';
 
 /**
  * Playwright cannot intercept the first navigation of a tab the extension
@@ -25,8 +25,7 @@ test('forks a ChatGPT conversation into Claude, filling the composer and sending
   const source = await context.newPage();
   await source.goto('https://chatgpt.com/c/e2e-1');
 
-  await source.locator('[data-content-search-unit-key$=":assistant"]').hover();
-  await source.locator(`#ulb-fork-button-host #fork`).click();
+  await forkFrom(source.locator('[data-content-search-unit-key$=":assistant"]'));
 
   const dialog = source.locator('#ulb-fork-dialog-host');
   const preview = dialog.locator('#preview');
@@ -89,8 +88,7 @@ test('forks a Claude conversation into Gemini, in the target platform’s format
   const source = await context.newPage();
   await source.goto('https://claude.ai/chat/e2e-2');
 
-  await source.locator('.font-claude-response').hover();
-  await source.locator('#ulb-fork-button-host #fork').click();
+  await forkFrom(source.locator('.font-claude-response'));
 
   const dialog = source.locator('#ulb-fork-dialog-host');
   await dialog.locator('#target').selectOption('gemini');
@@ -140,8 +138,7 @@ test('falls back to the full package when the attachment does not land', async (
   const source = await context.newPage();
   await source.goto('https://chatgpt.com/c/e2e-silent');
 
-  await source.locator('[data-content-search-unit-key$=":assistant"]').hover();
-  await source.locator('#ulb-fork-button-host #fork').click();
+  await forkFrom(source.locator('[data-content-search-unit-key$=":assistant"]'));
 
   const dialog = source.locator('#ulb-fork-dialog-host');
   await expect(dialog.locator('#preview')).toHaveValue(/chatgpt-conversation\.md/);
@@ -167,8 +164,7 @@ test('falls back to the full package when the attachment does not land', async (
 test('a second fork does not carry the transcript the first one wrote', async ({ context }) => {
   const source = await context.newPage();
   await source.goto('https://chatgpt.com/c/e2e-twice');
-  await source.locator('[data-content-search-unit-key$=":assistant"]').hover();
-  await source.locator('#ulb-fork-button-host #fork').click();
+  await forkFrom(source.locator('[data-content-search-unit-key$=":assistant"]'));
 
   const dialog = source.locator('#ulb-fork-dialog-host');
   await expect(dialog.locator('#preview')).toHaveValue(/chatgpt-conversation\.md/);
@@ -177,8 +173,7 @@ test('a second fork does not carry the transcript the first one wrote', async ({
   await expect(target.locator('div.ProseMirror[contenteditable="true"]')).toContainText('chatgpt-conversation.md');
 
   await source.bringToFront();
-  await source.locator('[data-content-search-unit-key$=":assistant"]').hover();
-  await source.locator('#ulb-fork-button-host #fork').click();
+  await forkFrom(source.locator('[data-content-search-unit-key$=":assistant"]'));
   await expect(dialog.locator('#preview')).toHaveValue(/chatgpt-conversation\.md/);
   await expect(dialog.locator('.att')).toHaveCount(0);
   await expect(dialog.locator('#documents')).toHaveCount(0);

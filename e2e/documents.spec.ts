@@ -1,5 +1,5 @@
 import { samplePdf } from '../src/data/documents/sample-pdf';
-import { expect, test } from './extension';
+import { expect, forkFrom, test } from './extension';
 
 /**
  * A PDF uploaded into the conversation travels as text: an outline with
@@ -32,8 +32,7 @@ test('carries an uploaded PDF as text, and does not upload it again', async ({ c
   const source = await context.newPage();
   await source.goto('https://chatgpt.com/c/e2e-docs');
 
-  await source.locator('[data-content-search-unit-key$=":assistant"]').hover();
-  await source.locator('#ulb-fork-button-host #fork').click();
+  await forkFrom(source.locator('[data-content-search-unit-key$=":assistant"]'));
 
   const dialog = source.locator('#ulb-fork-dialog-host');
   await expect(dialog.locator('.att')).toHaveCount(1);
@@ -54,8 +53,7 @@ test('carries an uploaded PDF as text, and does not upload it again', async ({ c
 test('reads a document picked in the dialog, without it being uploaded to the chat', async ({ context }) => {
   const source = await context.newPage();
   await source.goto('https://chatgpt.com/c/e2e-picked');
-  await source.locator('[data-content-search-unit-key$=":assistant"]').hover();
-  await source.locator('#ulb-fork-button-host #fork').click();
+  await forkFrom(source.locator('[data-content-search-unit-key$=":assistant"]'));
 
   const dialog = source.locator('#ulb-fork-dialog-host');
   await dialog.locator('#delivery').selectOption('inline');

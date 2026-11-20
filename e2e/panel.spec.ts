@@ -1,4 +1,4 @@
-import { CUSTOM_SITE, expect, test } from './extension';
+import { CUSTOM_SITE, expect, forkFrom, test } from './extension';
 
 /**
  * The side panel, driven in the real extension.
@@ -162,8 +162,7 @@ test('a site the user adds: the extension actually runs on it', async ({ context
 
   // And it does the job: the generic adapter reads a page no selectors were
   // written for, and the fork carries both sides of the conversation.
-  await site.locator('.msg').nth(1).hover();
-  await site.locator('#ulb-fork-button-host #fork').click();
+  await forkFrom(site.locator('.msg').nth(1));
   const dialog = site.locator('#ulb-fork-dialog-host');
   await dialog.locator('#delivery').selectOption('inline');
   const preview = dialog.locator('#preview');
@@ -184,8 +183,7 @@ test('portable memory: a saved profile travels with a fork only when ticked', as
 
   const chat = await context.newPage();
   await chat.goto('https://chatgpt.com/c/persona-1');
-  await chat.locator('[data-content-search-unit-key$=":assistant"]').hover();
-  await chat.locator('#ulb-fork-button-host #fork').click();
+  await forkFrom(chat.locator('[data-content-search-unit-key$=":assistant"]'));
 
   const dialog = chat.locator('#ulb-fork-dialog-host');
   await dialog.locator('#delivery').selectOption('inline');

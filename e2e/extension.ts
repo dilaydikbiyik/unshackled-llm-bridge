@@ -2,7 +2,7 @@ import { cpSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { test as base, chromium, type BrowserContext } from '@playwright/test';
+import { test as base, chromium, type BrowserContext, type Locator } from '@playwright/test';
 
 const DIST = fileURLToPath(new URL('../dist', import.meta.url));
 const fixture = (name: string) => readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
@@ -113,3 +113,19 @@ export const test = base.extend<{ context: BrowserContext; extensionId: string }
 });
 
 export { expect } from '@playwright/test';
+
+/**
+ * Opens the fork dialog from the floating handle over `message`.
+ *
+ * The handle appears when the pointer arrives over a message. A pointer
+ * already resting there — after a first fork, or after a click elsewhere on
+ * the page — arrives nowhere, so the handle stayed hidden and the click
+ * waited out the timeout (seen in CI). The pointer is taken off the page
+ * first, so it always arrives.
+ */
+export async function forkFrom(message: Locator): Promise<void> {
+  const page = message.page();
+  await page.mouse.move(0, 0);
+  await message.hover();
+  await page.locator('#ulb-fork-button-host #fork').click();
+}
