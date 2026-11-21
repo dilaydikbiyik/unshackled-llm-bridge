@@ -188,3 +188,50 @@ describe('ClaudeAdapter.readConversation — a long, virtualized transcript', ()
     expect(bars).toContain('message-actions');
   });
 });
+
+/**
+ * Seen live (2026-11-21): a prompt that is only a file — a long paste Claude
+ * turned into "Pasted text.txt" — has no user-message element, only a file
+ * card, and was left out: the fork carried 25 of 26 messages, and the reply
+ * after it answered nothing anyone could see.
+ */
+const FILE_ONLY_PROMPT = `
+<div role="feed">
+  <div data-testid="transcript-row" data-index="0" data-perf-row="human">
+    <div data-testid="user-message"><p>Şu metni özetle</p></div>
+    <div data-testid="user-message-actions"><button aria-label="Show message actions">⋯</button></div>
+  </div>
+  <div data-testid="transcript-row" data-index="1" data-perf-row="assistant">
+    <div data-testid="assistant-message"><p>Metni bekliyorum.</p></div>
+  </div>
+  <div data-testid="transcript-row" data-index="2" data-perf-row="human">
+    <div data-testid="file-thumbnail"><span>Pasted text.txt</span><span>TXT</span></div>
+    <div data-testid="user-message-actions"><button aria-label="Show message actions">⋯</button></div>
+    <div data-testid="failed-send-status-region"></div>
+  </div>
+  <div data-testid="transcript-row" data-index="3" data-perf-row="assistant">
+    <div data-testid="assistant-message"><p>Özet: üç ana fikir var.</p></div>
+  </div>
+</div>`;
+
+describe('ClaudeAdapter.readConversation — a prompt that is only a file', () => {
+  beforeEach(() => {
+    document.body.innerHTML = FILE_ONLY_PROMPT;
+  });
+
+  it('reads it as the user’s turn, naming the file, in its place', async () => {
+    const conversation = await new ClaudeAdapter(selectors).readConversation();
+    expect(conversation.messages.map((m) => `${m.role}: ${m.content}`)).toEqual([
+      'user: Şu metni özetle',
+      'assistant: Metni bekliyorum.',
+      'user: [attached file: Pasted text.txt]',
+      'assistant: Özet: üç ana fikir var.',
+    ]);
+  });
+
+  it('gives it a Fork in its own action bar', () => {
+    const adapter = new ClaudeAdapter(selectors);
+    const fileTurn = adapter.locateTurns()[2]!;
+    expect(adapter.locateActionBar(fileTurn)?.getAttribute('data-testid')).toBe('user-message-actions');
+  });
+});

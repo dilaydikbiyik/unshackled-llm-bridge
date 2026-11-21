@@ -6,6 +6,16 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.2.3] — 2026-11-21
+
+### Fixed
+- **A Claude prompt that was only a file was left out of the fork.** A long paste becomes a
+  "Pasted text.txt" card, and such a turn has a file card but no `user-message` element: found
+  live in a 26-message conversation that forked as 25, with a reply answering nothing visible.
+  It is now read as the user's turn, `[attached file: Pasted text.txt]`, in its place, and gets a
+  Fork in its own action bar. Config v12 adds the row rule, `fileChip`, and two more chrome
+  regions.
+
 ## [1.2.2] — 2026-11-20
 
 ### Fixed

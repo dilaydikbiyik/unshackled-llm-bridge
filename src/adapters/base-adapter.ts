@@ -39,6 +39,8 @@ export const SITUATIONAL_TARGETS: ReadonlySet<string> = new Set([
   // A turn's action bar appears only once its answer is complete, and a
   // conversation can be open with none on screen.
   'turnActions',
+  // A file card appears only in turns that carry a file.
+  'fileChip',
 ]);
 
 /**

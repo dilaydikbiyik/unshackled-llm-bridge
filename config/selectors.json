@@ -1,5 +1,5 @@
 {
-  "version": 11,
+  "version": 12,
   "minExtensionVersion": "0.0.1",
   "platforms": {
     "chatgpt": {
@@ -54,18 +54,24 @@
         "button[aria-label='Mesaj gönder']"
       ],
       "messageContainer": [
-        "[data-testid='user-message'], [data-testid='assistant-message'], .font-claude-response"
+        "[data-testid='user-message'], [data-testid='assistant-message'], .font-claude-response, [data-testid='transcript-row'][data-perf-row='human']:not(:has([data-testid='user-message']))"
       ],
       "userMessage": [
-        "div[data-testid='user-message']"
+        "div[data-testid='user-message']",
+        "[data-testid='transcript-row'][data-perf-row='human']"
       ],
       "turnChrome": [
         "[data-cds='TurnStatus']",
-        "[data-testid='message-actions']"
+        "[data-testid='message-actions']",
+        "[data-testid='user-message-actions']",
+        "[data-testid='failed-send-status-region']"
       ],
       "turnActions": [
         "[data-testid='message-actions']",
         "[data-testid='user-message-actions']"
+      ],
+      "fileChip": [
+        "[data-testid='file-thumbnail']"
       ],
       "artifactCell": [
         "div[data-testid='artifact-block']",
