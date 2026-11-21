@@ -121,9 +121,9 @@ describe('persona', () => {
 
 describe('settings', () => {
   it('pre-selects the current language and summary model', () => {
-    const root = mount(renderSettings(settings({ language: 'tr', summaryModel: 'claude-opus-4-8' })));
+    const root = mount(renderSettings(settings({ language: 'tr', summaryModel: 'claude-opus-5-5' })));
     expect(root.querySelector<HTMLSelectElement>('#settings-lang')!.value).toBe('tr');
-    expect(root.querySelector<HTMLSelectElement>('#settings-model')!.value).toBe('claude-opus-4-8');
+    expect(root.querySelector<HTMLSelectElement>('#settings-model')!.value).toBe('claude-opus-5-5');
   });
 
   it('saves the form, trimming the API key', async () => {

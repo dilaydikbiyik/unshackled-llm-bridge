@@ -30,6 +30,18 @@ describe('settings', () => {
     expect(settings.personas).toEqual([]);
   });
 
+  it('carries a model chosen in an earlier version over to its replacement', async () => {
+    useSettingsStore(memoryStore({ settings: { summaryModel: 'claude-opus-4-8' } }));
+    expect((await getSettings()).summaryModel).toBe('claude-opus-5-5');
+    useSettingsStore(memoryStore({ settings: { summaryModel: 'claude-haiku-4-5' } }));
+    expect((await getSettings()).summaryModel).toBe('claude-haiku-5-5');
+  });
+
+  it('falls back to the default for a model it no longer knows', async () => {
+    useSettingsStore(memoryStore({ settings: { summaryModel: 'claude-2' } }));
+    expect((await getSettings()).summaryModel).toBe(DEFAULT_SETTINGS.summaryModel);
+  });
+
   it('persists a patch without dropping the other fields', async () => {
     await updateSettings({ language: 'en' });
     await updateSettings({ archiveEnabled: true });

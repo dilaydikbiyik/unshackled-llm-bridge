@@ -33,8 +33,20 @@ export interface Settings {
   onboardingDone: boolean;
 }
 
-// Cheap by default; the user can switch to Opus in settings.
-export const SUMMARY_MODELS = ['claude-haiku-4-5', 'claude-opus-4-8'] as const;
+// Cheap by default; the user can switch to Opus in settings. Claude Haiku
+// 5.5 costs a tenth of Haiku 4.5 ($0.10 / $0.50 per million tokens) and
+// Claude Opus 5.5 less than Opus 4.8; both are the current generation.
+export const SUMMARY_MODELS = ['claude-haiku-5-5', 'claude-opus-5-5'] as const;
+
+/**
+ * Models offered by earlier versions, mapped to what replaces them, so a
+ * choice saved before an upgrade carries over rather than leaving the
+ * settings list showing nothing selected.
+ */
+const REPLACED_MODELS: Record<string, (typeof SUMMARY_MODELS)[number]> = {
+  'claude-haiku-4-5': 'claude-haiku-5-5',
+  'claude-opus-4-8': 'claude-opus-5-5',
+};
 
 export const DEFAULT_SETTINGS: Settings = {
   language: 'tr',
@@ -61,7 +73,10 @@ export async function getSettings(): Promise<Settings> {
   const stored = await settingsStore().get<Partial<Settings>>(KEY);
   // Stored settings are merged over defaults, so a field added in a later
   // version gets its default instead of `undefined` for existing users.
-  return { ...DEFAULT_SETTINGS, ...(stored ?? {}) };
+  const merged = { ...DEFAULT_SETTINGS, ...(stored ?? {}) };
+  const model = REPLACED_MODELS[merged.summaryModel] ??
+    ((SUMMARY_MODELS as readonly string[]).includes(merged.summaryModel) ? merged.summaryModel : SUMMARY_MODELS[0]);
+  return { ...merged, summaryModel: model };
 }
 
 export async function updateSettings(patch: Partial<Settings>): Promise<Settings> {

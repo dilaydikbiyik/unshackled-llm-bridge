@@ -6,6 +6,21 @@ All notable changes to this project are documented here. The format follows
 
 ## [Unreleased]
 
+## [1.2.4] — 2026-11-21
+
+### Changed
+- **Summaries use the current Claude models.** The choices were Claude Haiku 4.5 and Claude Opus
+  4.8; they are now Claude Haiku 5.5 — the default, at a tenth of Haiku 4.5's price — and Claude
+  Opus 5.5. A choice saved in an earlier version moves to its replacement. These models think
+  before answering and that counts against the output limit, so a summary gets 16,000 tokens at
+  low effort instead of 4,096, and a summary that is cut off is reported as a failure rather than
+  passed on half-written.
+
+### Added
+- **End-to-end tests for every feature.** Summary mode against a stand-in Anthropic API (and its
+  fall-back when the key is wrong), the keyboard shortcut's hand-off, dragging a conversation out,
+  trimmed mode, and the relay now run against the real extension, beside the existing suites.
+
 ## [1.2.3] — 2026-11-21
 
 ### Fixed

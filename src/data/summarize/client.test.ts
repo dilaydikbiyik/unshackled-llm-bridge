@@ -10,7 +10,7 @@ function api(content: unknown[], stopReason = 'end_turn') {
           id: 'msg_test',
           type: 'message',
           role: 'assistant',
-          model: 'claude-haiku-4-5',
+          model: 'claude-haiku-5-5',
           content,
           stop_reason: stopReason,
           stop_sequence: null,
@@ -21,7 +21,7 @@ function api(content: unknown[], stopReason = 'end_turn') {
   );
 }
 
-const base = { apiKey: 'sk-test', model: 'claude-haiku-4-5', transcript: 'user: hi\n\nassistant: hello' };
+const base = { apiKey: 'sk-test', model: 'claude-haiku-5-5', transcript: 'user: hi\n\nassistant: hello' };
 
 function sentBody(fetch: ReturnType<typeof api>): {
   model: string;
@@ -47,9 +47,24 @@ describe('summarizeTranscript', () => {
     const fetch = api([{ type: 'text', text: 'brief' }]);
     await summarizeTranscript({ ...base, language: 'en', fetch });
     const body = sentBody(fetch);
-    expect(body.model).toBe('claude-haiku-4-5');
+    expect(body.model).toBe('claude-haiku-5-5');
     expect(body.system).toMatch(/Decisions already made/);
     expect(body.messages[0]?.content).toContain('<transcript>\nuser: hi');
+  });
+
+  it('leaves room for the model to think, at low effort', async () => {
+    const fetch = api([{ type: 'text', text: 'brief' }]);
+    await summarizeTranscript({ apiKey: 'k', model: 'claude-haiku-5-5', transcript: 'user: hi', language: 'en', fetch });
+    const body = sentBody(fetch) as unknown as { max_tokens: number; output_config: { effort: string } };
+    expect(body.max_tokens).toBeGreaterThanOrEqual(16_000);
+    expect(body.output_config.effort).toBe('low');
+  });
+
+  it('refuses to pass on a brief that was cut off', async () => {
+    const fetch = api([{ type: 'text', text: 'The user wants' }], 'max_tokens');
+    await expect(
+      summarizeTranscript({ apiKey: 'k', model: 'claude-haiku-5-5', transcript: 'user: hi', language: 'en', fetch }),
+    ).rejects.toThrow(/cut off/);
   });
 
   it('asks for a Turkish brief when the UI is Turkish', async () => {

@@ -253,7 +253,7 @@ describe('summarize', () => {
 
   it('uses the key and model from settings', async () => {
     const { call, summarize } = setup({
-      settings: { anthropicApiKey: 'sk-test', summaryModel: 'claude-opus-4-8' },
+      settings: { anthropicApiKey: 'sk-test', summaryModel: 'claude-opus-5-5' },
     });
     expect(await call({ type: 'summarize/run', transcript: 't', language: 'tr' })).toEqual({
       ok: true,
@@ -261,7 +261,7 @@ describe('summarize', () => {
     });
     expect(summarize).toHaveBeenCalledWith({
       apiKey: 'sk-test',
-      model: 'claude-opus-4-8',
+      model: 'claude-opus-5-5',
       transcript: 't',
       language: 'tr',
     });

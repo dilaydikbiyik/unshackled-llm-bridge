@@ -59,7 +59,11 @@ export async function summarizeTranscript(options: SummarizeOptions): Promise<st
 
   const response = await client.messages.create({
     model: options.model,
-    max_tokens: 4096,
+    // The current models think before answering, and that thinking counts
+    // against max_tokens: 4,096 could be spent before the brief was written.
+    // Summarizing needs little deliberation, so effort is low.
+    max_tokens: 16_000,
+    output_config: { effort: 'low' },
     system: SYSTEM_PROMPT,
     messages: [
       {
@@ -71,6 +75,10 @@ export async function summarizeTranscript(options: SummarizeOptions): Promise<st
 
   if (response.stop_reason === 'refusal') {
     throw new Error('The model declined to summarize this conversation.');
+  }
+  // A brief cut off mid-sentence would be passed on as if it were complete.
+  if (response.stop_reason === 'max_tokens') {
+    throw new Error('The summary was cut off before it was finished.');
   }
 
   const text = response.content
